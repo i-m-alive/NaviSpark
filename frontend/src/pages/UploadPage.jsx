@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { uploadDocument } from '../api/client'
+import { uploadDocument, startAnalysis } from '../api/client'
 import Navbar from '../components/Navbar'
 import LoadingSpinner from '../components/LoadingSpinner'
 import {
   Upload, FileText, X, CheckCircle, AlertCircle,
   ChevronRight, ChevronLeft, Sparkles, RotateCcw,
-  Building2, Tag, Target, ArrowRight,
+  Building2, Tag, Target, ArrowRight, Loader2,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -156,6 +156,42 @@ function SummaryRow({ icon: Icon, label, value }) {
         <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">{label}</p>
         <p className="text-sm text-gray-200 mt-0.5 leading-snug">{value}</p>
       </div>
+    </div>
+  )
+}
+
+// ── Start Analysis button — fires pipeline then navigates ─────────────────────
+function StartAnalysisButton({ sessionId }) {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleClick = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await startAnalysis(sessionId)
+      navigate(`/results/${sessionId}`)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className="btn-primary flex items-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {loading ? (
+          <><Loader2 size={14} className="animate-spin" /> Starting…</>
+        ) : (
+          <><Sparkles size={14} /> Start Analysis</>
+        )}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   )
 }
@@ -494,13 +530,8 @@ export default function UploadPage() {
                   ))}
                 </div>
 
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={() => navigate(`/results/${resultSessionId}`)}
-                    className="btn-primary flex items-center gap-2 text-sm"
-                  >
-                    <Sparkles size={14} /> Start Analysis
-                  </button>
+                <div className="flex gap-3 justify-center flex-wrap">
+                  <StartAnalysisButton sessionId={resultSessionId} />
                   <button
                     onClick={() => navigate('/dashboard')}
                     className="btn-secondary flex items-center gap-2 text-sm"

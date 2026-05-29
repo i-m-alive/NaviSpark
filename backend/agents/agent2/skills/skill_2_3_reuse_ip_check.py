@@ -54,8 +54,22 @@ SEVERITY RULES:
 - IP/license cost used but not disclosed in pricing: MAJOR
 - Named assets missing when reuse is claimed: MINOR
 
-IMPORTANT:
-- Only run these checks if the proposal claims reuse or accelerators.
-- If there is NO mention of reuse, frameworks, or IP assets anywhere in the proposal,
-  return an empty array for Skill 2.3 — there is nothing to check.
+IMPORTANT — WHEN TO RUN THESE CHECKS:
+- Run Skill 2.3 if the proposal mentions ANY of these: accelerators, pre-built frameworks,
+  named proprietary tools, IP assets, or reusable components.
+- Common trigger phrases: "20+ accelerators", "pre-built", "our framework", "proprietary IP",
+  "NaviCADE", "SpendAnalytics", "Isure", "NVISION", or any named product/accelerator.
+- Do NOT skip Skill 2.3 silently — if you find no reuse claims in the proposal, explicitly
+  note this in one estimation_issue with severity MINOR: "No accelerators or reusable IP are
+  referenced in the estimate — the USD [X] cost appears to be priced as a ground-up build."
+
+AUTOMATIC FLAG RULE:
+  If the proposal:
+    (a) Claims speed benefits from named accelerators or pre-built components, AND
+    (b) Provides only a lump-sum estimate with no effort breakdown,
+  Then this is automatically a MAJOR E5 issue:
+    "Named accelerators [list them] are claimed to speed delivery, but the estimate shows no
+    before/after effort comparison. The client cannot verify whether the price reflects any
+    reuse benefit, or whether they are paying for work the vendor will not perform."
+  Do not omit this finding — it is one of the most common hidden pricing problems.
 """

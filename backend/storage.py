@@ -37,3 +37,27 @@ def get_signed_url(storage_path: str, expires_in: int = 3600) -> str:
         expires_in=expires_in
     )
     return response["signedURL"]
+
+
+def save_agent_output_to_storage(
+    user_id: str,
+    session_id: str,
+    agent_name: str,
+    json_data: dict,
+    markdown_text: str,
+) -> str:
+    """
+    Saves an agent's output as both JSON and Markdown to Supabase Storage.
+    Path pattern: uploads/{user_id}/{session_id}/{agent_name}/output.{json|md}
+    Returns the base folder path.
+    """
+    import json as _json
+
+    base = f"uploads/{user_id}/{session_id}/{agent_name}"
+    json_bytes = _json.dumps(json_data, indent=2).encode("utf-8")
+    md_bytes = markdown_text.encode("utf-8")
+
+    upload_file_to_storage(f"{base}/output.json", json_bytes, "application/json")
+    upload_file_to_storage(f"{base}/output.md", md_bytes, "text/markdown")
+
+    return base

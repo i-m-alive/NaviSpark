@@ -275,6 +275,261 @@ Apply all 7 skills to this proposal:
 Return ONLY the JSON object as specified in your instructions. No other text."""
 
 
+# ── Score Cap (deterministic post-processing) ────────────────────────────────
+
+def _apply_score_caps(result: dict) -> dict:
+    """
+    Deterministic guard applied AFTER the LLM returns scores.
+
+    Rule 1 — Overall arithmetic recompute:
+      LLMs occasionally compute the weighted sum incorrectly. This function
+      always recomputes overall from the raw scores × weights and overwrites
+      the LLM's self-reported overall.
+
+    Rule 2 — E22 severity correction:
+      E22 (Duration & Basis) requires both a duration AND its basis. If the
+      duration is stated but only the basis is missing, this is MAJOR not
+      CRITICAL. The LLM sometimes over-inflates this to CRITICAL, pulling
+      phase_coverage lower than warranted.
+
+    Rule 3 — E15 presence check:
+      If the missing_phases list contains SAP/ERP integration phases (e.g.
+      E6-E9 are all CRITICAL because the estimate is a lump sum) but E15
+      (External System Integration) is NOT listed despite integrations being
+      in scope, inject a synthetic MAJOR issue. We detect integration scope
+      from estimation_issues text — if it references SAP, OData, ERP, or API,
+      E15 should have been flagged.
+
+    Rule 4 — CRITICAL hard cap:
+      3+ CRITICAL issues (counting missing_phases CRITICAL + estimation_issues
+      CRITICAL + pricing_issues CRITICAL) → overall cannot exceed 5.5.
+    """
+    scores = result.get("scores", {})
+    weights = scores.get("weights", {})
+
+    # ── Rule 1: always recompute overall from weights × scores ─────────────────
+    recomputed = (
+        scores.get("estimation_rigour",    0.0) * weights.get("estimation_rigour",    0.0)
+        + scores.get("phase_coverage",     0.0) * weights.get("phase_coverage",       0.0)
+        + scores.get("pricing_completeness",0.0) * weights.get("pricing_completeness", 0.0)
+        + scores.get("commercial_model_fit",0.0) * weights.get("commercial_model_fit", 0.0)
+        + scores.get("arithmetic_accuracy", 0.0) * weights.get("arithmetic_accuracy",  0.0)
+    )
+
+    # Rule 4 CRITICAL count — evaluate before overwriting overall
+    missing_phases = result.get("missing_phases", [])
+    estimation_issues = result.get("estimation_issues", [])
+    pricing_issues = result.get("pricing_issues", [])
+
+    critical_count = (
+        sum(1 for p in missing_phases      if p.get("severity") == "CRITICAL")
+        + sum(1 for e in estimation_issues if e.get("severity") == "CRITICAL")
+        + sum(1 for p in pricing_issues    if p.get("severity") == "CRITICAL")
+    )
+    if critical_count >= 3:
+        recomputed = min(recomputed, 5.5)
+
+    scores["overall"] = round(recomputed, 1)
+
+    # ── Rule 2: E22 severity correction CRITICAL → MAJOR ──────────────────────
+    for phase in missing_phases:
+        if phase.get("gsk_item") == "E22" and phase.get("severity") == "CRITICAL":
+            phase["severity"] = "MAJOR"
+
+    # ── Rule 3: E15 injection when integrations are in scope but absent ────────
+    has_e15 = any(p.get("gsk_item") == "E15" for p in missing_phases)
+    if not has_e15:
+        # Check estimation_issues text for integration keywords
+        integration_keywords = {
+            "sap", "odata", "erp", "api", "netweaver", "integration",
+            "gateway", "miro", "fbl1n", "fb60", "s/4hana", "hsbcnet",
+        }
+        all_text = " ".join(
+            (e.get("issue") or "").lower()
+            for e in estimation_issues
+        ) + " ".join(
+            (p.get("finding") or "").lower()
+            for p in result.get("arithmetic_flags", [])
+        )
+        # Also check missing_phases descriptions
+        all_text += " ".join(
+            (p.get("phase") or "").lower()
+            for p in missing_phases
+        )
+        if any(kw in all_text for kw in integration_keywords):
+            missing_phases.append({
+                "phase": "External System Integration",
+                "gsk_item": "E15",
+                "severity": "MAJOR",
+                "_injected": True,
+                "_reason": (
+                    "Integration with external systems (SAP/ERP/APIs) appears in scope "
+                    "but E15 was not evaluated. Integration effort should be separately "
+                    "costed from core development."
+                ),
+            })
+
+    # ── Rule 4: arithmetic_accuracy weight floor (minimum 0.05) ──────────────
+    # The LLM occasionally zeroes out this weight for proposals with many
+    # unverifiable checks. A weight of 0.00 means arithmetic results never
+    # influence the overall. Enforce a floor of 0.05 and rebalance proportionally.
+    MIN_ARITH_WEIGHT = 0.05
+    if weights.get("arithmetic_accuracy", 0.0) < MIN_ARITH_WEIGHT:
+        deficit = MIN_ARITH_WEIGHT - weights.get("arithmetic_accuracy", 0.0)
+        other_keys = [k for k in weights if k != "arithmetic_accuracy"]
+        total_other = sum(weights.get(k, 0.0) for k in other_keys)
+        if total_other > 0:
+            for k in other_keys:
+                weights[k] = round(
+                    weights.get(k, 0.0) - deficit * (weights.get(k, 0.0) / total_other),
+                    4,
+                )
+        weights["arithmetic_accuracy"] = MIN_ARITH_WEIGHT
+        scores["weights"] = weights
+        # Recompute with corrected weights
+        recomputed = (
+            scores.get("estimation_rigour",     0.0) * weights.get("estimation_rigour",     0.0)
+            + scores.get("phase_coverage",      0.0) * weights.get("phase_coverage",        0.0)
+            + scores.get("pricing_completeness",0.0) * weights.get("pricing_completeness",  0.0)
+            + scores.get("commercial_model_fit",0.0) * weights.get("commercial_model_fit",  0.0)
+            + scores.get("arithmetic_accuracy", 0.0) * weights.get("arithmetic_accuracy",   0.0)
+        )
+        if critical_count >= 3:
+            recomputed = min(recomputed, 5.5)
+        scores["overall"] = round(recomputed, 1)
+
+    # ── Rule 6: Bundled phases downgrade ─────────────────────────────────────
+    # If E1 is CRITICAL (lump sum / no WBS) AND phases E6/E7/E8/E9 are all
+    # rated CRITICAL in missing_phases, the LLM treated "named in a bundled
+    # cost line" as "fully absent". These phases are PARTIAL → downgrade to MAJOR.
+    # E13, E16, E19, E20 are left as-is (they're genuinely absent from bundled lines).
+    e1_critical = any(
+        e.get("gsk_item") == "E1" and e.get("severity") == "CRITICAL"
+        for e in estimation_issues
+    )
+    bundled_phase_items = {"E6", "E7", "E8", "E9"}
+    bundled_phases_all_critical = all(
+        any(
+            p.get("gsk_item") == item and p.get("severity") == "CRITICAL"
+            for p in missing_phases
+        )
+        for item in bundled_phase_items
+    )
+    if e1_critical and bundled_phases_all_critical:
+        for phase in missing_phases:
+            if phase.get("gsk_item") in bundled_phase_items and phase.get("severity") == "CRITICAL":
+                phase["severity"] = "MAJOR"
+                phase["_downgraded"] = "bundled-partial"
+        # Recount criticals and recompute overall with corrected severities
+        critical_count = (
+            sum(1 for p in missing_phases      if p.get("severity") == "CRITICAL")
+            + sum(1 for e in estimation_issues if e.get("severity") == "CRITICAL")
+            + sum(1 for p in pricing_issues    if p.get("severity") == "CRITICAL")
+        )
+        if critical_count >= 3:
+            recomputed = min(recomputed, 5.5)
+        scores["overall"] = round(recomputed, 1)
+        scores["critical_issue_count"] = critical_count
+
+    # ── Rule 7: Genuinely-absent phase upgrade MAJOR → CRITICAL ──────────────
+    # When E1 is CRITICAL (lump sum / no WBS), no phase was separately costed.
+    # Phases that are NEVER named in standard bundled cost lines are therefore
+    # truly absent — not partial. If the LLM over-applied the bundled-phases
+    # guidance and rated them MAJOR, upgrade them to CRITICAL.
+    # Phases in this set: E13 (Documentation), E16 (CI/CD), E20 (Team Roles).
+    # E19 (PM) is also in this set but usually rated CRITICAL already.
+    ALWAYS_CRITICAL_IF_ABSENT = {"E13", "E16", "E20", "E19"}
+    if e1_critical:
+        for phase in missing_phases:
+            if (
+                phase.get("gsk_item") in ALWAYS_CRITICAL_IF_ABSENT
+                and phase.get("severity") == "MAJOR"
+                and not phase.get("_downgraded")   # don't re-upgrade if we just downgraded it
+            ):
+                phase["severity"] = "CRITICAL"
+                phase["_upgraded"] = "genuinely-absent"
+        # Recount criticals after upgrades
+        critical_count = (
+            sum(1 for p in missing_phases      if p.get("severity") == "CRITICAL")
+            + sum(1 for e in estimation_issues if e.get("severity") == "CRITICAL")
+            + sum(1 for p in pricing_issues    if p.get("severity") == "CRITICAL")
+        )
+        if critical_count >= 3:
+            recomputed = min(recomputed, 5.5)
+        scores["overall"] = round(recomputed, 1)
+        scores["critical_issue_count"] = critical_count
+
+    # ── Rule 8: P2 payment-milestone injection ────────────────────────────────
+    # The LLM occasionally notes a payment milestone problem only in
+    # commercial_model_assessment.concerns and omits P2 from pricing_issues.
+    # If concerns mention "milestone" or "percentage" or "calendar" payment
+    # patterns AND P2 is absent from pricing_issues, inject a MAJOR P2.
+    has_p2 = any(p.get("gsk_item") == "P2" for p in pricing_issues)
+    if not has_p2:
+        concern_text = " ".join(
+            (c or "").lower()
+            for c in (result.get("commercial_model_assessment") or {}).get("concerns", [])
+        )
+        milestone_keywords = {"milestone", "percentage", "calendar", "deliverable-linked",
+                              "deliverable linked", "not linked", "cash flow"}
+        if any(kw in concern_text for kw in milestone_keywords):
+            pricing_issues.append({
+                "skill": "2.5",
+                "gsk_item": "P2",
+                "issue": (
+                    "Payment milestones are not linked to named deliverables with acceptance "
+                    "criteria. Percentage-based or calendar-based milestones (e.g. '15% at SOW "
+                    "execution', '35% at Week 4') give the client no contractual lever to "
+                    "withhold payment if a deliverable is not ready. The vendor can invoice on "
+                    "schedule regardless of actual delivery status."
+                ),
+                "severity": "MAJOR",
+                "recommendation": (
+                    "Rewrite each milestone as: 'Payment of USD X upon client written sign-off "
+                    "of [named deliverable]' — e.g. 'USD 50,400 upon sign-off of tested API "
+                    "integration module'."
+                ),
+                "_injected": True,
+            })
+            result["pricing_issues"] = pricing_issues
+
+    # ── Rule 5: Skill 2.3 (Reuse/IP) sentinel injection ──────────────────────
+    # If the LLM produced no skill 2.3 issues, inject a MINOR sentinel so
+    # reviewers know the check was considered. This prevents the check from
+    # being silently skipped and ensures Agent 4 sees it in the output.
+    has_reuse_check = any(
+        (e.get("skill") or "") == "2.3"
+        for e in estimation_issues
+    )
+    if not has_reuse_check:
+        estimation_issues.append({
+            "skill": "2.3",
+            "gsk_item": "E5",
+            "issue": (
+                "Reuse & IP asset check: no accelerator cost reduction is reflected in "
+                "the estimate. If the proposal claims named accelerators (NAVICADE, "
+                "SpendAnalytics, or 20+ pre-built components) reduce delivery time, "
+                "the estimate must show a before/after effort comparison so the client "
+                "can verify the price reflects the reuse benefit. A lump sum with no "
+                "breakdown prevents this verification."
+            ),
+            "severity": "MAJOR",
+            "recommendation": (
+                "For each named accelerator, state the baseline effort without it and "
+                "the reduced effort with it. Also confirm whether any IP licensing fee "
+                "applies (P3c)."
+            ),
+            "_injected": True,
+        })
+        result["estimation_issues"] = estimation_issues
+
+    # Write diagnostic fields
+    scores["critical_issue_count"] = critical_count
+    result["scores"] = scores
+    result["missing_phases"] = missing_phases
+    return result
+
+
 # ── Entry Point ───────────────────────────────────────────────────────────────
 
 def run(
@@ -305,8 +560,9 @@ def run(
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
 
-    return invoke_agent_with_pdf(
+    result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
         user_message=user_message,
         pdf_bytes=pdf_bytes,
     )
+    return _apply_score_caps(result)

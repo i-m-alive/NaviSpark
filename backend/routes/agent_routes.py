@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Header
 from typing import Optional
 
 from auth import get_current_user
@@ -8,8 +8,76 @@ from agents.agent2 import run as run_agent2_analysis
 from agents.agent3 import run as run_agent3_analysis
 from agents.agent4 import run as run_agent4_analysis
 from services.session_service import get_session, update_session
+from services.pipeline_service import run_full_pipeline
 
 router = APIRouter(tags=["agents"])
+
+# ── Automated Pipeline ────────────────────────────────────────────────────────
+
+_PIPELINE_STATUSES = ("pipeline_running", "agents_complete", "complete")
+_READY_STATUSES = ("ready", "pipeline_failed")
+
+
+@router.post("/sessions/{session_id}/run-analysis")
+async def run_analysis(
+    session_id: str,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Starts the full automated pipeline:
+      Agents 1, 2, 3 run in parallel → Agent 4 runs after all three complete.
+    Returns immediately; the pipeline runs as a background task.
+    Poll GET /sessions/{id} for status updates.
+
+    Idempotent: returns current status if pipeline is already running or done.
+    Status: pipeline_failed allows restart.
+    """
+    user = await get_current_user(authorization)
+    user_id = user["id"]
+
+    session = get_session(session_id, user_id)
+    status = session.get("status", "")
+
+    # Already complete — return Agent 4 output immediately
+    if status == "complete":
+        return {
+            "session_id": session_id,
+            "status": "complete",
+            "agent4_output": session.get("agent4_output"),
+            "message": "Analysis already complete.",
+        }
+
+    # In progress — tell the frontend to keep polling
+    if status in _PIPELINE_STATUSES:
+        return {
+            "session_id": session_id,
+            "status": status,
+            "message": "Pipeline already running. Poll GET /sessions/{id} for updates.",
+        }
+
+    # Must be 'ready' or 'pipeline_failed' to start/restart
+    if status not in _READY_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot start analysis. Session status is '{status}'. "
+                   "Upload a document first.",
+        )
+
+    if not session.get("storage_path"):
+        raise HTTPException(
+            status_code=400,
+            detail="No file found for this session. Please re-upload the document.",
+        )
+
+    # Fire pipeline as a background task and return immediately
+    background_tasks.add_task(run_full_pipeline, session_id, user_id)
+
+    return {
+        "session_id": session_id,
+        "status": "pipeline_started",
+        "message": "Analysis pipeline started. Poll GET /sessions/{id} for updates.",
+    }
 
 
 @router.post("/sessions/{session_id}/run-agent1")

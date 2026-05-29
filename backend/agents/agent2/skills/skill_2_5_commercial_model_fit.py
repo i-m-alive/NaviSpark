@@ -57,6 +57,17 @@ WHAT TO EVALUATE:
    - Check whether milestone payments are tied to named deliverables with acceptance criteria.
    - Calendar-date payments without named deliverables: add to pricing_issues as MAJOR.
 
+   MANDATORY RULE — P2 MUST APPEAR IN pricing_issues (NOT ONLY IN CONCERNS):
+   If the payment schedule uses ANY of the following patterns, add P2 to pricing_issues
+   as MAJOR — do not only mention this in commercial_model_assessment.concerns:
+     • Percentage-based milestones: "15% at SOW execution", "35% at Week 4"
+     • Calendar-date milestones: "Payment on 30 June", "Invoice at end of sprint"
+     • Phase-name milestones without named deliverable artifacts: "35% at completion of development"
+   Acceptable milestone: "Payment of USD X upon client sign-off of the UAT completion report"
+   — a specific, named artifact with an acceptance action.
+   If the payment schedule is acceptable (deliverable-linked with sign-off), omit P2 from
+   pricing_issues. But if it is percentage- or calendar-based, P2 MUST be in pricing_issues.
+
 4. Is a rate card provided for all named roles? (P11)
    - If T&M: rate card is MANDATORY. Absent = CRITICAL.
    - If Fixed Price: rate card is strongly recommended for change orders. Absent = MAJOR.

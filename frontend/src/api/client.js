@@ -100,6 +100,16 @@ export async function getReportUrl(sessionId) {
   return handleResponse(res)
 }
 
+// ── Pipeline ──────────────────────────────────────────────
+
+export async function startAnalysis(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
 // ── Agent Calls ───────────────────────────────────────────
 
 export async function runAgent1(sessionId) {
