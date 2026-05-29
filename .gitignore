@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Backend virtual environment
+backend/venv/
+venv/
+
+# Environment files
+.env
+backend/.env
+frontend/.env
+
+# Node.js
+node_modules/
+frontend/node_modules/
+
+# React build files
+frontend/build/
+frontend/dist/
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Azure / deployment
+*.sqlite3
