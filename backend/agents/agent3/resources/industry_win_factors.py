@@ -130,10 +130,21 @@ INDUSTRY_WIN_FACTORS: dict[str, list[dict]] = {
         {
             "factor": "Operational continuity during implementation is explicitly addressed",
             "detail": (
-                "In manufacturing, downtime is measured in direct revenue loss. The proposal must "
-                "explicitly acknowledge production continuity risk and describe the mitigation: "
-                "parallel running, phased cutover, rollback plan, maintenance window scheduling. "
-                "'We will minimise disruption' = MISSING. A specific continuity plan = COVERED."
+                "For ANY manufacturing engagement — including back-office finance and AP automation — "
+                "continuity during the transition is a critical win factor. The proposal must explicitly "
+                "describe how business operations will continue during the implementation:\n"
+                "  - For AP/Finance automation: How will invoices continue to be processed during the "
+                "    cutover? Is there a parallel-running period where both old and new systems operate "
+                "    simultaneously? What is the rollback plan if go-live fails?\n"
+                "  - For OT/production systems: Production line continuity, maintenance window selection, "
+                "    phased rollout by plant or line.\n"
+                "STRICT TEST: Having a 14-week project timeline is NOT a continuity plan. "
+                "'We will minimise disruption' = MISSING. 'Steps will be taken' = MISSING. "
+                "A specific continuity plan names what happens to the operational process during cutover. "
+                "If the proposal describes a future-state process but not the TRANSITION — this is MISSING. "
+                "Rate as 'present' only if a specific transition/cutover plan is stated. "
+                "Rate as 'weak' if only vaguely acknowledged without a plan. "
+                "Rate as 'absent' if not mentioned at all."
             ),
         },
         {
@@ -142,7 +153,9 @@ INDUSTRY_WIN_FACTORS: dict[str, list[dict]] = {
                 "Manufacturing engagements often involve integrating with operational technology "
                 "(PLCs, SCADA, MES, HISTORIAN). Named experience with these systems — specific "
                 "platforms, protocols (OPC-UA, Modbus, MQTT), and past manufacturing integrations — "
-                "is a critical differentiator. Absent when OT integration is in scope = CRITICAL."
+                "is a critical differentiator. Absent when OT integration is in scope = CRITICAL. "
+                "If the engagement is purely a back-office finance/AP/ERP system with no OT scope, "
+                "mark as not_applicable and set severity to null."
             ),
         },
         {
@@ -150,15 +163,51 @@ INDUSTRY_WIN_FACTORS: dict[str, list[dict]] = {
             "detail": (
                 "Applicable safety standards (IEC 62443 for industrial cybersecurity, IS 13252, "
                 "functional safety requirements) must be named where relevant. A manufacturing "
-                "client evaluating an OT-adjacent proposal expects to see these acknowledged."
+                "client evaluating an OT-adjacent proposal expects to see these acknowledged. "
+                "If the engagement is purely a back-office finance/AP/ERP system with no OT scope, "
+                "mark as not_applicable and set severity to null."
             ),
         },
         {
             "factor": "Understanding of production environment constraints",
             "detail": (
-                "Does the proposal show understanding of manufacturing-specific constraints — "
-                "limited downtime windows, shift patterns, legacy systems that cannot be easily "
-                "replaced, and the real-world physical environment in which systems operate?"
+                "Does the proposal show understanding of manufacturing-specific operational constraints — "
+                "limited downtime windows, shift patterns, legacy systems, and the physical environment? "
+                "For AP/Finance automation: does the proposal acknowledge that 2,400 invoices/month "
+                "must still be processed during the implementation period? A proposal that treats "
+                "go-live as a simple switch-on, with no acknowledgement of transition complexity, "
+                "demonstrates insufficient operational understanding."
+            ),
+        },
+        {
+            "factor": "Data residency and sovereignty for cloud/AI components",
+            "detail": (
+                "For manufacturing clients in the Middle East (Saudi Arabia, UAE, etc.) or any "
+                "jurisdiction with data sovereignty requirements:\n"
+                "  - If the proposal uses cloud-hosted AI APIs (Anthropic, OpenAI, Azure OpenAI, "
+                "    AWS Bedrock US region), it MUST state where financial data is processed and stored.\n"
+                "  - For Saudi Arabia: Saudi PDPL (Personal Data Protection Law) and NDMO/NCA "
+                "    guidelines govern cross-border data transfer of financial data including invoices, "
+                "    IBANs, vendor details, and payment amounts.\n"
+                "  - A proposal that states 'US-based Anthropic APIs will be used' without addressing "
+                "    Saudi data sovereignty compliance = MAJOR gap for a Saudi client.\n"
+                "  - If no cloud AI APIs are used or data residency is fully addressed = 'present'.\n"
+                "  - If out of scope for this specific engagement = not_applicable."
+            ),
+        },
+        {
+            "factor": "Regional language and document localisation capability",
+            "detail": (
+                "For Middle East manufacturing clients: if the solution processes documents "
+                "(invoices, purchase orders, contracts, vendor statements), the AI/OCR pipeline "
+                "must handle Arabic-language documents — not just Arabic UI labels.\n"
+                "  - 'Arabic RTL support' for the user interface is NOT sufficient if invoices "
+                "    from local vendors are in Arabic script.\n"
+                "  - The proposal must confirm that the OCR/IDP pipeline handles Arabic-language "
+                "    documents with acceptable accuracy.\n"
+                "  - A proposal promising invoice automation for a Saudi Arabia client that does "
+                "    not address Arabic invoice processing = MAJOR gap.\n"
+                "  - If all vendors use English documents only (explicitly stated) = not_applicable."
             ),
         },
     ],

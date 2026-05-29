@@ -67,7 +67,7 @@ export function agent1ToMarkdown(output, meta) {
     ['Section Completeness', 'section_completeness'],
     ['Writing Quality', 'writing_quality'],
     ['Scope Clarity', 'scope_clarity'],
-    ['Client Specificity', 'client_specificity'],
+    ['Client Specificity', 'client_coverage'],
   ]))
 
   // Section audit / checklist
@@ -122,10 +122,13 @@ export function agent1ToMarkdown(output, meta) {
   const gaps = output.client_specific_gaps || output.industry_gaps || []
   if (gaps.length > 0) {
     const lines = ['\n## Industry-Specific Gaps\n',
-      '| Factor | Finding | Severity |',
-      '|--------|---------|----------|']
+      '| Industry | Gap | Severity |',
+      '|----------|-----|----------|']
     gaps.forEach(g => {
-      lines.push(`| ${g.factor || '—'} | ${g.finding || '—'} | ${severityLabel(g.severity)} |`)
+      const industry = g.industry_lens || '—'
+      const gap = (g.gap || '—').replace(/\|/g, '\\|')
+      const why = g.why_it_matters ? ` — _${g.why_it_matters.replace(/\|/g, '\\|')}_` : ''
+      lines.push(`| ${industry} | ${gap}${why} | ${severityLabel(g.severity)} |`)
     })
     sections.push(lines.join('\n'))
   }

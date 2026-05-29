@@ -174,6 +174,54 @@ CLIENT_PRIORITY_CHECKS: dict[str, list[dict]] = {
             ),
         },
     ],
+    "Quality": [
+        {
+            "check": "Explicit quality assurance plan or testing strategy described",
+            "detail": (
+                "A quality-focused client expects to see HOW quality will be achieved — not just "
+                "that testing will happen. The proposal must describe: what types of testing are "
+                "included (unit, integration, UAT, regression, performance), who is responsible, "
+                "when each phase occurs, and what the entry/exit criteria are.\n"
+                "BAD: 'Unit and End-to-end Testing' as a row in a Gantt chart = PARTIAL.\n"
+                "GOOD: Explicit QA strategy with named phases, test coverage targets, and "
+                "defect resolution process = COVERED.\n"
+                "A timeline that mentions testing without describing the quality approach = MAJOR gap."
+            ),
+        },
+        {
+            "check": "Quality metrics and acceptance criteria are defined",
+            "detail": (
+                "For a quality priority, 'the client defines acceptance criteria' is not sufficient — "
+                "the vendor must propose measurable quality targets:\n"
+                "  - Accuracy rates for AI/OCR outputs (e.g., invoice extraction accuracy ≥ 95%)\n"
+                "  - Defect density targets or defect escape rates\n"
+                "  - UAT pass rates before go-live\n"
+                "  - SLA for defect resolution during hyper-care\n"
+                "If no quality metrics are proposed anywhere in the document, flag as MAJOR."
+            ),
+        },
+        {
+            "check": "Post-go-live quality monitoring plan described",
+            "detail": (
+                "Quality does not end at go-live. A quality-focused client wants to know how "
+                "quality will be monitored after deployment:\n"
+                "  - How will the AI model's accuracy be monitored in production?\n"
+                "  - What is the process if accuracy degrades below an acceptable threshold?\n"
+                "  - Is there a structured hyper-care period with named SLAs?\n"
+                "The proposal mentions a 4-week hyper-care period — check whether it has a "
+                "defined quality monitoring process or is just 'we will monitor the system'."
+            ),
+        },
+        {
+            "check": "Team quality credentials or quality process maturity mentioned",
+            "detail": (
+                "Does the proposal reference any quality process certifications or practices "
+                "that give confidence in delivery quality? ISO 9001, CMMI, code review processes, "
+                "automated testing practices, or QA team structure with named QC Engineer.\n"
+                "Absent entirely for a quality-focused client = MINOR gap."
+            ),
+        },
+    ],
     "Proven Track Record": [
         {
             "check": "Case studies are named, specific, and measurable",

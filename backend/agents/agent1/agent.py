@@ -264,6 +264,91 @@ Apply all 6 skills to this proposal:
 Return ONLY the JSON object as specified in your instructions. No other text."""
 
 
+# ── Score Cap (deterministic post-processing) ────────────────────────────────
+
+def _apply_score_caps(result: dict) -> dict:
+    """
+    Deterministic guard applied AFTER the LLM returns scores.
+
+    Rule 1 — Section completeness cap:
+      If ≥3 mandatory checklist items are MISSING, cap section_completeness
+      at 4.0. Each mandatory MISSING item is one CRITICAL issue.
+
+    Rule 2 — Scope clarity cap:
+      Fires if EITHER of these is true (OR logic — the LLM severity is unreliable):
+        (a) Any scope_clarity_issue is rated CRITICAL by the LLM.
+        (b) P-06 (Out of Scope) is PARTIAL or MISSING in section_audit.
+      P-06 PARTIAL/MISSING is always an out-of-scope gap, regardless of whether
+      the LLM chose MAJOR or CRITICAL when describing it in scope_clarity_issues.
+      The rubric maps "missing out-of-scope section" → 4.0.
+
+    Rule 3 — Overall hard cap:
+      Per the scoring rubric: 3+ CRITICAL issues → overall cannot exceed 5.5.
+      CRITICAL issues are counted as: mandatory MISSING items + P-06 gap presence.
+    """
+    section_audit = result.get("section_audit", [])
+    mandatory_missing_count = sum(
+        1 for item in section_audit
+        if item.get("mandatory") is True and item.get("status") == "MISSING"
+    )
+
+    # P-06 being PARTIAL or MISSING is a guaranteed scope gap, regardless of LLM severity label
+    p06_status = next(
+        (item.get("status") for item in section_audit if item.get("id") == "P-06"),
+        None,
+    )
+    p06_gap = p06_status in ("PARTIAL", "MISSING")
+
+    scope_issues = result.get("scope_clarity_issues", [])
+    has_critical_scope_flag = any(
+        issue.get("severity") == "CRITICAL"
+        for issue in scope_issues
+    )
+
+    # Either signal triggers the scope cap
+    has_critical_scope = has_critical_scope_flag or p06_gap
+
+    scores = result.get("scores", {})
+    cap_applied = False
+
+    # Rule 1: section_completeness cap
+    if mandatory_missing_count >= 3 and scores.get("section_completeness", 0.0) > 4.0:
+        scores["section_completeness"] = 4.0
+        cap_applied = True
+
+    # Rule 2: scope_clarity cap
+    if has_critical_scope and scores.get("scope_clarity", 0.0) > 4.0:
+        scores["scope_clarity"] = 4.0
+        cap_applied = True
+
+    # Recompute overall whenever any cap fired
+    if cap_applied:
+        weights = scores.get("weights", {})
+        w_sc = weights.get("section_completeness", 0.40)
+        w_wq = weights.get("writing_quality",      0.20)
+        w_so = weights.get("scope_clarity",         0.25)
+        w_cc = weights.get("client_coverage",       0.15)
+
+        recomputed = (
+            scores.get("section_completeness", 0.0) * w_sc
+            + scores.get("writing_quality",    0.0) * w_wq
+            + scores.get("scope_clarity",      0.0) * w_so
+            + scores.get("client_coverage",    0.0) * w_cc
+        )
+        # Rule 3: hard cap when total CRITICAL issues ≥ 3
+        total_critical = mandatory_missing_count + (1 if has_critical_scope else 0)
+        if total_critical >= 3:
+            recomputed = min(recomputed, 5.5)
+        scores["overall"] = round(recomputed, 1)
+
+    # Diagnostic fields so Agent 4 can surface them
+    scores["mandatory_missing_count"] = mandatory_missing_count
+    scores["has_critical_scope_issue"] = has_critical_scope
+    scores["p06_status"] = p06_status
+    result["scores"] = scores
+    return result
+
+
 # ── Entry Point ───────────────────────────────────────────────────────────────
 
 def run(
@@ -294,8 +379,9 @@ def run(
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
 
-    return invoke_agent_with_pdf(
+    result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
         user_message=user_message,
         pdf_bytes=pdf_bytes,
     )
+    return _apply_score_caps(result)

@@ -84,9 +84,9 @@ def build_overclaiming_prompt_block() -> str:
     """Returns formatted reference lists for prompt injection."""
     lines = [
         "OVERCLAIMING PHRASES TO FLAG (flag when used without specific, verifiable evidence):",
-        ", ".join(f'"{p}"' for p in OVERCLAIMING_PHRASES[:16]) + ", and similar.",
+        ", ".join(f'"{p}"' for p in OVERCLAIMING_PHRASES),
         "",
         "GENERIC DIFFERENTIATOR PHRASES TO FLAG (sound distinctive but any competitor can claim these):",
-        ", ".join(f'"{p}"' for p in GENERIC_DIFFERENTIATOR_PHRASES[:14]) + ", and similar.",
+        ", ".join(f'"{p}"' for p in GENERIC_DIFFERENTIATOR_PHRASES),
     ]
     return "\n".join(lines)

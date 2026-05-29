@@ -127,7 +127,7 @@ SCORING CRITERIA
 
 Score each dimension out of 10.0 (one decimal place). Use the FULL range 0–10.
 Do not cluster scores around 6–7. A score of 8+ means genuinely strong. Most proposals score 4–7.
-All 6 dimensions are equally weighted. overall = average of all 6 scores.
+Weights are dynamic — see DYNAMIC WEIGHT DETERMINATION below. overall = weighted sum.
 
 CLIENT FIT (client_fit):
   10.0 — Every stated priority is directly addressed with specific, client-language content
@@ -138,14 +138,29 @@ CLIENT FIT (client_fit):
    0.0 — Fails the name-swap test entirely — could be any vendor to any client
 
 DIFFERENTIATION (differentiation):
-  10.0 — 3+ genuine, specific differentiators; sounds_generic = false; tech choices justified per client
-   8.0 — 2 genuine differentiators; sounds_generic = false; minor generic elements
-   6.0 — 1 genuine differentiator; mostly well-written but some generic sections
-   4.0 — No genuine differentiators but well-written; sounds_generic = true → HARD CAP at 4.0
-   2.0 — sounds_generic = true; significant generic elements throughout
-   0.0 — sounds_generic = true; no client-specific content of any kind
 
-HARD RULE: If sounds_generic = true, differentiation score CANNOT exceed 4.0.
+HARD RULES — apply these first, before considering generic elements:
+  IF sounds_generic = true                          → score CANNOT exceed 4.0 (hard cap)
+  IF len(differentiators_found) >= 3
+     AND sounds_generic = false                     → score MUST be >= 8.0
+  IF len(differentiators_found) == 2
+     AND sounds_generic = false                     → score MUST be >= 7.0
+  IF len(differentiators_found) == 1
+     AND sounds_generic = false                     → score is in the 5.0–6.5 range
+  IF len(differentiators_found) == 0
+     AND sounds_generic = false                     → score is in the 3.0–5.0 range
+
+After applying the floor from the rule above, generic_elements can reduce the score within the
+allowed band — but cannot push it below the floor set by the differentiator count rule.
+
+  10.0 — 3+ differentiators; sounds_generic = false; no generic elements at all
+   8.0 — 3+ differentiators; sounds_generic = false; some generic elements present (floor applies)
+   7.0 — 2 differentiators; sounds_generic = false; any number of generic elements (floor applies)
+   6.0 — 1 differentiator; sounds_generic = false; generic elements limited
+   5.0 — 1 differentiator; sounds_generic = false; many generic elements throughout
+   4.0 — 0 differentiators; sounds_generic = true (hard cap)
+   2.0 — sounds_generic = true; significant generic content
+   0.0 — sounds_generic = true; no client-specific content
 
 RISK TRANSPARENCY (risk_transparency):
   10.0 — Specific risks with named mitigations; dependencies with what/when/consequence; thorough pre-project list
@@ -164,12 +179,18 @@ CREDIBILITY (credibility):
    0.0 — No credibility signals at all
 
 NARRATIVE (narrative):
-  10.0 — flows_as_story = true; exec_summary_compelling = true; clear_why_us = true; clear_next_step = true
-   8.0 — 3 of 4 narrative elements strong; 1 minor gap
-   6.0 — 2–3 narrative elements present; why-us or next-step missing
-   4.0 — flows_as_story = false OR 2+ elements missing
-   2.0 — 3+ elements missing; proposal reads as disconnected sections
-   0.0 — No coherent narrative structure at all
+
+HARD RULES — count the booleans first, then assign the score mechanically:
+  COUNT true booleans across: flows_as_story, exec_summary_compelling, clear_why_us, clear_next_step
+
+  4 true  → score MUST be 10.0
+  3 true  → score MUST be 8.0  (no exceptions — do not reduce for "quality" of the missing element)
+  2 true  → score MUST be 6.0, EXCEPT if clear_why_us = false → reduce to 5.0
+  1 true  → score MUST be 3.0
+  0 true  → score MUST be 0.0
+
+Do NOT adjust these scores based on how "significant" the missing element seems.
+The boolean count determines the score. That is the rule.
 
 INDUSTRY FACTORS (industry_factors):
   10.0 — All industry win factors addressed with specific, conviction-level content
@@ -277,8 +298,8 @@ Note: differentiation and narrative_assessment are OBJECTS, not arrays.
   "industry_findings": [
     {
       "factor": "The specific industry win factor assessed",
-      "finding": "present | absent | weak",
-      "severity": "CRITICAL | MAJOR | MINOR"
+      "finding": "present | absent | weak | not_applicable",
+      "severity": "CRITICAL | MAJOR | MINOR | null"
     }
   ],
   "checklist_coverage": [
@@ -379,6 +400,175 @@ Apply all 6 skills plus the checklist audit to this proposal:
 Return ONLY the JSON object as specified in your instructions. No other text."""
 
 
+# ── Score Cap (deterministic post-processing) ────────────────────────────────
+
+def _apply_score_caps(result: dict, client_priorities: list[str], client_industry: list[str]) -> dict:
+    """
+    Deterministic guard applied AFTER the LLM returns scores.
+
+    Rule 1 — Differentiation floor/ceiling:
+      ≥3 differentiators + sounds_generic=false → differentiation MUST be ≥ 8.0
+      2 differentiators  + sounds_generic=false → differentiation MUST be ≥ 7.0
+      sounds_generic=true                       → differentiation CANNOT exceed 4.0
+
+    Rule 2 — Narrative mechanical score (boolean count → fixed score):
+      4 true → 10.0 | 3 true → 8.0 | 2 true → 6.0 (5.0 if clear_why_us=false)
+      1 true → 3.0  | 0 true → 0.0
+
+    Rule 3 — P-20 missing forces risk_transparency cap:
+      If the checklist shows P-20 MISSING but risk_transparency_issues is empty,
+      inject a synthetic CRITICAL issue so downstream agents see it. Also cap
+      risk_transparency at 4.0 — a proposal with no risk register at all cannot
+      score higher, per rubric ("0.0 — No risk register; no dependencies section").
+
+    Rule 4 — Uncovered client priority caps client_fit:
+      If any priority from client_priorities has no corresponding entry in
+      client_fit_issues, the LLM silently skipped it. Cap client_fit at 7.0.
+      A score of 8.0+ requires all priorities addressed with minor gaps only.
+
+    Rule 5 — Overall recompute + CRITICAL hard cap:
+      Recompute overall using the LLM's own weights whenever any rule fires.
+      3+ CRITICAL issues across all issue arrays → overall cannot exceed 5.5.
+    """
+    scores = result.get("scores", {})
+    weights = scores.get("weights", {})
+    cap_applied = False
+
+    # ── Rule 1: differentiation floor/ceiling ─────────────────────────────────
+    diff = result.get("differentiation", {})
+    n_diff = len(diff.get("differentiators_found") or [])
+    sounds_generic = diff.get("sounds_generic", False)
+    current_diff = scores.get("differentiation", 0.0)
+
+    if sounds_generic:
+        if current_diff > 4.0:
+            scores["differentiation"] = 4.0
+            cap_applied = True
+    else:
+        if n_diff >= 3 and current_diff < 8.0:
+            scores["differentiation"] = 8.0
+            cap_applied = True
+        elif n_diff == 2 and current_diff < 7.0:
+            scores["differentiation"] = 7.0
+            cap_applied = True
+
+    # ── Rule 2: narrative mechanical mapping ──────────────────────────────────
+    narr = result.get("narrative_assessment", {})
+    true_count = sum([
+        bool(narr.get("flows_as_story")),
+        bool(narr.get("exec_summary_compelling")),
+        bool(narr.get("clear_why_us")),
+        bool(narr.get("clear_next_step")),
+    ])
+    narrative_map = {4: 10.0, 3: 8.0, 2: 6.0, 1: 3.0, 0: 0.0}
+    expected_narrative = narrative_map.get(true_count, 0.0)
+    if true_count == 2 and not narr.get("clear_why_us", True):
+        expected_narrative = 5.0
+
+    if scores.get("narrative", 0.0) != expected_narrative:
+        scores["narrative"] = expected_narrative
+        cap_applied = True
+
+    # ── Rule 3: P-20 missing → inject CRITICAL + cap risk_transparency ─────────
+    checklist = result.get("checklist_coverage", [])
+    p20_status = next(
+        (item.get("status") for item in checklist if item.get("id") == "P-20"),
+        None,
+    )
+    p20_missing = p20_status == "MISSING"
+
+    if p20_missing:
+        # Inject synthetic CRITICAL issue if the LLM left risk_transparency_issues empty
+        rt_issues = result.get("risk_transparency_issues") or []
+        has_p20_issue = any(i.get("gsk_item") == "P-20" for i in rt_issues)
+        if not has_p20_issue:
+            rt_issues.append({
+                "gsk_item": "P-20",
+                "issue": (
+                    "No formal risk register present — a complex SAP-integrated AI "
+                    "engagement with multiple client dependencies has no identified risks "
+                    "or named mitigations."
+                ),
+                "severity": "CRITICAL",
+            })
+            result["risk_transparency_issues"] = rt_issues
+
+        # Cap risk_transparency at 4.0 (no risk register = cannot score ≥ 6.0)
+        if scores.get("risk_transparency", 0.0) > 4.0:
+            scores["risk_transparency"] = 4.0
+            cap_applied = True
+
+    # ── Rule 4a: industry_factors weight floor for known industries ──────────
+    # If the industry IS in our known list but the LLM assigned a negligible weight
+    # (< 0.10), raise it to 0.10 and reduce the other weights proportionally so
+    # the overall still sums to 1.0.  This prevents the LLM from silently
+    # neutralising industry-specific findings by assigning 0.05 weight.
+    from agents.agent3.resources.industry_win_factors import INDUSTRY_WIN_FACTORS
+    industry_is_known = any(ind in INDUSTRY_WIN_FACTORS for ind in (client_industry or []))
+    if industry_is_known:
+        current_if_weight = weights.get("industry_factors", 0.0)
+        MIN_IF_WEIGHT = 0.10
+        if current_if_weight < MIN_IF_WEIGHT:
+            deficit = MIN_IF_WEIGHT - current_if_weight
+            other_keys = [k for k in weights if k != "industry_factors"]
+            total_other = sum(weights.get(k, 0.0) for k in other_keys)
+            if total_other > 0:
+                for k in other_keys:
+                    weights[k] = round(
+                        weights.get(k, 0.0) - deficit * (weights.get(k, 0.0) / total_other),
+                        4,
+                    )
+            weights["industry_factors"] = MIN_IF_WEIGHT
+            scores["weights"] = weights
+            cap_applied = True
+
+    # ── Rule 4b: uncovered priority → cap client_fit at 7.0 ──────────────────
+    if client_priorities:
+        covered_priorities = {
+            (i.get("priority") or "").strip().lower()
+            for i in result.get("client_fit_issues", [])
+        }
+        uncovered = [
+            p for p in client_priorities
+            if p.strip().lower() not in covered_priorities
+        ]
+        if uncovered:
+            if scores.get("client_fit", 0.0) > 7.0:
+                scores["client_fit"] = 7.0
+                cap_applied = True
+            scores["uncovered_priorities"] = uncovered  # diagnostic
+
+    # ── Rule 5: recompute overall + CRITICAL hard cap ─────────────────────────
+    if cap_applied:
+        recomputed = (
+            scores.get("client_fit",         0.0) * weights.get("client_fit",        0.0)
+            + scores.get("differentiation",  0.0) * weights.get("differentiation",   0.0)
+            + scores.get("risk_transparency",0.0) * weights.get("risk_transparency", 0.0)
+            + scores.get("credibility",      0.0) * weights.get("credibility",        0.0)
+            + scores.get("narrative",        0.0) * weights.get("narrative",          0.0)
+            + scores.get("industry_factors", 0.0) * weights.get("industry_factors",   0.0)
+        )
+        critical_count = sum(
+            1 for issue in (
+                result.get("risk_transparency_issues", [])
+                + result.get("client_fit_issues", [])
+                + result.get("credibility_gaps", [])
+            )
+            if issue.get("severity") == "CRITICAL"
+        )
+        if critical_count >= 3:
+            recomputed = min(recomputed, 5.5)
+        scores["overall"] = round(recomputed, 1)
+
+    # Diagnostic fields for Agent 4
+    scores["differentiator_count"] = n_diff
+    scores["sounds_generic"] = sounds_generic
+    scores["narrative_true_count"] = true_count
+    scores["p20_missing"] = p20_missing
+    result["scores"] = scores
+    return result
+
+
 # ── Entry Point ───────────────────────────────────────────────────────────────
 
 def run(
@@ -409,8 +599,9 @@ def run(
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
 
-    return invoke_agent_with_pdf(
+    result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
         user_message=user_message,
         pdf_bytes=pdf_bytes,
     )
+    return _apply_score_caps(result, client_priorities, client_industry)

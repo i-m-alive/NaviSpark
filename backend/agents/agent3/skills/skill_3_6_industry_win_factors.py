@@ -17,8 +17,8 @@ OUTPUT_SCHEMA = {
     "industry_findings": [
         {
             "factor": "string — the specific industry win factor being assessed",
-            "finding": "present | absent | weak",
-            "severity": "CRITICAL | MAJOR | MINOR",
+            "finding": "present | absent | weak | not_applicable",
+            "severity": "CRITICAL | MAJOR | MINOR | null",
         }
     ]
 }
@@ -67,6 +67,13 @@ For each win factor below: rate the proposal as:
   - present: the factor is addressed with specific, credible content
   - weak: the factor is addressed but too vaguely to impress an industry-experienced evaluator
   - absent: the factor is not addressed at all
+  - not_applicable: the factor is defined for this industry but is clearly out of scope for this
+    specific engagement (e.g. OT/IT integration for a pure back-office finance automation project
+    in a manufacturing firm). When using not_applicable, set severity to null and briefly state
+    why in the factor name.
+
+COVERAGE RULE: You MUST include a finding entry for EVERY win factor listed below.
+Never silently omit a factor. If it is not applicable, say so explicitly with not_applicable.
 
 WIN FACTORS FOR THE SELECTED INDUSTRIES:
 {win_factor_block}
@@ -76,7 +83,8 @@ SEVERITY RULES:
   (e.g., no compliance framework mentioned for a fintech proposal, no patient safety for healthcare)
 - A win factor that is addressed vaguely or generically = MAJOR
 - A minor gap in how a win factor is addressed = MINOR
+- not_applicable factors: set severity to null
 
-Every industry_finding must state the specific factor and reference what is present (or absent).
-If all win factors are well-addressed, return an empty array.
+Every industry_finding must state the specific factor and reference what is present, absent, or why
+it does not apply. Never silently drop a factor from the output.
 """

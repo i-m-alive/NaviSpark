@@ -43,7 +43,7 @@ SEVERITY RULES:
 {checklist_block}
 
 IMPORTANT RULES:
-- Your section_audit array MUST contain exactly 22 entries — one per checklist item.
+- Your section_audit array MUST contain exactly 23 entries — one per checklist item.
 - Never skip an item. If you cannot find it, status = MISSING.
 - The note field must reference specific content from the proposal (quote or paraphrase).
   Never write generic notes like "this section is missing" — say WHAT is missing and WHERE.
@@ -64,6 +64,21 @@ P-14 (Dependencies on Customer or Third Parties):
     (c) CONSEQUENCE if delayed (scope impact, timeline slip, or cost implication)
   If (b) or (c) is absent for any dependency, status = PARTIAL, not COVERED.
   A list of dependencies without timelines or consequences = PARTIAL.
+
+P-17 (Deliverables List with Description):
+  COVERED requires each deliverable to be named as a SPECIFIC OUTPUT ARTIFACT with its own description.
+  A list of phases, work packages, or activities is NOT a deliverables list — it is a project plan.
+  Apply these rules strictly:
+    PARTIAL — any of these patterns appear without artifact-level descriptions:
+      • Phase or sprint names ("Phase 1 completion", "Week 10 milestone")
+      • Work-package clusters ("solution development, testing and deployment")
+      • Activity bundles ("technical design, solution development, testing")
+    COVERED — only if EACH deliverable is a named artifact, e.g.:
+      • "Deployed REST API authenticated via Azure AD, tested to 99.9% uptime SLA"
+      • "User acceptance testing report covering all agreed test cases"
+      • "Runbook with step-by-step production deployment and rollback procedure"
+  A sentence such as "Solution requirement detailing, technical design, solution development,
+  testing and deployment across 10 weeks" describes PHASES, not deliverables. This = PARTIAL.
 
 P-19a-d (Cost Breakdown):
   This is ONE checklist item covering four cost lines: delivery, S&M, dev infrastructure,
