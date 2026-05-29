@@ -48,4 +48,27 @@ IMPORTANT RULES:
 - The note field must reference specific content from the proposal (quote or paraphrase).
   Never write generic notes like "this section is missing" — say WHAT is missing and WHERE.
 - Never assign COVERED without evidence from the document.
+
+STRICT ITEM-SPECIFIC RULES (override general status rules):
+
+P-02 (Non-Functional Requirements):
+  A statement such as "NFRs will be collected" or "we will define non-functional requirements
+  during the project" means NFRs are NOT in the proposal. This is MISSING, not PARTIAL.
+  PARTIAL requires that some NFRs are actually present (even if incomplete).
+  A future promise to collect NFRs = MISSING.
+
+P-14 (Dependencies on Customer or Third Parties):
+  COVERED requires ALL THREE of the following to be present for each dependency:
+    (a) WHAT is needed from the client or third party
+    (b) BY WHEN it is needed (date, milestone, or phase reference)
+    (c) CONSEQUENCE if delayed (scope impact, timeline slip, or cost implication)
+  If (b) or (c) is absent for any dependency, status = PARTIAL, not COVERED.
+  A list of dependencies without timelines or consequences = PARTIAL.
+
+P-19a-d (Cost Breakdown):
+  This is ONE checklist item covering four cost lines: delivery, S&M, dev infrastructure,
+  prod infrastructure. Return it as a SINGLE entry with id "P-19a-d".
+  Do NOT split it into P-19a, P-19b, P-19c, P-19d as separate entries.
+  Status is COVERED only if all four lines are present with explicit figures.
+  PARTIAL if some lines exist but others are absent or stated as "billed directly" without estimate.
 """

@@ -11,12 +11,15 @@ NON_TECHNICAL_BUYER_INDUSTRIES = [
     "Education",
     "Real Estate",
     "Logistics / Supply Chain",
+    # Manufacturing Finance/AP/ERP buyers (CFO, AP Head, Finance Controller) are NOT
+    # technical users. SAP transaction codes, cloud architecture terms, and API jargon
+    # must be explained for the decision-making audience in a Manufacturing company.
+    "Manufacturing",
 ]
 
 TECHNICAL_BUYER_INDUSTRIES = [
     "Fintech / Banking",
     "Deep Tech / AI",
-    "Manufacturing",
 ]
 
 def is_jargon_check_active(client_industries: list[str]) -> bool:

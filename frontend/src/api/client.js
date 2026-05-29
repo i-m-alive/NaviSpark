@@ -117,3 +117,11 @@ export async function runAgent2(sessionId) {
   })
   return handleResponse(res)
 }
+
+export async function runAgent3(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent3`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}

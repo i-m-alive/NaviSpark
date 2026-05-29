@@ -60,6 +60,17 @@ EXAMPLE of a paragraph to flag:
 and a GitOps-driven CI/CD pipeline using ArgoCD for continuous reconciliation."
 — A non-technical executive cannot evaluate this or explain it to their board.
 
+SAP-SPECIFIC JARGON — FLAG THESE if used without plain-language explanation:
+These SAP transaction codes are opaque to Finance and Procurement buyers who are not SAP power users:
+  MIRO (Logistics Invoice Verification), MIGO (Goods Receipt posting), MIRO (invoice entry),
+  F-53 / F-44 (vendor payment / clearing transactions), FB60 (direct FI invoice posting),
+  FBL1N (vendor open items report), F-47 / F-48 (down payment request / posting),
+  OData / NetWeaver Gateway (SAP's API layer), GR-IR clearing (Goods Receipt–Invoice Receipt reconciliation),
+  S/4HANA RISE (SAP's cloud ERP product), SOA (Statement of Account — not Service Oriented Architecture here).
+A CFO or AP Head approving this proposal may not know these codes. If they appear in sections
+a decision-maker must read (Executive Summary, Solution Overview, Benefits section) without
+explanation, flag them.
+
 FOR EACH FLAG:
 - Quote the first 20 words of the problematic paragraph
 - List the specific jargon terms that are unexplained

@@ -65,16 +65,29 @@ INDUSTRY_FACTORS: dict[str, list[dict]] = {
     ],
     "Manufacturing": [
         {
-            "factor": "OT/ICS integration approach",
-            "detail": "Integration methodology for SCADA, PLCs, MES, HISTORIAN, or other operational technology systems. Cyber-physical system security approach.",
+            "factor": "OT/ICS integration approach (scope-conditional)",
+            "detail": "ONLY flag this if the proposal scope explicitly includes integration with operational technology: SCADA, PLCs, MES, HISTORIAN, or shop-floor systems. "
+                      "If the scope is purely a Finance, ERP, or back-office system (AP automation, procurement, invoice processing), this factor does NOT apply — do not flag it. "
+                      "Incorrectly flagging OT/ICS for a Finance project signals a lack of scope understanding.",
         },
         {
             "factor": "Downtime risk and production continuity plan",
-            "detail": "Explicit acknowledgement of production impact during implementation. Specific measures: parallel running, phased cutover, rollback plan.",
+            "detail": "Explicit acknowledgement of production or operational impact during implementation. "
+                      "For Finance/ERP systems: impact on AP processing, payment cycles, and SAP availability during go-live. "
+                      "Specific measures: parallel running, phased cutover, rollback plan, go-live window selection.",
         },
         {
-            "factor": "Safety standards compliance",
-            "detail": "IS 13252, IEC 62443, local manufacturing safety regulations, functional safety requirements (if applicable) named and addressed.",
+            "factor": "Data residency and sovereignty for AI/cloud components",
+            "detail": "If the solution uses cloud-hosted AI APIs (e.g., Anthropic, OpenAI, Azure OpenAI) or cloud storage, the proposal must state where data is processed and stored. "
+                      "For Middle East clients (Saudi Arabia, UAE, etc.): check for compliance with Saudi PDPL, NDMO, or NCA regulations. "
+                      "Sending financial data (invoices, IBANs, vendor details) to US-based servers is a compliance concern that must be explicitly addressed. "
+                      "'We use US-based APIs' without a data residency statement = MAJOR gap.",
+        },
+        {
+            "factor": "Regional language and localisation capability",
+            "detail": "For Middle East clients: if the solution processes documents (invoices, contracts, purchase orders), confirm that Arabic-language OCR, text extraction, "
+                      "and RTL UI support are explicitly addressed. 'Arabic RTL support' for the UI is not sufficient — the AI/OCR pipeline must handle Arabic script documents. "
+                      "A proposal that promises invoice automation but does not address Arabic invoice processing for a Saudi client = MAJOR gap.",
         },
     ],
     "Retail / E-commerce": [
