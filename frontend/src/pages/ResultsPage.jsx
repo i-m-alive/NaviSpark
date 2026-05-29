@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Agent1ScoreCard from '../components/agent1/Agent1ScoreCard'
 import ChecklistTable from '../components/agent1/ChecklistTable'
+import ChecklistCoverage from '../components/agent3/ChecklistCoverage'
 import WritingIssues from '../components/agent1/WritingIssues'
 import ScopeIssues from '../components/agent1/ScopeIssues'
 import IndustryGaps from '../components/agent1/IndustryGaps'
@@ -415,6 +416,9 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
           </div>
         </div>
       )}
+
+      {/* GSK Checklist Coverage */}
+      <ChecklistCoverage checklist={a3.checklist_coverage} />
 
       {/* Industry Findings */}
       {a3.industry_findings?.length > 0 && (

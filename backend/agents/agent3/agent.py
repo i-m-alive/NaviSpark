@@ -50,6 +50,74 @@ The response must start with { and end with }.
 If you include ANY text outside the JSON object, the system will fail.
 Return ONLY the JSON."""
 
+# ── Checklist Audit ───────────────────────────────────────────────────────────
+
+_CHECKLIST_AUDIT = """
+═══════════════════════════════════════════════════
+SKILL 3.0 — GSK PROPOSAL CHECKLIST AUDIT (Agent 3 Items)
+═══════════════════════════════════════════════════
+
+In addition to your dimensional assessments, audit the following 10 GSK Proposal Checklist items
+from a competitive strength perspective. Output one entry per item in "checklist_coverage".
+
+Your checklist_coverage array MUST contain exactly 10 entries — one per item listed below:
+P-08, P-09, P-10, P-12, P-13, P-14, P-16, P-18, P-20, P-21.
+Never skip an item. If you cannot find evidence of it in the proposal, status = MISSING.
+Every item must appear — even items that are COVERED.
+
+Assign one of three statuses:
+  COVERED  — Present and adequately addressed
+  PARTIAL  — Present but incomplete, vague, or lacking sufficient detail
+  MISSING  — Entirely absent from the proposal
+
+ITEMS TO AUDIT:
+
+P-08 — Work Responsibility Distribution (Skill 3.4)
+  Is ownership of each deliverable clearly split between vendor, client, and third parties?
+  Is the team structure and governance/reporting model described?
+
+P-09 — Logical / Functional Solution Architecture (Skill 3.2)
+  Is there a logical or functional architecture description or diagram?
+  Does it show how solution components interact at a functional level?
+
+P-10 — Technical Solution Architecture (Skill 3.2)
+  Is there a technical architecture (systems, infrastructure, integrations)?
+  Is the tech stack clearly mapped to the architecture?
+
+P-12 — Technology Stack with Role Justification (Skill 3.2)
+  Are technology choices accompanied by specific reasons WHY each was selected for THIS client?
+  Listing a stack without client-specific justification = PARTIAL.
+
+P-13 — Benefits Framed as Client Outcomes (Skill 3.1)
+  Are benefits expressed as measurable client outcomes (time saved, cost reduced, accuracy improved)?
+  "We will build X" = feature-framing = PARTIAL. Quantified client results = COVERED.
+
+P-14 — Dependencies on Customer or Third Parties (Skill 3.3)
+  Are ALL dependencies listed with: what is needed, by when, and the consequence if delayed?
+  Dependencies without timelines or consequences = PARTIAL.
+
+P-16 — Assumptions + Impact If Wrong (Skill 3.3)
+  Does every assumption include a stated consequence if it proves incorrect?
+  Assumptions without "if wrong, then..." consequences = PARTIAL.
+
+P-18 — Case Studies of Similar Work (Skill 3.4)
+  Are case studies specific, relevant (similar industry/scale/problem), and include measurable outcomes?
+  No case studies = MISSING. Vague or irrelevant = PARTIAL.
+
+P-20 — Risk Register with Named Mitigations (Skill 3.3)
+  Is a formal risk register present? Does every risk have a NAMED mitigation (not just acknowledgement)?
+  Generic risk register = PARTIAL. No risk register = MISSING.
+
+P-21 — What Vendor Needs from Client Before Start (Skill 3.3)
+  Is there a specific, actionable list of what the vendor needs before work begins?
+  Vague "client cooperation needed" = MISSING.
+
+STRICT RULES:
+- checklist_coverage MUST have exactly 10 entries — one for each item above, in the order listed.
+- The note field must reference specific content from the proposal (quote or paraphrase what you found
+  or what is absent). Never write a generic note like "this section is missing."
+- Never assign COVERED without evidence from the document."""
+
 # ── Scoring Criteria ──────────────────────────────────────────────────────────
 
 _SCORING = """
@@ -213,6 +281,15 @@ Note: differentiation and narrative_assessment are OBJECTS, not arrays.
       "severity": "CRITICAL | MAJOR | MINOR"
     }
   ],
+  "checklist_coverage": [
+    {
+      "id": "P-08",
+      "topic": "string — topic name from the checklist above",
+      "skill": "3.1 | 3.2 | 3.3 | 3.4",
+      "status": "COVERED | PARTIAL | MISSING",
+      "note": "string — specific note quoting or referencing actual content from the proposal. Never generic."
+    }
+  ],
   "scores": {
     "weights": {
       "client_fit": 0.0,
@@ -239,7 +316,8 @@ CRITICAL REMINDERS:
 4. Every finding must reference specific content from the document — no generic feedback.
 5. risk_transparency_issues: set gsk_item to "P-20" (risk register), "P-14" (dependencies), "P-16" (assumptions), "P-21" (pre-project requirements), or null for cross-cutting issues.
 6. credibility_gaps: set gsk_item to "P-18" (case studies), "P-08" (team/work distribution), or null for governance gaps.
-7. Return ONLY the JSON object. Nothing before {{. Nothing after }}."""
+7. checklist_coverage MUST have exactly 10 entries in this exact order: P-08, P-09, P-10, P-12, P-13, P-14, P-16, P-18, P-20, P-21. Follow the single template row shown above — fill in real topic, skill, status, and note for each. Never skip an item even if it is COVERED. Never write a generic note.
+8. Return ONLY the JSON object. Nothing before {{. Nothing after }}."""
 
 
 # ── Prompt Composer ───────────────────────────────────────────────────────────
@@ -268,7 +346,7 @@ def compose_system_prompt(
     # Skill 3.6 is conditionally enriched but always included
     sections.append(skill_3_6_industry_win_factors.get_prompt_section(client_industry))
 
-    sections.extend([_SCORING, _OUTPUT_SCHEMA])
+    sections.extend([_CHECKLIST_AUDIT, _SCORING, _OUTPUT_SCHEMA])
 
     return "\n".join(sections)
 
@@ -289,13 +367,14 @@ CLIENT CONTEXT:
 - Proposal Type: {proposal_type or 'Not specified'}
 - Client Priorities: {priorities_str}
 
-Apply all 6 skills to this proposal:
+Apply all 6 skills plus the checklist audit to this proposal:
 1. Evaluate client fit against each stated CLIENT PRIORITY above (client_fit_issues — skill 3.1)
 2. Assess solution differentiation — apply the competitor name-swap test (differentiation — skill 3.2)
 3. Check risk and dependency transparency across P-14, P-16, P-20, P-21 (risk_transparency_issues — skill 3.3)
 4. Evaluate credibility signals and flag overclaiming (credibility_gaps, overclaiming_flags — skill 3.4)
 5. Assess narrative arc across all 7 story elements (narrative_assessment — skill 3.5)
 6. Check industry-specific win factors for CLIENT INDUSTRY above (industry_findings — skill 3.6)
+7. Audit all 10 GSK Proposal Checklist items assigned to Agent 3 and output COVERED/PARTIAL/MISSING for each (checklist_coverage — skill 3.0)
 
 Return ONLY the JSON object as specified in your instructions. No other text."""
 

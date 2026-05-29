@@ -354,6 +354,27 @@ export function agent3ToMarkdown(output, meta) {
     sections.push(lines.join('\n'))
   }
 
+  // GSK Checklist Coverage
+  const checklist = output.checklist_coverage || []
+  if (checklist.length > 0) {
+    const lines = ['\n## GSK Proposal Checklist Coverage\n',
+      '| ID | Topic | Skill | Status | Note |',
+      '|----|-------|-------|--------|------|']
+    checklist.forEach(item => {
+      const id = item.id || '—'
+      const topic = (item.topic || '—').replace(/\|/g, '\\|')
+      const skill = item.skill || '—'
+      const status = `${statusEmoji(item.status)} ${item.status || '—'}`
+      const note = (item.note || '').replace(/\|/g, '\\|')
+      lines.push(`| ${id} | ${topic} | ${skill} | ${status} | ${note} |`)
+    })
+    const covered = checklist.filter(i => i.status === 'COVERED').length
+    const partial = checklist.filter(i => i.status === 'PARTIAL').length
+    const missing = checklist.filter(i => i.status === 'MISSING').length
+    lines.push(`\n**Summary:** ${covered} covered · ${partial} partial · ${missing} missing (of ${checklist.length} items)`)
+    sections.push(lines.join('\n'))
+  }
+
   // Industry findings
   const industry = output.industry_findings || []
   if (industry.length > 0) {
