@@ -112,9 +112,42 @@ INDUSTRY FACTORS (industry_factors):
    0.0 — No industry awareness demonstrated
    N/A — Industry not in known list (set industry_factors to 5.0 as neutral)
 
-OVERALL SCORE FORMULA:
-  overall = (client_fit + differentiation + risk_transparency + credibility + narrative + industry_factors) / 6
-  Round to 1 decimal place.
+DYNAMIC WEIGHT DETERMINATION:
+  Before computing the overall score, analyze the CLIENT CONTEXT (CLIENT_INDUSTRY, PROPOSAL_TYPE,
+  CLIENT_PRIORITIES) provided in the user message and assign a weight to each scoring dimension.
+  All six weights must sum to exactly 1.0. Output the chosen weights in "scores.weights".
+
+  Baseline defaults (equal weighting): all six dimensions = 0.167 (rounded to sum to 1.0)
+
+  Weight adjustment guidance (use professional judgement — these are directional signals):
+  - client_fit: Raise (toward 0.20–0.25) when CLIENT_PRIORITIES are specific and numerous — the
+    proposal must map directly to stated needs. Priorities "Cost Certainty", "Speed to Market",
+    "Innovation" signal a client who will notice if their priorities go unaddressed.
+  - differentiation: Raise (toward 0.20–0.25) for competitive bid contexts — "Consulting",
+    "SaaS / Product", or "Staff Augmentation" types where multiple vendors are likely evaluated.
+    Priorities "Innovation", "Speed to Market" signal that generic responses lose bids.
+  - risk_transparency: Raise (toward 0.20–0.25) for Government, Healthcare, Insurance, Energy
+    industries (regulated = scrutinised risk); "Fixed Price" type (risks become contractual);
+    priorities "Risk Mitigation", "Compliance". These clients penalise proposals that hide risk.
+  - credibility: Raise (toward 0.20–0.25) for large enterprise or regulated industries (Government,
+    Healthcare, Financial / Fintech); "Managed Services" or "Consulting" types where vendor
+    track record determines selection; priority "Proven Track Record" (if mapped to client priority).
+  - narrative: Raise (toward 0.20) for "Consulting" or "SaaS / Product" types where the story
+    sells the engagement; priorities "Innovation". Lower slightly for highly technical or
+    commodity types like "Staff Augmentation".
+  - industry_factors: Raise (toward 0.20–0.25) for specialised industries (Fintech, Healthcare,
+    Government, Insurance, Energy, Telecom) where industry-specific signals determine shortlisting.
+    If the industry is not in the known list, set industry_factors weight to 0.0 and redistribute
+    proportionally to the other five dimensions.
+
+  After determining weights, compute:
+    overall = (client_fit × weights.client_fit)
+            + (differentiation × weights.differentiation)
+            + (risk_transparency × weights.risk_transparency)
+            + (credibility × weights.credibility)
+            + (narrative × weights.narrative)
+            + (industry_factors × weights.industry_factors)
+  Round overall to 1 decimal place.
 
 HARD RULE: A proposal with 3 or more CRITICAL issues CANNOT score above 5.5 overall.
 A proposal with no CRITICAL issues and only MINOR issues can score 8.0+."""
@@ -181,6 +214,14 @@ Note: differentiation and narrative_assessment are OBJECTS, not arrays.
     }
   ],
   "scores": {
+    "weights": {
+      "client_fit": 0.0,
+      "differentiation": 0.0,
+      "risk_transparency": 0.0,
+      "credibility": 0.0,
+      "narrative": 0.0,
+      "industry_factors": 0.0
+    },
     "client_fit": 0.0,
     "differentiation": 0.0,
     "risk_transparency": 0.0,

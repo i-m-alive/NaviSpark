@@ -88,9 +88,31 @@ CLIENT COVERAGE (client_coverage):
    0.0 — No industry-specific content
    N/A — Industry not in known list (set client_coverage to 5.0 as neutral)
 
-OVERALL SCORE FORMULA:
-  overall = (section_completeness × 0.40) + (writing_quality × 0.20) + (scope_clarity × 0.25) + (client_coverage × 0.15)
-  Round to 1 decimal place.
+DYNAMIC WEIGHT DETERMINATION:
+  Before computing the overall score, analyze the CLIENT CONTEXT (CLIENT_INDUSTRY, PROPOSAL_TYPE,
+  CLIENT_PRIORITIES) provided in the user message and assign a weight to each scoring dimension.
+  All four weights must sum to exactly 1.0. Output the chosen weights in "scores.weights".
+
+  Baseline defaults: section_completeness=0.40, writing_quality=0.20, scope_clarity=0.25, client_coverage=0.15
+
+  Weight adjustment guidance (use professional judgement — these are directional signals):
+  - section_completeness: Raise (toward 0.45–0.50) for Government, Healthcare, Insurance, or Energy
+    industries; "Fixed Price" or "Government RFP" proposal types; or priorities "Compliance",
+    "Risk Mitigation". These clients need contractual and regulatory completeness.
+  - writing_quality: Raise (toward 0.25–0.30) for "Consulting" or "SaaS / Product" proposal types;
+    or priorities "Quality", "Innovation". These clients are buying intellectual rigour.
+  - scope_clarity: Raise (toward 0.30–0.35) for "Fixed Price" or "Managed Services" proposal types;
+    or priorities "Cost Certainty", "Risk Mitigation". Ambiguous scope = overrun risk for these clients.
+  - client_coverage: Raise (toward 0.20–0.25) for specialised industries (Fintech, Healthcare,
+    Government, Insurance, Energy, Telecom). If the industry is not in the known list, set
+    client_coverage weight to 0.0 and redistribute proportionally to the other three dimensions.
+
+  After determining weights, compute:
+    overall = (section_completeness × weights.section_completeness)
+            + (writing_quality × weights.writing_quality)
+            + (scope_clarity × weights.scope_clarity)
+            + (client_coverage × weights.client_coverage)
+  Round overall to 1 decimal place.
 
 HARD RULE: A proposal with 3 or more CRITICAL issues CANNOT score above 5.5 overall.
 A proposal with no CRITICAL issues and only MINOR issues can score 8.0+."""
@@ -163,6 +185,12 @@ Use [] for empty arrays, null for rewrite if somehow not applicable.
     "what_changed": "1-2 sentences explaining what changed and why"
   },
   "scores": {
+    "weights": {
+      "section_completeness": 0.0,
+      "writing_quality": 0.0,
+      "scope_clarity": 0.0,
+      "client_coverage": 0.0
+    },
     "section_completeness": 0.0,
     "writing_quality": 0.0,
     "scope_clarity": 0.0,

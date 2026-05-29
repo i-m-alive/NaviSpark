@@ -100,10 +100,38 @@ ARITHMETIC ACCURACY (arithmetic_accuracy) — Weight: 10%:
    2.0 — Multiple arithmetic errors or most checks cannot be verified
    0.0 — Numbers are entirely unverifiable (no figures provided)
 
-OVERALL SCORE FORMULA:
-  overall = (estimation_rigour × 0.30) + (phase_coverage × 0.30) + \
-(pricing_completeness × 0.20) + (commercial_model_fit × 0.10) + (arithmetic_accuracy × 0.10)
-  Round to 1 decimal place.
+DYNAMIC WEIGHT DETERMINATION:
+  Before computing the overall score, analyze the CLIENT CONTEXT (CLIENT_INDUSTRY, PROPOSAL_TYPE,
+  CLIENT_PRIORITIES) provided in the user message and assign a weight to each scoring dimension.
+  All five weights must sum to exactly 1.0. Output the chosen weights in "scores.weights".
+
+  Baseline defaults: estimation_rigour=0.30, phase_coverage=0.30, pricing_completeness=0.20,
+                     commercial_model_fit=0.10, arithmetic_accuracy=0.10
+
+  Weight adjustment guidance (use professional judgement — these are directional signals):
+  - estimation_rigour: Raise (toward 0.35–0.40) for "Time & Material" or "Staff Augmentation"
+    types (client pays per hour — rigour = cost protection); or priorities "Cost Certainty",
+    "Risk Mitigation". Lower slightly for "Managed Services" where outcomes matter more than hours.
+  - phase_coverage: Raise (toward 0.35) for "Fixed Price" (missing phases = change requests later);
+    priorities "Speed to Market" (gaps in delivery chain = delays) or "Quality". Lower for
+    "Staff Augmentation" where phase structure is less applicable.
+  - pricing_completeness: Raise (toward 0.25–0.30) for "Managed Services" (recurring cost clarity
+    is critical) or "Fixed Price" (all cost lines must be locked); priorities "Cost Certainty".
+    Raise for Healthcare, Government, Insurance where budget scrutiny is high.
+  - commercial_model_fit: Raise (toward 0.15–0.20) when PROPOSAL_TYPE and scope appear misaligned
+    (e.g., Fixed Price on ambiguous scope is high-risk); priorities "Cost Certainty", "Compliance".
+    Fintech, Government, Insurance clients have strict commercial model requirements.
+  - arithmetic_accuracy: Raise (toward 0.15) for "Fixed Price" (errors become contractual issues)
+    or priorities "Cost Certainty", "Risk Mitigation". Government and Insurance clients scrutinise
+    arithmetic closely. Lower for "Staff Augmentation" where totals are inherently variable.
+
+  After determining weights, compute:
+    overall = (estimation_rigour × weights.estimation_rigour)
+            + (phase_coverage × weights.phase_coverage)
+            + (pricing_completeness × weights.pricing_completeness)
+            + (commercial_model_fit × weights.commercial_model_fit)
+            + (arithmetic_accuracy × weights.arithmetic_accuracy)
+  Round overall to 1 decimal place.
 
 HARD RULE: A proposal with 3 or more CRITICAL issues CANNOT score above 5.5 overall.
 A proposal with no CRITICAL issues and only MINOR issues can score 8.0+."""
@@ -166,6 +194,13 @@ contains no commercial section at all (extremely rare).
     "concerns": ["List of specific concerns, or empty array if none"]
   },
   "scores": {
+    "weights": {
+      "estimation_rigour": 0.0,
+      "phase_coverage": 0.0,
+      "pricing_completeness": 0.0,
+      "commercial_model_fit": 0.0,
+      "arithmetic_accuracy": 0.0
+    },
     "estimation_rigour": 0.0,
     "phase_coverage": 0.0,
     "pricing_completeness": 0.0,
