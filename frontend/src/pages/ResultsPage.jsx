@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getSession, getReportUrl, runAgent1, runAgent2, runAgent3 } from '../api/client'
+import { getSession, getReportUrl, runAgent1, runAgent2, runAgent3, runAgent4 } from '../api/client'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -12,13 +12,23 @@ import ScopeIssues from '../components/agent1/ScopeIssues'
 import IndustryGaps from '../components/agent1/IndustryGaps'
 import JargonFlags from '../components/agent1/JargonFlags'
 import RewriteSuggestion from '../components/agent1/RewriteSuggestion'
-import { FileText, Clock, Download, ArrowLeft, Cpu, Play, Loader2, FileJson, FileType } from 'lucide-react'
+// Agent 4 components
+import VerdictBanner from '../components/agent4/VerdictBanner'
+import ScoreRadar from '../components/agent4/ScoreRadar'
+import PriorityActionList from '../components/agent4/PriorityActionList'
+import FullChecklistGrid from '../components/agent4/FullChecklistGrid'
+import CrossConsistencyPanel from '../components/agent4/CrossConsistencyPanel'
+import DoubleFlaggedIssues from '../components/agent4/DoubleFlaggedIssues'
+import TopStrengths from '../components/agent4/TopStrengths'
+import RewriteSuggestions from '../components/agent4/RewriteSuggestions'
+import { FileText, Clock, Download, ArrowLeft, Cpu, Play, Loader2, FileJson, FileType, Sparkles } from 'lucide-react'
 import {
   downloadJson,
   downloadMarkdown,
   agent1ToMarkdown,
   agent2ToMarkdown,
   agent3ToMarkdown,
+  agent4ToMarkdown,
 } from '../utils/agentDownload'
 
 function formatDate(dateStr) {
@@ -26,23 +36,6 @@ function formatDate(dateStr) {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
-}
-
-function AgentPlaceholder({ agentNum, label }) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-1.5 bg-gray-800 rounded-lg">
-          <Cpu size={15} className="text-gray-500" />
-        </div>
-        <span className="text-sm font-medium text-gray-400">Agent {agentNum}: {label}</span>
-        <span className="ml-auto text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">Pending</span>
-      </div>
-      <p className="text-xs text-gray-600 italic">
-        Analysis will appear here once previous agents have completed.
-      </p>
-    </div>
-  )
 }
 
 function DownloadButtons({ onJson, onMarkdown }) {
@@ -95,6 +88,8 @@ function ScoreBar({ label, score }) {
   )
 }
 
+// ── Agent 2 Results ────────────────────────────────────────────────────────────
+
 function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
   const a2 = output
   const scores = a2.scores || {}
@@ -108,7 +103,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         {onDownloadJson && <DownloadButtons onJson={onDownloadJson} onMarkdown={onDownloadMarkdown} />}
       </div>
 
-      {/* Score Card */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Score Card</h3>
@@ -126,7 +120,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       </div>
 
-      {/* Commercial Model Assessment */}
       {a2.commercial_model_assessment && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Commercial Model</h3>
@@ -148,7 +141,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Missing Phases */}
       {a2.missing_phases?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -168,7 +160,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Estimation Issues */}
       {a2.estimation_issues?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -192,7 +183,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Pricing Issues */}
       {a2.pricing_issues?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -216,7 +206,6 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Arithmetic Flags */}
       {a2.arithmetic_flags?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -238,6 +227,8 @@ function Agent2Results({ output, onDownloadJson, onDownloadMarkdown }) {
     </div>
   )
 }
+
+// ── Agent 3 Results ────────────────────────────────────────────────────────────
 
 function NarrativeBool({ label, value }) {
   return (
@@ -264,7 +255,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         {onDownloadJson && <DownloadButtons onJson={onDownloadJson} onMarkdown={onDownloadMarkdown} />}
       </div>
 
-      {/* Score Card */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Score Card</h3>
@@ -283,7 +273,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       </div>
 
-      {/* Differentiation */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-center gap-3 mb-3">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider flex-1">Differentiation</h3>
@@ -317,7 +306,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         )}
       </div>
 
-      {/* Narrative Assessment */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Narrative Flow</h3>
         <div className="grid grid-cols-2 gap-2 mb-3">
@@ -340,7 +328,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         )}
       </div>
 
-      {/* Client Fit Issues */}
       {a3.client_fit_issues?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -363,7 +350,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Risk Transparency Issues */}
       {a3.risk_transparency_issues?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -380,7 +366,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Credibility Gaps */}
       {a3.credibility_gaps?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -397,7 +382,6 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* Overclaiming Flags */}
       {a3.overclaiming_flags?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -417,10 +401,8 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
         </div>
       )}
 
-      {/* GSK Checklist Coverage */}
       <ChecklistCoverage checklist={a3.checklist_coverage} />
 
-      {/* Industry Findings */}
       {a3.industry_findings?.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
@@ -445,18 +427,167 @@ function Agent3Results({ output, onDownloadJson, onDownloadMarkdown }) {
   )
 }
 
+// ── Agent 4 Results ────────────────────────────────────────────────────────────
+
+function Agent4Results({ output, onDownloadJson, onDownloadMarkdown }) {
+  const a4 = output
+
+  return (
+    <div className="space-y-4">
+      {/* Section header */}
+      <div className="flex items-center gap-2 pb-1 border-b border-orange-900">
+        <Sparkles size={14} className="text-orange-400" />
+        <span className="text-xs font-semibold text-orange-400 uppercase tracking-wider">
+          Agent 4 — Chief Proposal Review Officer
+        </span>
+        {onDownloadJson && <DownloadButtons onJson={onDownloadJson} onMarkdown={onDownloadMarkdown} />}
+      </div>
+
+      {/* Verdict Banner + Scores */}
+      <VerdictBanner
+        overallScore={a4.overall_score}
+        verdict={a4.verdict}
+        agent1Score={a4.agent1_score}
+        agent2Score={a4.agent2_score}
+        agent3Score={a4.agent3_score}
+        weightLabel={a4.weight_label}
+        weightAdjusted={a4.weight_adjusted}
+        weightReason={a4.weight_reason}
+      />
+
+      {/* Plain-English Summary */}
+      {a4.plain_english_summary && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+            Executive Briefing
+          </h3>
+          <p className="text-sm text-gray-200 leading-relaxed">{a4.plain_english_summary}</p>
+        </div>
+      )}
+
+      {/* Top Strengths */}
+      {a4.top_3_strengths?.length > 0 && (
+        <TopStrengths strengths={a4.top_3_strengths} />
+      )}
+
+      {/* Double-Flagged Issues */}
+      <DoubleFlaggedIssues issues={a4.double_flagged_issues} />
+
+      {/* Priority Action List */}
+      <PriorityActionList priorityActions={a4.priority_actions} />
+
+      {/* Score Radar */}
+      <ScoreRadar sectionScorecard={a4.section_scorecard} />
+
+      {/* Cross-Consistency */}
+      <CrossConsistencyPanel issues={a4.cross_consistency_issues} />
+
+      {/* Unified Checklist Grid */}
+      <FullChecklistGrid checklistCoverage={a4.checklist_coverage} />
+
+      {/* Rewrite Suggestions */}
+      {a4.rewrite_suggestions?.length > 0 && (
+        <RewriteSuggestions suggestions={a4.rewrite_suggestions} />
+      )}
+    </div>
+  )
+}
+
+// ── AgentRunCard — generic "run agent" button card ────────────────────────────
+
+function AgentRunCard({ agentNum, label, description, colour, running, error, onRun, disabled, disabledReason }) {
+  const colourMap = {
+    indigo: {
+      icon: 'bg-indigo-950', cpu: 'text-indigo-400',
+      btn: 'bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800',
+    },
+    purple: {
+      icon: 'bg-purple-950', cpu: 'text-purple-400',
+      btn: 'bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800',
+    },
+    teal: {
+      icon: 'bg-teal-950', cpu: 'text-teal-400',
+      btn: 'bg-teal-600 hover:bg-teal-500 disabled:bg-teal-800',
+    },
+    orange: {
+      icon: 'bg-orange-950', cpu: 'text-orange-400',
+      btn: 'bg-orange-600 hover:bg-orange-500 disabled:bg-orange-800',
+    },
+  }
+  const c = colourMap[colour] || colourMap.indigo
+  const Icon = agentNum === 4 ? Sparkles : Cpu
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`p-2 ${c.icon} rounded-lg`}>
+          <Icon size={16} className={c.cpu} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white">Agent {agentNum} — {label}</p>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
+      </div>
+
+      {disabled && disabledReason && (
+        <div className="mb-4 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-500">
+          {disabledReason}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-950 border border-red-800 rounded-lg text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={onRun}
+        disabled={running || disabled}
+        className={`flex items-center gap-2 px-4 py-2.5 ${c.btn} disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors`}
+      >
+        {running ? (
+          <>
+            <Loader2 size={15} className="animate-spin" />
+            {agentNum === 4 ? 'Aggregating results… (10–20s)' : 'Analysing proposal… (10–20s)'}
+          </>
+        ) : (
+          <>
+            {agentNum === 4 ? <Sparkles size={15} /> : <Play size={15} />}
+            Run Agent {agentNum} {agentNum === 4 ? '— Final Verdict' : 'Analysis'}
+          </>
+        )}
+      </button>
+
+      {running && (
+        <p className="text-xs text-gray-500 mt-3">
+          {agentNum === 4
+            ? 'Synthesising all three agent outputs via AWS Bedrock Claude Sonnet 4…'
+            : 'Sending proposal to AWS Bedrock Claude Sonnet 4. Please wait…'
+          }
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function ResultsPage() {
   const { sessionId } = useParams()
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState(false)
+
   const [runningAgent1, setRunningAgent1] = useState(false)
   const [agent1Error, setAgent1Error] = useState('')
   const [runningAgent2, setRunningAgent2] = useState(false)
   const [agent2Error, setAgent2Error] = useState('')
   const [runningAgent3, setRunningAgent3] = useState(false)
   const [agent3Error, setAgent3Error] = useState('')
+  const [runningAgent4, setRunningAgent4] = useState(false)
+  const [agent4Error, setAgent4Error] = useState('')
 
   useEffect(() => {
     getSession(sessionId)
@@ -478,57 +609,41 @@ export default function ResultsPage() {
   }
 
   const handleRunAgent1 = async () => {
-    setRunningAgent1(true)
-    setAgent1Error('')
+    setRunningAgent1(true); setAgent1Error('')
     try {
       const result = await runAgent1(sessionId)
-      setSession(prev => ({
-        ...prev,
-        agent1_output: result.agent1_output,
-        status: 'agent1_complete',
-      }))
-    } catch (err) {
-      setAgent1Error(err.message)
-    } finally {
-      setRunningAgent1(false)
-    }
+      setSession(prev => ({ ...prev, agent1_output: result.agent1_output, status: 'agent1_complete' }))
+    } catch (err) { setAgent1Error(err.message) }
+    finally { setRunningAgent1(false) }
   }
 
   const handleRunAgent2 = async () => {
-    setRunningAgent2(true)
-    setAgent2Error('')
+    setRunningAgent2(true); setAgent2Error('')
     try {
       const result = await runAgent2(sessionId)
-      setSession(prev => ({
-        ...prev,
-        agent2_output: result.agent2_output,
-        status: 'agent2_complete',
-      }))
-    } catch (err) {
-      setAgent2Error(err.message)
-    } finally {
-      setRunningAgent2(false)
-    }
+      setSession(prev => ({ ...prev, agent2_output: result.agent2_output, status: 'agent2_complete' }))
+    } catch (err) { setAgent2Error(err.message) }
+    finally { setRunningAgent2(false) }
   }
 
   const handleRunAgent3 = async () => {
-    setRunningAgent3(true)
-    setAgent3Error('')
+    setRunningAgent3(true); setAgent3Error('')
     try {
       const result = await runAgent3(sessionId)
-      setSession(prev => ({
-        ...prev,
-        agent3_output: result.agent3_output,
-        status: 'agent3_complete',
-      }))
-    } catch (err) {
-      setAgent3Error(err.message)
-    } finally {
-      setRunningAgent3(false)
-    }
+      setSession(prev => ({ ...prev, agent3_output: result.agent3_output, status: 'agent3_complete' }))
+    } catch (err) { setAgent3Error(err.message) }
+    finally { setRunningAgent3(false) }
   }
 
-  // Build metadata block passed to markdown converters
+  const handleRunAgent4 = async () => {
+    setRunningAgent4(true); setAgent4Error('')
+    try {
+      const result = await runAgent4(sessionId)
+      setSession(prev => ({ ...prev, agent4_output: result.agent4_output, status: 'complete' }))
+    } catch (err) { setAgent4Error(err.message) }
+    finally { setRunningAgent4(false) }
+  }
+
   const sessionMeta = session ? {
     filename: session.original_filename,
     proposalType: session.proposal_type,
@@ -539,24 +654,7 @@ export default function ResultsPage() {
 
   const slug = sessionId?.slice(0, 8) || 'report'
 
-  function handleAgent1DownloadJson() {
-    downloadJson(session.agent1_output, `agent1_${slug}.json`)
-  }
-  function handleAgent1DownloadMd() {
-    downloadMarkdown(agent1ToMarkdown(session.agent1_output, sessionMeta), `agent1_${slug}.md`)
-  }
-  function handleAgent2DownloadJson() {
-    downloadJson(session.agent2_output, `agent2_${slug}.json`)
-  }
-  function handleAgent2DownloadMd() {
-    downloadMarkdown(agent2ToMarkdown(session.agent2_output, sessionMeta), `agent2_${slug}.md`)
-  }
-  function handleAgent3DownloadJson() {
-    downloadJson(session.agent3_output, `agent3_${slug}.json`)
-  }
-  function handleAgent3DownloadMd() {
-    downloadMarkdown(agent3ToMarkdown(session.agent3_output, sessionMeta), `agent3_${slug}.md`)
-  }
+  const allAgentsComplete = !!(session?.agent1_output && session?.agent2_output && session?.agent3_output)
 
   if (loading) {
     return (
@@ -588,7 +686,7 @@ export default function ResultsPage() {
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
+        {/* Page header */}
         <div className="flex items-start justify-between mb-6">
           <div>
             <Link to="/dashboard" className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 mb-2 transition-colors">
@@ -645,7 +743,7 @@ export default function ResultsPage() {
         <div className="space-y-4">
           <h2 className="text-sm font-medium text-gray-400">Analysis Results</h2>
 
-          {/* Agent 1 */}
+          {/* ── Agent 1 ─────────────────────────────────────────────────────── */}
           {a1 ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-1 border-b border-gray-800">
@@ -653,9 +751,11 @@ export default function ResultsPage() {
                 <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
                   Agent 1 — Completeness & Clarity
                 </span>
-                <DownloadButtons onJson={handleAgent1DownloadJson} onMarkdown={handleAgent1DownloadMd} />
+                <DownloadButtons
+                  onJson={() => downloadJson(session.agent1_output, `agent1_${slug}.json`)}
+                  onMarkdown={() => downloadMarkdown(agent1ToMarkdown(session.agent1_output, sessionMeta), `agent1_${slug}.md`)}
+                />
               </div>
-
               <Agent1ScoreCard scores={a1.scores} />
               <ChecklistTable sectionAudit={a1.section_audit} />
               <WritingIssues issues={a1.writing_issues} />
@@ -665,174 +765,82 @@ export default function ResultsPage() {
               {a1.rewrite && <RewriteSuggestion rewrite={a1.rewrite} />}
             </div>
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-indigo-950 rounded-lg">
-                  <Cpu size={16} className="text-indigo-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Agent 1 — Completeness & Clarity</p>
-                  <p className="text-xs text-gray-500">Audits 22 checklist items, writing quality, scope clarity, and more</p>
-                </div>
-              </div>
-
-              {agent1Error && (
-                <div className="mb-4 px-4 py-3 bg-red-950 border border-red-800 rounded-lg text-xs text-red-300">
-                  {agent1Error}
-                </div>
-              )}
-
-              <button
-                onClick={handleRunAgent1}
-                disabled={runningAgent1}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                {runningAgent1 ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    Analysing proposal… (10–20s)
-                  </>
-                ) : (
-                  <>
-                    <Play size={15} />
-                    Run Agent 1 Analysis
-                  </>
-                )}
-              </button>
-
-              {runningAgent1 && (
-                <p className="text-xs text-gray-500 mt-3">
-                  Sending proposal to AWS Bedrock Claude Sonnet 4. Please wait…
-                </p>
-              )}
-            </div>
+            <AgentRunCard
+              agentNum={1}
+              label="Completeness & Clarity"
+              description="Audits 22 checklist items, writing quality, scope clarity, and more"
+              colour="indigo"
+              running={runningAgent1}
+              error={agent1Error}
+              onRun={handleRunAgent1}
+            />
           )}
 
-          {/* Agent 2 */}
+          {/* ── Agent 2 ─────────────────────────────────────────────────────── */}
           {session.agent2_output ? (
             <Agent2Results
               output={session.agent2_output}
-              onDownloadJson={handleAgent2DownloadJson}
-              onDownloadMarkdown={handleAgent2DownloadMd}
+              onDownloadJson={() => downloadJson(session.agent2_output, `agent2_${slug}.json`)}
+              onDownloadMarkdown={() => downloadMarkdown(agent2ToMarkdown(session.agent2_output, sessionMeta), `agent2_${slug}.md`)}
             />
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-purple-950 rounded-lg">
-                  <Cpu size={16} className="text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Agent 2 — Estimation & Commercial Integrity</p>
-                  <p className="text-xs text-gray-500">Checks 24 estimation items, 17 phases, pricing completeness, arithmetic, and commercial model fit</p>
-                </div>
-              </div>
-
-              {agent2Error && (
-                <div className="mb-4 px-4 py-3 bg-red-950 border border-red-800 rounded-lg text-xs text-red-300">
-                  {agent2Error}
-                </div>
-              )}
-
-              <button
-                onClick={handleRunAgent2}
-                disabled={runningAgent2}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                {runningAgent2 ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    Analysing proposal… (10–20s)
-                  </>
-                ) : (
-                  <>
-                    <Play size={15} />
-                    Run Agent 2 Analysis
-                  </>
-                )}
-              </button>
-
-              {runningAgent2 && (
-                <p className="text-xs text-gray-500 mt-3">
-                  Sending proposal to AWS Bedrock Claude Sonnet 4. Please wait…
-                </p>
-              )}
-            </div>
+            <AgentRunCard
+              agentNum={2}
+              label="Estimation & Commercial Integrity"
+              description="Checks 24 estimation items, 17 phases, pricing completeness, arithmetic, and commercial model fit"
+              colour="purple"
+              running={runningAgent2}
+              error={agent2Error}
+              onRun={handleRunAgent2}
+            />
           )}
 
-          {/* Agent 3 */}
+          {/* ── Agent 3 ─────────────────────────────────────────────────────── */}
           {session.agent3_output ? (
             <Agent3Results
               output={session.agent3_output}
-              onDownloadJson={handleAgent3DownloadJson}
-              onDownloadMarkdown={handleAgent3DownloadMd}
+              onDownloadJson={() => downloadJson(session.agent3_output, `agent3_${slug}.json`)}
+              onDownloadMarkdown={() => downloadMarkdown(agent3ToMarkdown(session.agent3_output, sessionMeta), `agent3_${slug}.md`)}
             />
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-teal-950 rounded-lg">
-                  <Cpu size={16} className="text-teal-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Agent 3 — Competitive Strength</p>
-                  <p className="text-xs text-gray-500">Evaluates client fit, differentiation, risk transparency, credibility, narrative, and industry win factors</p>
-                </div>
-              </div>
-
-              {agent3Error && (
-                <div className="mb-4 px-4 py-3 bg-red-950 border border-red-800 rounded-lg text-xs text-red-300">
-                  {agent3Error}
-                </div>
-              )}
-
-              <button
-                onClick={handleRunAgent3}
-                disabled={runningAgent3}
-                className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:bg-teal-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                {runningAgent3 ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    Analysing proposal… (10–20s)
-                  </>
-                ) : (
-                  <>
-                    <Play size={15} />
-                    Run Agent 3 Analysis
-                  </>
-                )}
-              </button>
-
-              {runningAgent3 && (
-                <p className="text-xs text-gray-500 mt-3">
-                  Sending proposal to AWS Bedrock Claude Sonnet 4. Please wait…
-                </p>
-              )}
-            </div>
+            <AgentRunCard
+              agentNum={3}
+              label="Competitive Strength"
+              description="Evaluates client fit, differentiation, risk transparency, credibility, narrative, and industry win factors"
+              colour="teal"
+              running={runningAgent3}
+              error={agent3Error}
+              onRun={handleRunAgent3}
+            />
           )}
 
-          {/* Agent 4 placeholder */}
+          {/* ── Agent 4 ─────────────────────────────────────────────────────── */}
           {session.agent4_output ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h3 className="text-sm font-medium text-green-400 mb-2">Agent 4 — Final Verdict</h3>
-              {session.agent4_output.verdict && (
-                <div className="mb-3">
-                  <span className={`text-sm font-bold px-3 py-1.5 rounded-full border
-                    ${session.agent4_output.verdict === 'READY TO SEND'
-                      ? 'bg-green-900 text-green-300 border-green-700'
-                      : session.agent4_output.verdict === 'REVISE BEFORE SENDING'
-                      ? 'bg-yellow-900 text-yellow-300 border-yellow-700'
-                      : 'bg-red-900 text-red-300 border-red-700'
-                    }`}>
-                    {session.agent4_output.verdict}
-                  </span>
-                </div>
-              )}
-              <pre className="text-xs text-gray-300 overflow-auto whitespace-pre-wrap">
-                {JSON.stringify(session.agent4_output, null, 2)}
-              </pre>
-            </div>
+            <Agent4Results
+              output={session.agent4_output}
+              onDownloadJson={() => downloadJson(session.agent4_output, `agent4_verdict_${slug}.json`)}
+              onDownloadMarkdown={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `agent4_verdict_${slug}.md`)}
+            />
           ) : (
-            <AgentPlaceholder agentNum={4} label="Final Verdict & Report" />
+            <AgentRunCard
+              agentNum={4}
+              label="Final Verdict & Report"
+              description="Aggregates all three agents: weighted score, double-flag detection, cross-consistency check, priority actions, unified checklist grid"
+              colour="orange"
+              running={runningAgent4}
+              error={agent4Error}
+              onRun={handleRunAgent4}
+              disabled={!allAgentsComplete}
+              disabledReason={
+                !allAgentsComplete
+                  ? `Requires all three specialist agents to complete first. Please run ${[
+                      !session.agent1_output && 'Agent 1',
+                      !session.agent2_output && 'Agent 2',
+                      !session.agent3_output && 'Agent 3',
+                    ].filter(Boolean).join(', ')} first.`
+                  : null
+              }
+            />
           )}
         </div>
       </main>

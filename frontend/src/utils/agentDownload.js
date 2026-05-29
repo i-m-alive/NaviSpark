@@ -253,6 +253,161 @@ export function agent2ToMarkdown(output, meta) {
   return sections.join('\n')
 }
 
+// ── Agent 4 → Markdown ────────────────────────────────────────────────────────
+
+export function agent4ToMarkdown(output, meta) {
+  const sections = []
+
+  sections.push(metaBlock('Agent 4 — Chief Proposal Review Officer (Final Verdict)', meta))
+
+  // ── Verdict block ──────────────────────────────────────────────────────────
+  const verdictEmoji = output.verdict === 'READY TO SEND' ? '✅' : output.verdict === 'DO NOT SEND' ? '❌' : '⚠️'
+  sections.push(
+    `## ${verdictEmoji} Verdict: ${output.verdict || '—'}\n\n` +
+    `**Overall Score:** ${output.overall_score != null ? output.overall_score.toFixed(1) : '—'} / 10\n\n` +
+    `| Agent | Score | Weight |\n|-------|-------|--------|\n` +
+    `| Agent 1 — Completeness & Clarity | ${output.agent1_score?.toFixed(1) ?? '—'} | ${output.weights?.agent1 != null ? (output.weights.agent1 * 100).toFixed(0) + '%' : '—'} |\n` +
+    `| Agent 2 — Estimation & Commercial | ${output.agent2_score?.toFixed(1) ?? '—'} | ${output.weights?.agent2 != null ? (output.weights.agent2 * 100).toFixed(0) + '%' : '—'} |\n` +
+    `| Agent 3 — Competitive Strength | ${output.agent3_score?.toFixed(1) ?? '—'} | ${output.weights?.agent3 != null ? (output.weights.agent3 * 100).toFixed(0) + '%' : '—'} |\n` +
+    (output.weight_adjusted ? `\n> **Weight adjustment:** ${output.weight_label} — ${output.weight_reason}` : '')
+  )
+
+  // ── Plain-English summary ──────────────────────────────────────────────────
+  if (output.plain_english_summary) {
+    sections.push(`\n## Executive Summary\n\n${output.plain_english_summary}`)
+  }
+
+  // ── Top strengths ──────────────────────────────────────────────────────────
+  if (output.top_3_strengths?.length) {
+    const lines = ['\n## Top Strengths\n']
+    output.top_3_strengths.forEach((s, i) => lines.push(`${i + 1}. ${s}`))
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Double-flagged issues ─────────────────────────────────────────────────
+  const doubleFlagged = output.double_flagged_issues || []
+  if (doubleFlagged.length) {
+    const lines = ['\n## ⚠️ Double-Flagged Issues (Highest Priority)\n',
+      '_These issues were independently detected by two or more specialist agents._\n']
+    doubleFlagged.forEach((issue, i) => {
+      lines.push(`### ${i + 1}. ${issue.agents?.join(' + ')} — CRITICAL`)
+      lines.push(issue.issue_summary || '')
+      if (issue.shared_keywords?.length) lines.push(`\n**Shared signals:** ${issue.shared_keywords.join(', ')}`)
+      lines.push('')
+    })
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Priority action list ──────────────────────────────────────────────────
+  const pa = output.priority_actions || {}
+
+  const renderActions = (items, heading) => {
+    if (!items?.length) return ''
+    const lines = [`\n## ${heading}\n`]
+    items.forEach((item, i) => {
+      lines.push(`### ${i + 1}. ${item.action || ''}`)
+      if (item.why) lines.push(`**Why it matters:** ${item.why}`)
+      if (item.source_agents?.length) lines.push(`**Source:** ${item.source_agents.join(', ')}`)
+      lines.push('')
+    })
+    return lines.join('\n')
+  }
+
+  sections.push(renderActions(pa.must_fix, '🔴 Must Fix Before Sending'))
+  sections.push(renderActions(pa.should_fix, '🟡 Should Fix If Time Allows'))
+  sections.push(renderActions(pa.next_time, '🔵 Note for Next Proposal'))
+
+  // ── Internal section ───────────────────────────────────────────────────────
+  if (pa.internal?.length) {
+    const lines = ['\n---\n\n## ⚠️ INTERNAL — NOT FOR CLIENT\n']
+    pa.internal.forEach((item, i) => {
+      lines.push(`### ${i + 1}. ${item.action || ''}`)
+      if (item.why) lines.push(item.why)
+      lines.push('')
+    })
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Cross-consistency issues ───────────────────────────────────────────────
+  const cc = output.cross_consistency_issues || []
+  if (cc.length) {
+    const lines = ['\n## Cross-Agent Consistency Issues\n',
+      '| Rule | Check | Severity | Finding |',
+      '|------|-------|----------|---------|']
+    cc.forEach(issue => {
+      lines.push(`| ${issue.rule_id || '—'} | ${(issue.check || '').replace(/\|/g, '\\|')} | ${severityLabel(issue.severity)} | ${(issue.finding || '').replace(/\|/g, '\\|')} |`)
+    })
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Section scorecard ──────────────────────────────────────────────────────
+  const sc = output.section_scorecard
+  if (sc) {
+    const lines = ['\n## Dimension Scorecard\n',
+      '| Dimension | Score |',
+      '|-----------|-------|',
+      `| Section Completeness | ${sc.section_completeness?.toFixed(1) ?? '—'} / 10 |`,
+      `| Writing Quality | ${sc.writing_quality?.toFixed(1) ?? '—'} / 10 |`,
+      `| Scope Clarity | ${sc.scope_clarity?.toFixed(1) ?? '—'} / 10 |`,
+      `| Client Coverage | ${sc.client_coverage?.toFixed(1) ?? '—'} / 10 |`,
+      `| Estimation Rigour | ${sc.estimation_rigour?.toFixed(1) ?? '—'} / 10 |`,
+      `| Phase Coverage | ${sc.phase_coverage?.toFixed(1) ?? '—'} / 10 |`,
+      `| Pricing Completeness | ${sc.pricing_completeness?.toFixed(1) ?? '—'} / 10 |`,
+      `| Commercial Model Fit | ${sc.commercial_model_fit?.toFixed(1) ?? '—'} / 10 |`,
+      `| Client Fit | ${sc.client_fit?.toFixed(1) ?? '—'} / 10 |`,
+      `| Differentiation | ${sc.differentiation?.toFixed(1) ?? '—'} / 10 |`,
+      `| Risk Transparency | ${sc.risk_transparency?.toFixed(1) ?? '—'} / 10 |`,
+      `| Credibility | ${sc.credibility?.toFixed(1) ?? '—'} / 10 |`,
+      `| Narrative | ${sc.narrative?.toFixed(1) ?? '—'} / 10 |`,
+      `| Industry Factors | ${sc.industry_factors?.toFixed(1) ?? '—'} / 10 |`,
+    ]
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Unified checklist grid ─────────────────────────────────────────────────
+  const cl = output.checklist_coverage || []
+  if (cl.length) {
+    const covered = cl.filter(i => i.status === 'COVERED').length
+    const partial  = cl.filter(i => i.status === 'PARTIAL').length
+    const missing  = cl.filter(i => i.status === 'MISSING').length
+
+    const lines = [
+      `\n## GSK Checklist Coverage — All Three Sheets (${cl.length} items)\n`,
+      `**Summary:** ${covered} covered · ${partial} partial · ${missing} missing\n`,
+      '| ID | Sheet | Topic | Mandatory | Status | Agent |',
+      '|----|-------|-------|:---------:|--------|-------|',
+    ]
+    cl.forEach(item => {
+      if (item.internal) return
+      const status = `${statusEmoji(item.status)} ${item.status || '—'}`
+      lines.push(`| ${item.id || '—'} | ${item.sheet || '—'} | ${(item.topic || '').replace(/\|/g, '\\|')} | ${item.mandatory ? '✓' : ''} | ${status} | ${item.primary_agent || '—'} |`)
+    })
+    const internalItems = cl.filter(i => i.internal)
+    if (internalItems.length) {
+      lines.push('\n_Internal items omitted from client-facing grid._')
+    }
+    sections.push(lines.join('\n'))
+  }
+
+  // ── Rewrite suggestions ────────────────────────────────────────────────────
+  const rw = output.rewrite_suggestions || []
+  if (rw.length) {
+    const lines = ['\n## Rewrite Suggestions\n']
+    rw.forEach((r, i) => {
+      lines.push(`### ${i + 1}. ${r.section || 'Rewrite'}`)
+      lines.push('**Original:**')
+      lines.push(`> ${(r.original || '').replace(/\n/g, '\n> ')}\n`)
+      lines.push('**Improved:**')
+      lines.push(`> ${(r.improved || '').replace(/\n/g, '\n> ')}\n`)
+      if (r.what_changed) lines.push(`_${r.what_changed}_`)
+      lines.push('')
+    })
+    sections.push(lines.join('\n'))
+  }
+
+  return sections.filter(Boolean).join('\n')
+}
+
 // ── Agent 3 → Markdown ────────────────────────────────────────────────────────
 
 export function agent3ToMarkdown(output, meta) {
