@@ -21,6 +21,8 @@ class LoginResponse(BaseModel):
 class UserResponse(BaseModel):
     user_id: str
     email: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 # Session models
 class SessionSummary(BaseModel):

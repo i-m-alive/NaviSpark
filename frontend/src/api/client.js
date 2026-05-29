@@ -133,3 +133,20 @@ export async function runAgent4(sessionId) {
   })
   return handleResponse(res)
 }
+
+export async function deleteSession(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function deleteSessions(sessionIds) {
+  const res = await fetch(`${API_URL}/sessions`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ session_ids: sessionIds }),
+  })
+  return handleResponse(res)
+}

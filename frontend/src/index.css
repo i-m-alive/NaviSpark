@@ -22,7 +22,10 @@
   .input-field {
     @apply bg-gray-900 border border-gray-700 text-gray-100 rounded-lg px-3 py-2.5 w-full
            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-           placeholder:text-gray-600 transition-colors duration-150;
+           placeholder:text-gray-600 transition-all duration-150;
+  }
+  .input-error {
+    @apply border-red-600 focus:ring-red-500;
   }
   .card {
     @apply bg-gray-900 border border-gray-800 rounded-xl p-5;
@@ -30,4 +33,121 @@
   .label {
     @apply text-sm font-medium text-gray-400 mb-1.5 block;
   }
+}
+
+/* ── Keyframe animations ────────────────────────────────────────────────────── */
+
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px); }
+  30%       { transform: translateX(6px); }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+  75%       { transform: translateX(-2px); }
+  90%       { transform: translateX(2px); }
+}
+
+@keyframes slide-down-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+  50%       { box-shadow: 0 0 20px 4px rgba(59,130,246,0.15); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes logo-spark {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.08); }
+}
+
+/* ── Animation utility classes ───────────────────────────────────────────────── */
+
+.animate-slide-up {
+  animation: slide-up-fade 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-up-delay {
+  animation: slide-up-fade 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+
+.animate-shake {
+  animation: shake 0.45s ease;
+}
+
+.animate-slide-down {
+  animation: slide-down-fade 0.25s ease both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.animate-logo-spark {
+  animation: logo-spark 2s ease-in-out infinite;
+}
+
+/* ── Auth page background grid ──────────────────────────────────────────────── */
+
+.auth-bg {
+  background-color: #030712;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Password strength bar transition ───────────────────────────────────────── */
+
+.strength-bar {
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.35s ease;
+}
+
+/* ── Glowing card border on focus-within ─────────────────────────────────────── */
+
+.auth-card {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.auth-card:focus-within {
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.05), 0 20px 60px rgba(0,0,0,0.4);
 }

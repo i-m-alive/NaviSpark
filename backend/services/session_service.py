@@ -63,6 +63,33 @@ def get_session(session_id: str, user_id: str) -> dict:
     return response.data
 
 
+def delete_session(session_id: str, user_id: str) -> None:
+    """Deletes a single session. Raises 404 if not found or not owned by user."""
+    supabase = get_supabase()
+    response = (
+        supabase.table(TABLE)
+        .delete()
+        .eq("id", session_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Session not found or access denied")
+
+
+def delete_sessions(session_ids: List[str], user_id: str) -> int:
+    """Bulk-deletes sessions by ID list. Only deletes rows owned by user_id. Returns count deleted."""
+    supabase = get_supabase()
+    response = (
+        supabase.table(TABLE)
+        .delete()
+        .in_("id", session_ids)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    return len(response.data or [])
+
+
 def get_user_sessions(user_id: str) -> List[dict]:
     """Returns all sessions for a user, ordered by created_at descending."""
     supabase = get_supabase()

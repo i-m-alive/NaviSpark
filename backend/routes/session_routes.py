@@ -5,8 +5,11 @@ from models import UploadResponse, ReportUrlResponse
 from auth import get_current_user
 from storage import upload_file_to_storage, get_signed_url
 from services.file_service import validate_and_detect, convert_pptx_to_pdf, count_pdf_pages
+from pydantic import BaseModel
+from typing import List as TypingList
 from services.session_service import (
-    create_session, update_session, get_session, get_user_sessions
+    create_session, update_session, get_session, get_user_sessions,
+    delete_session, delete_sessions,
 )
 
 router = APIRouter(tags=["sessions"])
@@ -112,6 +115,34 @@ async def get_session_detail(
     user = await get_current_user(authorization)
     session = get_session(session_id, user["id"])
     return session
+
+
+class BulkDeleteRequest(BaseModel):
+    session_ids: TypingList[str]
+
+
+@router.delete("/sessions/{session_id}", status_code=200)
+async def delete_session_route(
+    session_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """Permanently deletes a single proposal review. Ownership verified via JWT."""
+    user = await get_current_user(authorization)
+    delete_session(session_id, user["id"])
+    return {"message": "Proposal deleted successfully.", "session_id": session_id}
+
+
+@router.delete("/sessions", status_code=200)
+async def bulk_delete_sessions(
+    body: BulkDeleteRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """Bulk-deletes proposal reviews by ID list. Only the caller's own sessions are deleted."""
+    if not body.session_ids:
+        raise HTTPException(status_code=400, detail="session_ids must not be empty")
+    user = await get_current_user(authorization)
+    count = delete_sessions(body.session_ids, user["id"])
+    return {"message": f"{count} proposal(s) deleted.", "deleted_count": count}
 
 
 @router.get("/sessions/{session_id}/report-url", response_model=ReportUrlResponse)

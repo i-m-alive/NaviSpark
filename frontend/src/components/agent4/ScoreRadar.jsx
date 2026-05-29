@@ -1,4 +1,4 @@
-// Pure SVG radar chart — no external library required.
+// Pure SVG radar chart — zero dependencies, no recharts.
 
 const DIMENSIONS = [
   { key: 'section_completeness', label: 'Completeness' },

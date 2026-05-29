@@ -68,7 +68,12 @@ async def login(body: LoginRequest):
 async def get_me(authorization: Optional[str] = Header(None)):
     """Returns the currently logged-in user's info."""
     user = await get_current_user(authorization)
-    return UserResponse(user_id=user["id"], email=user["email"])
+    return UserResponse(
+        user_id=user["id"],
+        email=user["email"],
+        full_name=user.get("full_name"),
+        avatar_url=user.get("avatar_url"),
+    )
 
 
 @router.post("/logout")
