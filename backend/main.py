@@ -71,6 +71,7 @@ from config import settings
 from routes.auth_routes import router as auth_router
 from routes.session_routes import router as session_router
 from routes.agent_routes import router as agent_router
+from routes.chat_routes import router as chat_router
 
 app = FastAPI(
     title="NAVISPARK PS03 API",
@@ -96,6 +97,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(agent_router)
+app.include_router(chat_router)
 
 
 @app.get("/health")

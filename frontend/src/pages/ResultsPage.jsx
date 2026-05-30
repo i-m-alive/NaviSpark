@@ -30,6 +30,7 @@ import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCir
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
 import { downloadCurrentView, VIEW_DOWNLOAD_META, FORMAT_LABELS } from '../utils/viewDownloads'
 import { clsx } from 'clsx'
+import ChatPanel, { ChatToggleButton } from '../components/ChatPanel'
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -228,6 +229,7 @@ export default function ResultsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)        // mobile toggle
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
   const [downloadMenuPos, setDownloadMenuPos] = useState({ top: 0, right: 0 })
+  const [chatOpen, setChatOpen] = useState(false)
   const downloadMenuRef      = useRef(null)
   const downloadBtnRef       = useRef(null)
   const downloadDropdownRef  = useRef(null)
@@ -421,7 +423,10 @@ export default function ResultsPage() {
         </aside>
 
         {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-        <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-8">
+        <main
+          className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-8 transition-all duration-300"
+          style={{ paddingRight: chatOpen ? 'clamp(328px, 29vw, 428px)' : undefined }}
+        >
 
       {/* Sidebar toggle (always visible) */}
       <button
@@ -474,6 +479,12 @@ export default function ResultsPage() {
 
             return (
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* AI Chat toggle */}
+                <ChatToggleButton
+                  onClick={() => setChatOpen(o => !o)}
+                  active={chatOpen}
+                />
+
                 {/* Split download button + format dropdown */}
                 <div className="relative" ref={downloadMenuRef}>
                   <div className="flex items-stretch rounded-lg border border-blue-700/60"
@@ -770,6 +781,15 @@ export default function ResultsPage() {
         </div>
         </main>
       </div>
+
+      {/* ── AI Chat Panel ────────────────────────────────────────────────────── */}
+      {chatOpen && session?.proposal_group_id && (
+        <ChatPanel
+          groupId={session.proposal_group_id}
+          versionCount={history.length || 1}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   )
 }

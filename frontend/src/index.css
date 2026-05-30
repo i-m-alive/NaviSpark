@@ -747,6 +747,12 @@ html[data-theme] ::-webkit-scrollbar-track { background: var(--t-bg1); }
 html[data-theme] ::-webkit-scrollbar-thumb { background: var(--t-border3); border-radius: 3px; }
 html[data-theme] ::-webkit-scrollbar-thumb:hover { background: var(--t-text5); }
 
+/* ── Chat panel slide-in ─────────────────────────────────────────────────────── */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
 /* ── Selection highlight ─────────────────────────────────────────────────────── */
 html[data-theme] ::selection {
   background: rgba(59,130,246,0.35);

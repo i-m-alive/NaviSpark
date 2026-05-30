@@ -180,3 +180,40 @@ export async function deleteSessions(sessionIds) {
   })
   return handleResponse(res)
 }
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export async function getChatHistory(groupId) {
+  const res = await fetch(`${API_URL}/chat/${groupId}`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function clearChatHistory(groupId) {
+  const res = await fetch(`${API_URL}/chat/${groupId}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+/**
+ * Sends a chat message and returns a ReadableStream of SSE chunks.
+ * The caller is responsible for reading the stream.
+ * Each SSE line is: data: {"type":"delta","text":"..."} or {"type":"done"} or {"type":"error",...}
+ */
+export async function sendChatMessage(groupId, message, signal) {
+  const res = await fetch(`${API_URL}/chat/${groupId}/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ message }),
+    signal,
+  })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try { const d = await res.json(); detail = d.detail || detail } catch {}
+    throw new Error(detail)
+  }
+  return res.body  // ReadableStream
+}
