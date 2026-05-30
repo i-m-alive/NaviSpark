@@ -1,8 +1,6 @@
 FROM python:3.11-slim
 
-# Install system dependencies: LibreOffice for PPT→PDF conversion, libmagic for python-magic
-RUN apt-get update && apt-get install -y \
-    libreoffice \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     libmagic-dev \
     && rm -rf /var/lib/apt/lists/*
