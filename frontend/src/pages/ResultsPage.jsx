@@ -27,6 +27,7 @@ import DocumentSidebar       from '../components/results/DocumentSidebar'
 import ComparisonDashboard   from '../components/results/ComparisonDashboard'
 import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor, GitCompare } from 'lucide-react'
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
+import { downloadCurrentView, VIEW_DOWNLOAD_META } from '../utils/viewDownloads'
 import { clsx } from 'clsx'
 
 function formatDate(dateStr) {
@@ -446,12 +447,57 @@ export default function ResultsPage() {
             </p>
           </div>
 
-          {session.status === 'complete' && session.report_storage_path && (
-            <button onClick={handleDownload} disabled={downloading} className="btn-secondary flex items-center gap-2 text-sm flex-shrink-0">
-              <Download size={14} />
-              {downloading ? 'Loading…' : 'Download Report'}
-            </button>
-          )}
+          {session.status === 'complete' && session.agent4_output && (() => {
+            const viewKey = sidebarMode === 'compare_all' ? 'compare_all' : activeView
+            const meta    = VIEW_DOWNLOAD_META[viewKey] || VIEW_DOWNLOAD_META.executive
+            const currentIdx = history.findIndex(v => v.id === sessionId)
+            const prevSession = currentIdx > 0 ? history[currentIdx - 1] : null
+            return (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Context-aware primary download */}
+                <div className="flex flex-col items-end gap-0.5">
+                  <button
+                    onClick={() => downloadCurrentView({
+                      activeView,
+                      sidebarMode,
+                      output: session.agent4_output,
+                      session,
+                      history,
+                      prevSession,
+                    })}
+                    className="flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-lg text-white transition-all relative overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', boxShadow: '0 0 16px rgba(99,102,241,0.3)' }}
+                    title={meta.ext === 'PDF'
+                      ? 'Opens in a new tab — use the Print dialog to save as PDF'
+                      : `Download as ${meta.ext}`}
+                  >
+                    <Download size={13} />
+                    Download {meta.ext === 'PDF' ? 'PDF' : meta.ext}
+                    <span className="text-[9px] opacity-60 font-mono ml-0.5">
+                      ({meta.label})
+                    </span>
+                  </button>
+                  {meta.ext === 'PDF' && (
+                    <span className="text-[9px] text-gray-600 pr-0.5">
+                      Opens print dialog → Save as PDF
+                    </span>
+                  )}
+                </div>
+                {/* Raw MD download (kept as secondary) */}
+                {session.report_storage_path && (
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="btn-secondary flex items-center gap-1.5 text-xs px-2.5 py-2"
+                    title="Download raw Markdown from storage"
+                  >
+                    <FileType size={12} />
+                    {downloading ? '…' : 'Raw MD'}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Session metadata — hidden in compare mode to avoid double-context */}
