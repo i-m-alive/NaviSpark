@@ -100,6 +100,26 @@ export async function getReportUrl(sessionId) {
   return handleResponse(res)
 }
 
+// ── Revision / versioning ─────────────────────────────────
+
+export async function uploadRevision(parentSessionId, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${API_URL}/sessions/${parentSessionId}/upload-revision`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  })
+  return handleResponse(res)
+}
+
+export async function getSessionHistory(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/history`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
 // ── Pipeline ──────────────────────────────────────────────
 
 export async function startAnalysis(sessionId) {

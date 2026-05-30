@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import List as TypingList
 from services.session_service import (
     create_session, update_session, get_session, get_user_sessions,
-    delete_session, delete_sessions,
+    get_sessions_by_group, delete_session, delete_sessions,
 )
 
 router = APIRouter(tags=["sessions"])
@@ -143,6 +143,106 @@ async def bulk_delete_sessions(
     user = await get_current_user(authorization)
     count = delete_sessions(body.session_ids, user["id"])
     return {"message": f"{count} proposal(s) deleted.", "deleted_count": count}
+
+
+@router.post("/sessions/{session_id}/upload-revision")
+async def upload_revision(
+    session_id: str,
+    file: UploadFile = File(..., description="Revised PDF or PPTX proposal"),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Uploads a revised version of an existing proposal.
+    - Inherits client_industry, proposal_type, client_priorities from the parent.
+    - Creates a new session linked to the same proposal_group_id.
+    - Increments version_number automatically.
+    - Returns the new session_id immediately (run /run-analysis separately).
+    """
+    user = await get_current_user(authorization)
+    user_id = user["id"]
+
+    # Parent session must exist and be complete
+    parent = get_session(session_id, user_id)
+    if parent.get("status") != "complete":
+        raise HTTPException(
+            status_code=400,
+            detail="The original session must be complete before uploading a revision."
+        )
+
+    # Determine group and version
+    group_id     = parent.get("proposal_group_id") or session_id
+    all_versions = get_sessions_by_group(group_id, user_id)
+    next_version = len(all_versions) + 1
+
+    # Read + validate file
+    file_bytes        = await file.read()
+    original_filename = file.filename or "revised_proposal"
+    detected_type     = validate_and_detect(file_bytes, original_filename)
+
+    if detected_type in ("pptx", "ppt"):
+        pdf_bytes      = await convert_pptx_to_pdf(file_bytes, filename=original_filename)
+        file_type_label = "pptx"
+    else:
+        pdf_bytes      = file_bytes
+        file_type_label = "pdf"
+
+    page_count = count_pdf_pages(pdf_bytes)
+
+    # Create new session row inheriting context from parent
+    new_session = create_session(
+        user_id           = user_id,
+        original_filename = original_filename,
+        file_type         = file_type_label,
+        page_count        = page_count,
+        client_industry   = parent.get("client_industry") or [],
+        proposal_type     = parent.get("proposal_type") or "",
+        client_priorities = parent.get("client_priorities") or [],
+        proposal_group_id = group_id,
+        version_number    = next_version,
+        parent_session_id = session_id,
+    )
+    new_session_id = new_session["id"]
+
+    # Upload revised PDF to storage
+    storage_path = f"uploads/{user_id}/{new_session_id}/document.pdf"
+    upload_file_to_storage(storage_path, pdf_bytes, content_type="application/pdf")
+
+    update_session(new_session_id, user_id, {
+        "storage_path": storage_path,
+        "status": "ready",
+    })
+
+    return {
+        "session_id":     new_session_id,
+        "version_number": next_version,
+        "group_id":       group_id,
+        "page_count":     page_count,
+        "message":        f"Revision v{next_version} uploaded. Call /run-analysis to start.",
+    }
+
+
+@router.get("/sessions/{session_id}/history")
+async def get_session_history(
+    session_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Returns all versions of a proposal that share the same proposal_group_id,
+    ordered oldest first. Includes agent4_output for each completed version
+    so the frontend can render comparison views without extra round-trips.
+    """
+    user = await get_current_user(authorization)
+    user_id = user["id"]
+
+    session  = get_session(session_id, user_id)
+    group_id = session.get("proposal_group_id") or session_id
+    versions = get_sessions_by_group(group_id, user_id)
+
+    return {
+        "group_id": group_id,
+        "current_session_id": session_id,
+        "versions": versions,
+    }
 
 
 @router.get("/sessions/{session_id}/report-url", response_model=ReportUrlResponse)

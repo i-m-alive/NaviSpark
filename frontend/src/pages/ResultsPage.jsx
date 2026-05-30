@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getSession, getReportUrl, startAnalysis } from '../api/client'
+import { getSession, getReportUrl, startAnalysis, getSessionHistory } from '../api/client'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -14,13 +14,18 @@ import DoubleFlaggedIssues from '../components/agent4/DoubleFlaggedIssues'
 import TopStrengths from '../components/agent4/TopStrengths'
 import RewriteSuggestions from '../components/agent4/RewriteSuggestions'
 // Multi-view components
-import ExecutiveView     from '../components/results/ExecutiveView'
-import DashboardView     from '../components/results/DashboardView'
-import InDepthView       from '../components/results/InDepthView'
-import StoryboardView    from '../components/results/StoryboardView'
-import ActionPlanView    from '../components/results/ActionPlanView'
-import PresentationView  from '../components/results/PresentationView'
-import { FileText, Clock, Download, ArrowLeft, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor } from 'lucide-react'
+import ExecutiveView        from '../components/results/ExecutiveView'
+import DashboardView        from '../components/results/DashboardView'
+import InDepthView          from '../components/results/InDepthView'
+import StoryboardView       from '../components/results/StoryboardView'
+import ActionPlanView       from '../components/results/ActionPlanView'
+import PresentationView     from '../components/results/PresentationView'
+import ComparisonView        from '../components/results/ComparisonView'
+import VersionTimeline       from '../components/results/VersionTimeline'
+import UploadRevisionPanel   from '../components/results/UploadRevisionPanel'
+import DocumentSidebar       from '../components/results/DocumentSidebar'
+import ComparisonDashboard   from '../components/results/ComparisonDashboard'
+import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor, GitCompare } from 'lucide-react'
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
 import { clsx } from 'clsx'
 
@@ -149,6 +154,7 @@ function PipelineProgressScreen({ status }) {
             <div
               key={num}
               className={`bg-gray-900 border ${specialistsDone ? 'border-green-800' : c.border} rounded-xl p-4 transition-all duration-500`}
+              style={{ animation: `stat-enter 0.5s cubic-bezier(0.16,1,0.3,1) ${(num - 1) * 80}ms both` }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <div className={`p-1.5 ${specialistsDone ? 'bg-green-950' : c.bg} rounded-lg`}>
@@ -215,6 +221,9 @@ export default function ResultsPage() {
   const [downloading, setDownloading] = useState(false)
   const [startingAnalysis, setStartingAnalysis] = useState(false)
   const [activeView, setActiveView] = useState('executive')
+  const [history,     setHistory]     = useState([])          // all versions in the group
+  const [sidebarMode, setSidebarMode] = useState('report')    // 'report' | 'compare_all'
+  const [sidebarOpen, setSidebarOpen] = useState(true)        // mobile toggle
   const pollRef = useRef(null)
 
   const stopPolling = () => {
@@ -255,6 +264,15 @@ export default function ResultsPage() {
     }
   }, [session?.status])
 
+  // Load version history once the session is complete
+  useEffect(() => {
+    if (session?.status === 'complete') {
+      getSessionHistory(sessionId)
+        .then(data => setHistory(data.versions || []))
+        .catch(() => {})  // non-critical — history panel just won't show
+    }
+  }, [session?.status, sessionId])
+
   const handleDownload = async () => {
     setDownloading(true)
     try {
@@ -291,9 +309,57 @@ export default function ResultsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-950 flex flex-col">
         <Navbar />
-        <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
+        <div className="flex flex-1">
+          {/* Sidebar skeleton */}
+          <aside className="w-64 flex-shrink-0 border-r border-gray-800 p-3 space-y-3" style={{ height: 'calc(100vh - 64px)' }}>
+            <div className="px-1 py-4 border-b border-gray-800 space-y-2">
+              <div className="h-3 w-20 rounded bg-gray-800 animate-shimmer" />
+              <div className="h-2 w-14 rounded bg-gray-800/60 animate-shimmer" />
+            </div>
+            {[1, 2].map(i => (
+              <div key={i} className="rounded-xl border border-gray-800 p-3 flex gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-gray-800 animate-shimmer flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-2.5 w-16 rounded bg-gray-800 animate-shimmer" />
+                  <div className="h-3 w-28 rounded bg-gray-800/80 animate-shimmer" />
+                  <div className="h-2 w-12 rounded bg-gray-800/60 animate-shimmer" />
+                </div>
+              </div>
+            ))}
+          </aside>
+          {/* Main skeleton */}
+          <main className="flex-1 px-6 py-8 space-y-4">
+            <div className="space-y-2">
+              <div className="h-3 w-16 rounded bg-gray-800 animate-shimmer" />
+              <div className="h-6 w-72 rounded bg-gray-800/80 animate-shimmer" />
+              <div className="h-3 w-40 rounded bg-gray-800/60 animate-shimmer" />
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+              <div className="h-3 w-28 rounded bg-gray-800 animate-shimmer" />
+              <div className="grid grid-cols-2 gap-4">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="h-2.5 w-16 rounded bg-gray-800/70 animate-shimmer" />
+                    <div className="h-4 w-24 rounded bg-gray-800 animate-shimmer" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 h-14 rounded-xl bg-gray-900 border border-gray-800 animate-shimmer" />
+              <div className="flex-1 h-14 rounded-xl bg-gray-900 border border-gray-800 animate-shimmer" />
+              <div className="w-24 h-14 rounded-xl bg-gray-900 border border-gray-800 animate-shimmer" />
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-3">
+              <div className="h-20 rounded-xl bg-gray-800 animate-shimmer" />
+              <div className="h-3 w-full rounded bg-gray-800/70 animate-shimmer" />
+              <div className="h-3 w-4/5 rounded bg-gray-800/60 animate-shimmer" />
+              <div className="h-3 w-3/5 rounded bg-gray-800/50 animate-shimmer" />
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
@@ -304,8 +370,8 @@ export default function ResultsPage() {
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-16 text-center">
           <p className="text-red-400">{error || 'Session not found.'}</p>
-          <Link to="/dashboard" className="btn-secondary mt-4 inline-flex items-center gap-2 text-sm">
-            <ArrowLeft size={15} /> Back to Dashboard
+          <Link to="/" className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 border border-gray-700 hover:border-gray-500 text-sm text-gray-300 hover:text-white transition-all">
+            <Home size={14} /> Home
           </Link>
         </div>
       </div>
@@ -313,22 +379,67 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-950 flex flex-col">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
+        <aside
+          className={clsx(
+            'flex-shrink-0 border-r border-gray-800 bg-gray-950 transition-all duration-300 overflow-hidden',
+            sidebarOpen ? 'w-64' : 'w-0',
+          )}
+          style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', overflowY: 'auto' }}
+        >
+          <DocumentSidebar
+            versions={history}
+            currentSessionId={sessionId}
+            sidebarMode={sidebarMode}
+            onCompareDashboard={() => setSidebarMode('compare_all')}
+            onReportMode={() => setSidebarMode('report')}
+            currentSession={session}
+          />
+        </aside>
+
+        {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
+        <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-8">
+
+      {/* Sidebar toggle (always visible) */}
+      <button
+        onClick={() => setSidebarOpen(o => !o)}
+        className="fixed left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-12 bg-gray-800 border border-gray-700 border-l-0 rounded-r-lg flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-all"
+        style={{ left: sidebarOpen ? 256 : 0 }}
+        title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+      >
+        <span className="text-[10px]">{sidebarOpen ? '‹' : '›'}</span>
+      </button>
         {/* Page header */}
-        <div className="flex items-start justify-between mb-6">
+        <div
+          className="flex items-start justify-between mb-5"
+          style={{ animation: 'slide-up-fade 0.4s cubic-bezier(0.16,1,0.3,1) both' }}
+        >
           <div>
-            <Link to="/dashboard" className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 mb-2 transition-colors">
-              <ArrowLeft size={12} /> Dashboard
+            {/* Home navigation pill */}
+            <Link
+              to="/"
+              className="group inline-flex items-center gap-1.5 mb-2.5 text-xs font-medium text-gray-500 hover:text-white px-2.5 py-1 rounded-lg bg-gray-900 border border-gray-800 hover:border-gray-600 hover:bg-gray-800 transition-all duration-200"
+            >
+              <Home size={11} className="group-hover:text-blue-400 transition-colors" />
+              Home
             </Link>
-            <div className="flex items-center gap-2">
-              <FileText size={20} className="text-blue-400" />
-              <h1 className="text-lg font-semibold text-white truncate max-w-md">
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <FileText size={18} className="text-blue-400 flex-shrink-0" />
+              <h1 className="text-lg font-semibold text-white truncate max-w-sm">
                 {session.original_filename || 'Untitled Document'}
               </h1>
               <StatusBadge status={session.status} />
+              {(session.version_number || 1) > 1 && (
+                <span className="text-[10px] font-mono bg-blue-950 text-blue-300 border border-blue-800 px-1.5 py-0.5 rounded-full">
+                  V{session.version_number}
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
               <Clock size={11} /> {formatDate(session.created_at)}
@@ -336,15 +447,18 @@ export default function ResultsPage() {
           </div>
 
           {session.status === 'complete' && session.report_storage_path && (
-            <button onClick={handleDownload} disabled={downloading} className="btn-secondary flex items-center gap-2 text-sm">
+            <button onClick={handleDownload} disabled={downloading} className="btn-secondary flex items-center gap-2 text-sm flex-shrink-0">
               <Download size={14} />
               {downloading ? 'Loading…' : 'Download Report'}
             </button>
           )}
         </div>
 
-        {/* Session metadata */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-5">
+        {/* Session metadata — hidden in compare mode to avoid double-context */}
+        <div
+          className={clsx('bg-gray-900 border border-gray-800 rounded-xl p-5 mb-5 transition-all duration-300', sidebarMode === 'compare_all' && 'hidden')}
+          style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.06s both' }}
+        >
           <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Session Details</h2>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
@@ -371,7 +485,11 @@ export default function ResultsPage() {
         </div>
 
         {/* ── Analysis section — state-driven ─────────────────────────────── */}
-        <div className="space-y-4">
+        <div
+          key={`${session.status}-${sidebarMode}`}
+          className="space-y-4"
+          style={{ animation: 'slide-up-fade 0.45s cubic-bezier(0.16,1,0.3,1) 0.12s both' }}
+        >
 
           {/* Ready — not started yet */}
           {session.status === 'ready' && (
@@ -422,114 +540,134 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Complete — multi-view report */}
-          {session.status === 'complete' && session.agent4_output && (
+          {/* Complete — multi-view report (hidden when comparison dashboard is active) */}
+          {session.status === 'complete' && session.agent4_output && sidebarMode === 'report' && (
             <div>
-              {/* ── View switcher (6 views in two labelled groups) ────────────── */}
-              <div className="mb-5 animate-fade-in space-y-1.5">
+              {/* ── View switcher (6 views + optional Comparison tab) ────────── */}
+              {(() => {
+                // Previous version for comparison (the one directly before current)
+                const currentIdx = history.findIndex(v => v.id === sessionId)
+                const prevVersion = currentIdx > 0 ? history[currentIdx - 1] : null
+                const hasComparison = prevVersion && prevVersion.agent4_output
 
-                {/* Group row */}
-                <div className="flex gap-2">
+                return (
+                  <div className="mb-5 animate-fade-in space-y-1.5">
+                    <div className="flex gap-2">
 
-                  {/* Group 1 — Analysis (3 tabs) */}
-                  <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                    <div className="px-3 py-1.5 border-b border-gray-800 flex items-center justify-between">
-                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Analysis Views</span>
-                    </div>
-                    <div className="flex">
-                      {[
-                        { key: 'executive', label: 'Executive',  Icon: Eye,       active: 'bg-indigo-950/40 text-indigo-300', dot: 'bg-indigo-500' },
-                        { key: 'dashboard', label: 'Dashboard',  Icon: BarChart3,  active: 'bg-purple-950/40 text-purple-300', dot: 'bg-purple-500' },
-                        { key: 'indepth',   label: 'In-Depth',   Icon: Layers,    active: 'bg-teal-950/40 text-teal-300',     dot: 'bg-teal-500'   },
-                      ].map(({ key, label, Icon, active, dot }) => {
-                        const isActive = activeView === key
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => setActiveView(key)}
-                            className={clsx(
-                              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
-                              isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
-                            )}
-                          >
-                            <Icon size={13} />
-                            <span>{label}</span>
-                            {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                      {/* Group 1 — Analysis */}
+                      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-3 py-1.5 border-b border-gray-800">
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Analysis Views</span>
+                        </div>
+                        <div className="flex">
+                          {[
+                            { key: 'executive', label: 'Executive', Icon: Eye,      active: 'bg-indigo-950/40 text-indigo-300', dot: 'bg-indigo-500' },
+                            { key: 'dashboard', label: 'Dashboard', Icon: BarChart3, active: 'bg-purple-950/40 text-purple-300', dot: 'bg-purple-500' },
+                            { key: 'indepth',   label: 'In-Depth',  Icon: Layers,   active: 'bg-teal-950/40 text-teal-300',     dot: 'bg-teal-500'   },
+                          ].map(({ key, label, Icon, active, dot }) => {
+                            const isActive = activeView === key
+                            return (
+                              <button key={key} onClick={() => setActiveView(key)}
+                                className={clsx('flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                                  isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40')}>
+                                <Icon size={13} /><span>{label}</span>
+                                {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Group 2 — Working views + optional Comparison */}
+                      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-3 py-1.5 border-b border-gray-800">
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Working Views</span>
+                        </div>
+                        <div className="flex">
+                          {[
+                            { key: 'storyboard',   label: 'Story',   Icon: BookOpen,    active: 'bg-orange-950/40 text-orange-300', dot: 'bg-orange-500' },
+                            { key: 'actionplan',   label: 'Plan',    Icon: CheckSquare, active: 'bg-green-950/40 text-green-300',   dot: 'bg-green-500'  },
+                            { key: 'presentation', label: 'Present', Icon: Monitor,     active: 'bg-sky-950/40 text-sky-300',       dot: 'bg-sky-500'    },
+                            ...(hasComparison ? [{ key: 'comparison', label: 'Compare', Icon: GitCompare, active: 'bg-violet-950/40 text-violet-300', dot: 'bg-violet-500' }] : []),
+                          ].map(({ key, label, Icon, active, dot }) => {
+                            const isActive = activeView === key
+                            return (
+                              <button key={key} onClick={() => setActiveView(key)}
+                                className={clsx('flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                                  isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
+                                  key === 'comparison' && !isActive && 'border border-dashed border-violet-900/40')}>
+                                <Icon size={13} /><span>{label}</span>
+                                {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Export */}
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                        <div className="px-3 py-1.5 border-b border-gray-800">
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Export</span>
+                        </div>
+                        <div className="flex flex-1 items-center gap-1 px-2">
+                          <button onClick={() => downloadJson(session.agent4_output, `verdict_${slug}.json`)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors">
+                            <FileJson size={11} /> JSON
                           </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Group 2 — Work (3 tabs) */}
-                  <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                    <div className="px-3 py-1.5 border-b border-gray-800 flex items-center justify-between">
-                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Working Views</span>
-                    </div>
-                    <div className="flex">
-                      {[
-                        { key: 'storyboard',    label: 'Storyboard',   Icon: BookOpen,    active: 'bg-orange-950/40 text-orange-300',  dot: 'bg-orange-500'  },
-                        { key: 'actionplan',    label: 'Action Plan',  Icon: CheckSquare, active: 'bg-green-950/40 text-green-300',     dot: 'bg-green-500'   },
-                        { key: 'presentation',  label: 'Present',      Icon: Monitor,     active: 'bg-sky-950/40 text-sky-300',         dot: 'bg-sky-500'     },
-                      ].map(({ key, label, Icon, active, dot }) => {
-                        const isActive = activeView === key
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => setActiveView(key)}
-                            className={clsx(
-                              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
-                              isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
-                            )}
-                          >
-                            <Icon size={13} />
-                            <span>{label}</span>
-                            {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                          <button onClick={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `verdict_${slug}.md`)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors">
+                            <FileType size={11} /> MD
                           </button>
-                        )
-                      })}
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Download buttons */}
-                  <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-                    <div className="px-3 py-1.5 border-b border-gray-800">
-                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Export</span>
-                    </div>
-                    <div className="flex flex-1 items-center gap-1 px-2">
-                      <button
-                        onClick={() => downloadJson(session.agent4_output, `verdict_${slug}.json`)}
-                        title="Download as JSON"
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
-                      >
-                        <FileJson size={11} /> JSON
-                      </button>
-                      <button
-                        onClick={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `verdict_${slug}.md`)}
-                        title="Download as Markdown"
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
-                      >
-                        <FileType size={11} /> MD
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                )
+              })()}
 
               {/* ── Active view ──────────────────────────────────────────────── */}
-              <div key={activeView} style={{ animation: 'slide-up-fade 0.35s cubic-bezier(0.16,1,0.3,1) both' }}>
-                {activeView === 'executive'    && <ExecutiveView    output={session.agent4_output} session={session} />}
-                {activeView === 'dashboard'    && <DashboardView    output={session.agent4_output} session={session} />}
-                {activeView === 'indepth'      && <InDepthView      output={session.agent4_output} session={session} />}
-                {activeView === 'storyboard'   && <StoryboardView   output={session.agent4_output} session={session} />}
-                {activeView === 'actionplan'   && <ActionPlanView   output={session.agent4_output} session={session} />}
-                {activeView === 'presentation' && <PresentationView output={session.agent4_output} session={session} />}
+              {(() => {
+                const currentIdx = history.findIndex(v => v.id === sessionId)
+                const prevVersion = currentIdx > 0 ? history[currentIdx - 1] : null
+                return (
+                  <div key={activeView} style={{ animation: 'slide-up-fade 0.35s cubic-bezier(0.16,1,0.3,1) both' }}>
+                    {activeView === 'executive'    && <ExecutiveView    output={session.agent4_output} session={session} />}
+                    {activeView === 'dashboard'    && <DashboardView    output={session.agent4_output} session={session} />}
+                    {activeView === 'indepth'      && <InDepthView      output={session.agent4_output} session={session} />}
+                    {activeView === 'storyboard'   && <StoryboardView   output={session.agent4_output} session={session} />}
+                    {activeView === 'actionplan'   && <ActionPlanView   output={session.agent4_output} session={session} />}
+                    {activeView === 'presentation' && <PresentationView output={session.agent4_output} session={session} />}
+                    {activeView === 'comparison'   && (
+                      <ComparisonView
+                        currentSession={{ ...session, agent4_output: session.agent4_output }}
+                        prevSession={prevVersion}
+                      />
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* ── Upload revised document panel ────────────────────────────── */}
+              <div id="upload-revision-panel">
+                <UploadRevisionPanel
+                  sessionId={sessionId}
+                  versionNumber={session.version_number || history.length || 1}
+                  parentFilename={session.original_filename}
+                />
               </div>
             </div>
           )}
 
+          {/* ── Comparison dashboard — replaces individual report ──────────── */}
+          {sidebarMode === 'compare_all' && (
+            <div key="compare_all" style={{ animation: 'slide-up-fade 0.4s cubic-bezier(0.16,1,0.3,1) both' }}>
+              <ComparisonDashboard versions={history} />
+            </div>
+          )}
+
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

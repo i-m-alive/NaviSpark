@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { clsx } from 'clsx'
 import { ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Zap } from 'lucide-react'
 
@@ -596,15 +597,18 @@ export default function PresentationView({ output, session }) {
     </div>
   )
 
-  // ── Fullscreen overlay ─────────────────────────────────────────────────────
+  // ── Embedded view (always rendered) ──────────────────────────────────────
 
-  if (isFullscreen) {
-    return (
+  return (
+    <>
+    {/* Fullscreen overlay — rendered via portal directly on document.body so it
+        breaks out of every parent stacking context (sticky sidebar, overflow-hidden,
+        etc.) that would otherwise clip a position:fixed element. */}
+    {isFullscreen && createPortal(
       <div
         className="fixed inset-0 z-[9999] bg-gray-950 flex flex-col"
         style={{ animation: 'fade-in 0.2s ease both' }}
       >
-        {/* Close button */}
         <div className="absolute top-4 right-4 z-50">
           <button
             onClick={() => setFullscreen(false)}
@@ -613,26 +617,14 @@ export default function PresentationView({ output, session }) {
             <X size={16} />
           </button>
         </div>
-
-        {/* Full-screen slide */}
         <SlideArea height="100%" />
+        <NavControls current={current} total={total} onPrev={goPrev} onNext={goNext}
+          isFullscreen onToggleFullscreen={() => setFullscreen(false)} />
+      </div>,
+      document.body
+    )}
 
-        {/* Nav controls */}
-        <NavControls
-          current={current}
-          total={total}
-          onPrev={goPrev}
-          onNext={goNext}
-          isFullscreen
-          onToggleFullscreen={() => setFullscreen(false)}
-        />
-      </div>
-    )
-  }
-
-  // ── Embedded view ──────────────────────────────────────────────────────────
-
-  return (
+    {/* ── Embedded view ─────────────────────────────────────────────── */}
     <div className="max-w-4xl mx-auto pb-8 space-y-4">
 
       {/* Header */}
@@ -691,5 +683,6 @@ export default function PresentationView({ output, session }) {
         </p>
       </div>
     </div>
+    </>
   )
 }
