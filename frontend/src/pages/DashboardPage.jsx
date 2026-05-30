@@ -32,12 +32,6 @@ function firstName(user) {
 }
 
 // ── Filter/sort config ────────────────────────────────────────────────────────
-const STATUS_GROUPS = {
-  all:         { label: 'All',         statuses: null },
-  complete:    { label: 'Complete',    statuses: ['complete'] },
-  in_progress: { label: 'In Progress', statuses: ['agent1_complete','agent2_complete','agent3_complete','agents_complete'] },
-  ready:       { label: 'Ready',       statuses: ['ready'] },
-}
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -158,7 +152,6 @@ export default function DashboardPage() {
 
   // Search & filter
   const [search, setSearch]         = useState('')
-  const [statusFilter, setStatus]   = useState('all')
   const [typeFilter, setType]       = useState('all')
   const [sortBy, setSort]           = useState('newest')
 
@@ -184,11 +177,6 @@ export default function DashboardPage() {
       list = list.filter(p => (p.original_filename || '').toLowerCase().includes(q))
     }
 
-    if (statusFilter !== 'all') {
-      const allowed = STATUS_GROUPS[statusFilter]?.statuses || []
-      list = list.filter(p => allowed.includes(p.status))
-    }
-
     if (typeFilter !== 'all') {
       list = list.filter(p => p.proposal_type === typeFilter)
     }
@@ -198,9 +186,9 @@ export default function DashboardPage() {
     else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
     return list
-  }, [proposals, search, statusFilter, typeFilter, sortBy])
+  }, [proposals, search, typeFilter, sortBy])
 
-  const isFiltered = search || statusFilter !== 'all' || typeFilter !== 'all'
+  const isFiltered = search || typeFilter !== 'all'
 
   // ── Selection helpers ─────────────────────────────────────────────────────
   const toggleSelect = (id) => setSelected(prev => {
@@ -320,23 +308,6 @@ export default function DashboardPage() {
                     <X size={13} />
                   </button>
                 )}
-              </div>
-
-              {/* Status tabs */}
-              <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
-                {Object.entries(STATUS_GROUPS).map(([key, { label }]) => (
-                  <button
-                    key={key}
-                    onClick={() => setStatus(key)}
-                    className={`px-3 py-1 text-xs rounded-md font-medium transition-all duration-150 ${
-                      statusFilter === key
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-300'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
               </div>
 
               {/* Type + sort filters */}
