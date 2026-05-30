@@ -16,6 +16,7 @@ function VerdictBadge({ verdict }) {
   const colors = {
     'READY TO SEND':          'bg-green-900 text-green-300 border-green-700',
     'REVISE BEFORE SENDING':  'bg-yellow-900 text-yellow-300 border-yellow-700',
+    'NEEDS MAJOR REVISION':   'bg-red-900 text-red-300 border-red-700',
     'DO NOT SEND':            'bg-red-900 text-red-300 border-red-700',
   }
   return (

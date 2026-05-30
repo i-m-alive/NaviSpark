@@ -264,7 +264,7 @@ export function agent4ToMarkdown(output, meta) {
   sections.push(metaBlock('Agent 4 — Chief Proposal Review Officer (Final Verdict)', meta))
 
   // ── Verdict block ──────────────────────────────────────────────────────────
-  const verdictEmoji = output.verdict === 'READY TO SEND' ? '✅' : output.verdict === 'DO NOT SEND' ? '❌' : '⚠️'
+  const verdictEmoji = output.verdict === 'READY TO SEND' ? '✅' : output.verdict === 'NEEDS MAJOR REVISION' ? '🔄' : '⚠️'
   sections.push(
     `## ${verdictEmoji} Verdict: ${output.verdict || '—'}\n\n` +
     `**Overall Score:** ${output.overall_score != null ? output.overall_score.toFixed(1) : '—'} / 10\n\n` +

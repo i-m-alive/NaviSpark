@@ -49,7 +49,7 @@ INNOVATION_WEIGHTS = {
 VERDICT_THRESHOLDS = {
     "READY TO SEND": 8.0,         # score >= 8.0
     "REVISE BEFORE SENDING": 5.0, # score >= 5.0 and < 8.0
-    "DO NOT SEND": 0.0,           # score < 5.0
+    "NEEDS MAJOR REVISION": 0.0,           # score < 5.0
 }
 
 
@@ -139,4 +139,4 @@ def compute_verdict(overall_score: float) -> str:
         return "READY TO SEND"
     if overall_score >= VERDICT_THRESHOLDS["REVISE BEFORE SENDING"]:
         return "REVISE BEFORE SENDING"
-    return "DO NOT SEND"
+    return "NEEDS MAJOR REVISION"

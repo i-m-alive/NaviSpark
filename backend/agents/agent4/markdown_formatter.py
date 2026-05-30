@@ -43,7 +43,7 @@ def format_to_markdown(output: dict) -> str:
 
     # Verdict block
     verdict = output.get("verdict", "—")
-    verdict_emoji = "✅" if verdict == "READY TO SEND" else ("❌" if verdict == "DO NOT SEND" else "⚠️")
+    verdict_emoji = "✅" if verdict == "READY TO SEND" else ("❌" if verdict == "NEEDS MAJOR REVISION" else "⚠️")
     overall = output.get("overall_score")
     weights = output.get("weights", {})
 

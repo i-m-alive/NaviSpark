@@ -13,8 +13,16 @@ import CrossConsistencyPanel from '../components/agent4/CrossConsistencyPanel'
 import DoubleFlaggedIssues from '../components/agent4/DoubleFlaggedIssues'
 import TopStrengths from '../components/agent4/TopStrengths'
 import RewriteSuggestions from '../components/agent4/RewriteSuggestions'
-import { FileText, Clock, Download, ArrowLeft, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType } from 'lucide-react'
+// Multi-view components
+import ExecutiveView     from '../components/results/ExecutiveView'
+import DashboardView     from '../components/results/DashboardView'
+import InDepthView       from '../components/results/InDepthView'
+import StoryboardView    from '../components/results/StoryboardView'
+import ActionPlanView    from '../components/results/ActionPlanView'
+import PresentationView  from '../components/results/PresentationView'
+import { FileText, Clock, Download, ArrowLeft, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor } from 'lucide-react'
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
+import { clsx } from 'clsx'
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -206,6 +214,7 @@ export default function ResultsPage() {
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [startingAnalysis, setStartingAnalysis] = useState(false)
+  const [activeView, setActiveView] = useState('executive')
   const pollRef = useRef(null)
 
   const stopPolling = () => {
@@ -307,7 +316,7 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-gray-950">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Page header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -413,13 +422,110 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Complete — show Agent 4 output only */}
+          {/* Complete — multi-view report */}
           {session.status === 'complete' && session.agent4_output && (
-            <Agent4Results
-              output={session.agent4_output}
-              onDownloadJson={() => downloadJson(session.agent4_output, `verdict_${slug}.json`)}
-              onDownloadMarkdown={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `verdict_${slug}.md`)}
-            />
+            <div>
+              {/* ── View switcher (6 views in two labelled groups) ────────────── */}
+              <div className="mb-5 animate-fade-in space-y-1.5">
+
+                {/* Group row */}
+                <div className="flex gap-2">
+
+                  {/* Group 1 — Analysis (3 tabs) */}
+                  <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                    <div className="px-3 py-1.5 border-b border-gray-800 flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Analysis Views</span>
+                    </div>
+                    <div className="flex">
+                      {[
+                        { key: 'executive', label: 'Executive',  Icon: Eye,       active: 'bg-indigo-950/40 text-indigo-300', dot: 'bg-indigo-500' },
+                        { key: 'dashboard', label: 'Dashboard',  Icon: BarChart3,  active: 'bg-purple-950/40 text-purple-300', dot: 'bg-purple-500' },
+                        { key: 'indepth',   label: 'In-Depth',   Icon: Layers,    active: 'bg-teal-950/40 text-teal-300',     dot: 'bg-teal-500'   },
+                      ].map(({ key, label, Icon, active, dot }) => {
+                        const isActive = activeView === key
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setActiveView(key)}
+                            className={clsx(
+                              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                              isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
+                            )}
+                          >
+                            <Icon size={13} />
+                            <span>{label}</span>
+                            {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Group 2 — Work (3 tabs) */}
+                  <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                    <div className="px-3 py-1.5 border-b border-gray-800 flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Working Views</span>
+                    </div>
+                    <div className="flex">
+                      {[
+                        { key: 'storyboard',    label: 'Storyboard',   Icon: BookOpen,    active: 'bg-orange-950/40 text-orange-300',  dot: 'bg-orange-500'  },
+                        { key: 'actionplan',    label: 'Action Plan',  Icon: CheckSquare, active: 'bg-green-950/40 text-green-300',     dot: 'bg-green-500'   },
+                        { key: 'presentation',  label: 'Present',      Icon: Monitor,     active: 'bg-sky-950/40 text-sky-300',         dot: 'bg-sky-500'     },
+                      ].map(({ key, label, Icon, active, dot }) => {
+                        const isActive = activeView === key
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setActiveView(key)}
+                            className={clsx(
+                              'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                              isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
+                            )}
+                          >
+                            <Icon size={13} />
+                            <span>{label}</span>
+                            {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Download buttons */}
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                    <div className="px-3 py-1.5 border-b border-gray-800">
+                      <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Export</span>
+                    </div>
+                    <div className="flex flex-1 items-center gap-1 px-2">
+                      <button
+                        onClick={() => downloadJson(session.agent4_output, `verdict_${slug}.json`)}
+                        title="Download as JSON"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
+                      >
+                        <FileJson size={11} /> JSON
+                      </button>
+                      <button
+                        onClick={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `verdict_${slug}.md`)}
+                        title="Download as Markdown"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
+                      >
+                        <FileType size={11} /> MD
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Active view ──────────────────────────────────────────────── */}
+              <div key={activeView} style={{ animation: 'slide-up-fade 0.35s cubic-bezier(0.16,1,0.3,1) both' }}>
+                {activeView === 'executive'    && <ExecutiveView    output={session.agent4_output} session={session} />}
+                {activeView === 'dashboard'    && <DashboardView    output={session.agent4_output} session={session} />}
+                {activeView === 'indepth'      && <InDepthView      output={session.agent4_output} session={session} />}
+                {activeView === 'storyboard'   && <StoryboardView   output={session.agent4_output} session={session} />}
+                {activeView === 'actionplan'   && <ActionPlanView   output={session.agent4_output} session={session} />}
+                {activeView === 'presentation' && <PresentationView output={session.agent4_output} session={session} />}
+              </div>
+            </div>
           )}
 
         </div>

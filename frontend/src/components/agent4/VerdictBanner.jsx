@@ -14,12 +14,20 @@ export default function VerdictBanner({ overallScore, verdict, agent1Score, agen
       badge: 'bg-yellow-900 text-yellow-200 border-yellow-600',
       icon: '⚠',
     },
+    'NEEDS MAJOR REVISION': {
+      bg: 'bg-red-950',
+      border: 'border-red-800',
+      text: 'text-red-300',
+      badge: 'bg-red-900 text-red-200 border-red-700',
+      icon: '↻',
+    },
+    // backward-compat for existing Supabase records
     'DO NOT SEND': {
       bg: 'bg-red-950',
       border: 'border-red-800',
       text: 'text-red-300',
       badge: 'bg-red-900 text-red-200 border-red-700',
-      icon: '✕',
+      icon: '↻',
     },
   }
 
@@ -36,7 +44,7 @@ export default function VerdictBanner({ overallScore, verdict, agent1Score, agen
   return (
     <div className={`${cfg.bg} border ${cfg.border} rounded-2xl overflow-hidden`}>
       {/* Top accent bar */}
-      <div className={`h-1 w-full ${verdict === 'READY TO SEND' ? 'bg-green-500' : verdict === 'DO NOT SEND' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+      <div className={`h-1 w-full ${verdict === 'READY TO SEND' ? 'bg-green-500' : verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND' ? 'bg-red-500' : 'bg-yellow-500'}`} />
 
       <div className="p-6">
         {/* Header row */}

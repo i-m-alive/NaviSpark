@@ -87,6 +87,7 @@ function VerdictBadge({ verdict }) {
   const map = {
     'READY TO SEND':         { bg: 'rgba(6,78,59,0.4)',  border: 'rgba(34,197,94,0.3)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
     'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.4)',  border: 'rgba(234,179,8,0.3)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
+    'NEEDS MAJOR REVISION':  { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
     'DO NOT SEND':           { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
   }
   const cfg = map[verdict]

@@ -405,7 +405,7 @@ function NeedsAttentionSection({ proposals }) {
   const items = proposals.filter(p =>
     p.status === 'pipeline_failed' ||
     (p.agent4_output?.overall_score != null && p.agent4_output.overall_score < 5.0) ||
-    p.agent4_output?.verdict === 'DO NOT SEND'
+    p.agent4_output?.verdict === 'NEEDS MAJOR REVISION' || p.agent4_output?.verdict === 'DO NOT SEND'
   )
   if (!items.length) return null
   return (
@@ -423,8 +423,8 @@ function NeedsAttentionSection({ proposals }) {
           const verdict = p.agent4_output?.verdict
           const reason  = p.status === 'pipeline_failed'
             ? 'Analysis failed — click to retry'
-            : verdict === 'DO NOT SEND'
-            ? `DO NOT SEND · Score ${score?.toFixed(1)}`
+            : verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND'
+            ? `Needs Major Revision · Score ${score?.toFixed(1)}`
             : `Low score: ${score?.toFixed(1)} / 10`
           return (
             <Link key={p.id} to={`/results/${p.id}`}

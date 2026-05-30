@@ -8,3 +8,9 @@ def get_supabase() -> Client:
     if _client is None:
         _client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     return _client
+
+def reset_supabase() -> None:
+    """Discard the cached client so the next get_supabase() creates a fresh one.
+    Call this after a network-level failure to avoid reusing a broken HTTP/2 connection."""
+    global _client
+    _client = None

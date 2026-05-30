@@ -1,26 +1,56 @@
-from database import get_supabase
+import time
+import logging
+from database import get_supabase, reset_supabase
+
+logger = logging.getLogger(__name__)
 
 BUCKET_NAME = "navispark-uploads"
 
 def upload_file_to_storage(storage_path: str, file_bytes: bytes, content_type: str = "application/pdf") -> str:
     """
     Uploads file_bytes to Supabase Storage at the given path.
+    Retries up to 3 times with exponential backoff and client reset on each failure.
+    This guards against the Windows HTTP/2 WinError 10035 (non-blocking socket) which
+    causes storage3 to raise UnboundLocalError on its 'response' variable.
     Returns the storage path on success.
     """
-    supabase = get_supabase()
+    last_exc: Exception | None = None
 
-    try:
-        supabase.storage.from_(BUCKET_NAME).remove([storage_path])
-    except Exception:
-        pass  # File doesn't exist yet, that's fine
+    for attempt in range(3):
+        try:
+            supabase = get_supabase()
 
-    supabase.storage.from_(BUCKET_NAME).upload(
-        path=storage_path,
-        file=file_bytes,
-        file_options={"content-type": content_type, "upsert": "true"}
-    )
+            # Best-effort delete before upload (ignore errors)
+            try:
+                supabase.storage.from_(BUCKET_NAME).remove([storage_path])
+            except Exception:
+                pass
 
-    return storage_path
+            supabase.storage.from_(BUCKET_NAME).upload(
+                path=storage_path,
+                file=file_bytes,
+                file_options={"content-type": content_type, "upsert": "true"},
+            )
+            return storage_path
+
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "Storage upload attempt %d/3 failed for %s — %s: %s. %s",
+                attempt + 1,
+                storage_path,
+                type(exc).__name__,
+                exc,
+                "Retrying with fresh client…" if attempt < 2 else "Giving up.",
+            )
+            # Drop the potentially broken HTTP/2 client so the next attempt gets a fresh one
+            reset_supabase()
+            if attempt < 2:
+                time.sleep(0.5 * (2 ** attempt))  # 0.5 s, then 1 s
+
+    raise RuntimeError(
+        f"Storage upload failed after 3 attempts for {storage_path}"
+    ) from last_exc
 
 
 def download_file_from_storage(storage_path: str) -> bytes:
