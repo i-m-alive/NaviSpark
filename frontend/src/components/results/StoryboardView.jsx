@@ -232,7 +232,7 @@ function Chapter({ number, title, agentTag, score, narrative, keyFinding, mostIm
     >
       {/* Header — clickable to collapse */}
       <div
-        className={clsx('px-6 py-4 cursor-pointer select-none flex items-center gap-4', cfg.headBg)}
+        className={clsx('px-4 sm:px-6 py-4 cursor-pointer select-none flex items-center gap-4', cfg.headBg)}
         onClick={() => setOpen(o => !o)}
       >
         <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', cfg.headBg, 'border', cfg.border.replace('border-l-','border-'))}>
@@ -258,7 +258,7 @@ function Chapter({ number, title, agentTag, score, narrative, keyFinding, mostIm
 
       {/* Body */}
       {open && (
-        <div className="px-6 pb-6 pt-4 space-y-4">
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4 space-y-4">
 
           {/* Narrative paragraph */}
           <p className="text-[14px] text-gray-300 leading-[1.8] font-light">{narrative}</p>
@@ -400,7 +400,7 @@ export default function StoryboardView({ output, session }) {
 
       {/* Header */}
       <div
-        className="flex items-center justify-between mb-5"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5"
         style={{ animation: 'slide-up-fade 0.45s cubic-bezier(0.16,1,0.3,1) both' }}
       >
         <div>

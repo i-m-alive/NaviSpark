@@ -178,7 +178,7 @@ function TierSection({ tier, items, checked, onToggle }) {
     >
       {/* Section header */}
       <div
-        className={clsx('flex items-center gap-3 px-4 py-3 cursor-pointer border-b select-none', tier.headCls)}
+        className={clsx('flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 cursor-pointer border-b select-none', tier.headCls)}
         onClick={() => setCollapsed(c => !c)}
       >
         <tier.Icon size={14} className={tier.iconCls} />
@@ -244,7 +244,7 @@ function ReadinessBanner({ criticalTotal, criticalDone, totalDone, totalItems })
   return (
     <div
       className={clsx(
-        'rounded-2xl border p-5 flex items-center gap-5 transition-all duration-500',
+        'rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center gap-5 transition-all duration-500',
         criticalAllDone
           ? 'bg-green-950/40 border-green-800/60'
           : 'bg-gray-900 border-gray-800',
@@ -368,7 +368,7 @@ export default function ActionPlanView({ output, session }) {
 
       {/* Header */}
       <div
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
         style={{ animation: 'slide-up-fade 0.45s cubic-bezier(0.16,1,0.3,1) both' }}
       >
         <div>

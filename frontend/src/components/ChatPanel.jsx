@@ -278,7 +278,7 @@ export default function ChatPanel({ groupId, versionCount, onClose }) {
     <div
       className="fixed right-0 top-0 h-full flex flex-col z-[9998]"
       style={{
-        width: 'clamp(320px, 28vw, 420px)',
+        width: 'min(100vw, clamp(320px, 28vw, 420px))',
         background: 'var(--t-bg1,#030712)',
         borderLeft: '1px solid var(--t-border1,#1f2937)',
         boxShadow: '-8px 0 40px rgba(0,0,0,0.4)',

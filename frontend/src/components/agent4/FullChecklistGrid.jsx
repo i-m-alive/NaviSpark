@@ -127,7 +127,7 @@ export default function FullChecklistGrid({ checklistCoverage }) {
 
       {/* ── Header row ─────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-3 border-b border-gray-800">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
           <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
             Proposal Checklist Coverage — All 3 Sheets
           </h3>
@@ -139,7 +139,7 @@ export default function FullChecklistGrid({ checklistCoverage }) {
         </div>
 
         {/* ── Sheet tabs + Internal toggle ──────────────────────────────── */}
-        <div className="flex items-center gap-1 mt-3">
+        <div className="flex flex-wrap items-center gap-1 mt-3">
           {SHEET_ORDER.map(sheet => {
             const items = bySheet[sheet] || []
             const missingCount = items.filter(i => i.status === 'MISSING').length

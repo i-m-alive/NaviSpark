@@ -329,7 +329,7 @@ function DeltaSummaryStrip({ first, latest }) {
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
       {deltas.map(({ label, prev, curr, color }) => {
         const d     = (curr - prev)
         const isPos = d > 0

@@ -160,7 +160,7 @@ function buildSlides(output, session) {
 
 function SlideCover({ slide }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-6">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-6">
       {/* Branding */}
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-800/50 flex items-center justify-center">
@@ -206,7 +206,7 @@ function SlideCover({ slide }) {
 function SlideScores({ slide }) {
   const vs = verdictStyle(slide.verdict)
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-12 space-y-8">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-12 space-y-8">
       <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">Score Overview</p>
 
       {/* Overall ring + verdict */}
@@ -218,7 +218,7 @@ function SlideScores({ slide }) {
       </div>
 
       {/* Three agent rings */}
-      <div className="flex items-end gap-12 justify-center">
+      <div className="flex items-end gap-6 sm:gap-12 justify-center flex-wrap">
         <ScoreRing score={slide.a1} size={72} label="Completeness" />
         <ScoreRing score={slide.a2} size={72} label="Commercial" />
         <ScoreRing score={slide.a3} size={72} label="Competitive" />
@@ -238,7 +238,7 @@ function SlideVerdict({ slide }) {
     : 'This proposal needs revisions before it can be submitted.'
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-6">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-6">
       <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">Verdict</p>
 
       <div
@@ -270,7 +270,7 @@ function SlideStrengths({ slide }) {
   const icons  = ['✦', '✧', '◈']
   const colors = ['text-green-400', 'text-teal-400', 'text-emerald-400']
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-8">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-8">
       <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">What's Working</p>
       <h2 className="text-3xl font-bold text-white">Top Strengths</h2>
       <div className="space-y-5 w-full max-w-2xl text-left">
@@ -287,7 +287,7 @@ function SlideStrengths({ slide }) {
 
 function SlideIssues({ slide }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-8">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-8">
       <div>
         <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest mb-2">What Needs Fixing</p>
         <h2 className="text-3xl font-bold text-white">
@@ -311,7 +311,7 @@ function SlideIssues({ slide }) {
 
 function SlideActions({ slide }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-8">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-8">
       <div>
         <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest mb-2">If Time Allows</p>
         <h2 className="text-3xl font-bold text-white">Priority Actions</h2>
@@ -338,7 +338,7 @@ function SlideBreakdown({ slide }) {
     { label: 'Overall Score',            score: slide.overall, color: scoreColor(slide.overall), bold: true },
   ]
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-8">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-8">
       <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">Score Breakdown</p>
       <h2 className="text-3xl font-bold text-white">How the Score was Calculated</h2>
       <div className="space-y-4 w-full max-w-xl text-left">
@@ -377,7 +377,7 @@ function SlideRecommendation({ slide }) {
     : `Address the ${slide.mustFix.length} critical issue${slide.mustFix.length > 1 ? 's' : ''} before submission.`
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-16 space-y-6">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 sm:px-16 space-y-6">
       <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">Our Recommendation</p>
 
       <div
@@ -629,7 +629,7 @@ export default function PresentationView({ output, session }) {
 
       {/* Header */}
       <div
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
         style={{ animation: 'slide-up-fade 0.45s cubic-bezier(0.16,1,0.3,1) both' }}
       >
         <div>
@@ -652,7 +652,7 @@ export default function PresentationView({ output, session }) {
         className="rounded-2xl overflow-hidden border border-gray-800"
         style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.06s both' }}
       >
-        <SlideArea height="480px" />
+        <SlideArea height="min(480px, 70vw)" />
         <NavControls
           current={current}
           total={total}

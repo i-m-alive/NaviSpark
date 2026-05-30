@@ -810,22 +810,22 @@ export default function DashboardPage() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
           {/* ── Header ────────────────────────────────────────────────── */}
-          <div className="flex items-start justify-between mb-7 animate-slide-up">
-            <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-7 animate-slide-up">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                 {greeting},{' '}
                 <span style={{ background: 'linear-gradient(90deg,#818cf8,#60a5fa,#34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', backgroundSize: '200% auto' }}>
                   {name}
                 </span>{' '}
                 👋
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 mt-1 truncate max-w-xs sm:max-w-none">
                 {proposals.length === 0
                   ? 'No proposals yet · Upload your first one below'
                   : `${proposals.length} proposal${proposals.length !== 1 ? 's' : ''} · ${user?.email}`}
               </p>
             </div>
-            <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow">
+            <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow flex-shrink-0">
               <Plus size={15} /> New Review
             </Link>
           </div>
@@ -889,17 +889,17 @@ export default function DashboardPage() {
 
               {/* Selection toolbar */}
               {someSelected && (
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl mb-4 animate-slide-down border border-blue-800/60"
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-2.5 rounded-xl mb-4 animate-slide-down border border-blue-800/60"
                   style={{ background: 'linear-gradient(135deg, rgba(30,58,138,0.4), rgba(29,78,216,0.2))', backdropFilter: 'blur(8px)' }}>
                   <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-blue-300">
                     <CheckSquare size={14} />
                     {allVisibleSelected ? 'Deselect all' : 'Select all'}
                   </button>
                   <span className="text-xs text-blue-400 font-semibold">{selected.size} selected</span>
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
                     <button onClick={() => exportCSV(filtered.filter(p => selected.has(p.id)))}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-lg transition-colors">
-                      <FileDown size={13} /> Export CSV
+                      <FileDown size={13} /> <span className="hidden sm:inline">Export CSV</span><span className="sm:hidden">CSV</span>
                     </button>
                     <button onClick={clearSelection} className="text-xs text-gray-400 hover:text-white transition-colors">Cancel</button>
                     <button onClick={() => setShowModal(true)}

@@ -304,14 +304,14 @@ function ChecklistSection() {
       {/* Header */}
       <div className="px-6 py-5 border-b border-gray-800"
         style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.3) 0%, transparent 100%)' }}>
-        <div className="flex items-start justify-between mb-1">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
           <div>
             <h3 className="text-base font-bold text-white">Complete Evaluation Checklist</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               {totalAll} items across 3 sheets · {Object.values(CHECKLIST).flat().filter(i => i.mandatory).length} mandatory
             </p>
           </div>
-          <div className="flex gap-3 text-xs font-mono">
+          <div className="flex flex-wrap gap-2 sm:gap-3 text-xs font-mono">
             {Object.entries(CHECKLIST).map(([sheet, items]) => (
               <span key={sheet} style={{ color: SHEET_META[sheet].color }}>
                 {items.length} {sheet.toLowerCase()}
@@ -471,8 +471,8 @@ function ScoringTable() {
     { range: '0.0 – 4.9',  verdict: 'NEEDS MAJOR REVISION',  color: '#f87171', bg: 'rgba(69,10,10,0.3)', border: '#7f1d1d', meaning: 'Significant gaps or commercial weaknesses. Submitting as-is carries high risk of rejection.' },
   ]
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-800">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-1 px-1">
+      <table className="w-full min-w-[480px] text-sm">
         <thead>
           <tr className="border-b border-gray-800 bg-gray-950/60">
             {['Score Range','Verdict','What it means'].map(h => (
@@ -609,7 +609,7 @@ export default function HowItWorksPage() {
               </p>
 
               {/* Quick stats */}
-              <div className="flex justify-center gap-6 mt-8"
+              <div className="flex flex-wrap justify-center gap-5 sm:gap-6 mt-8"
                 style={{ animation: 'slide-up-fade 0.6s cubic-bezier(0.16,1,0.3,1) 240ms both' }}>
                 {[
                   { val: '4', label: 'AI Agents' },

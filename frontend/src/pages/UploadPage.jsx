@@ -248,10 +248,10 @@ export default function UploadPage() {
       <Navbar />
 
       <main
-        className="relative z-10 max-w-6xl mx-auto px-6 flex items-center"
+        className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 flex items-start lg:items-center"
         style={{ minHeight: 'calc(100vh - 64px)' }}
       >
-        <div className="w-full grid grid-cols-[1fr_1fr] gap-6 py-6">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 py-6">
 
           {/* ── LEFT PANEL ──────────────────────────────────────── */}
           <div

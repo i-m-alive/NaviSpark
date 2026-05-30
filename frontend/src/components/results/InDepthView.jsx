@@ -560,7 +560,7 @@ function Agent3Panel({ output }) {
         <div>
           <SecHead title="Narrative Flow" />
           <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
               {[
                 ['flows_as_story',           'Flows as a coherent story'],
                 ['exec_summary_compelling',  'Executive summary is compelling'],

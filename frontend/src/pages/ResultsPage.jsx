@@ -226,7 +226,7 @@ export default function ResultsPage() {
   const [activeView, setActiveView] = useState('executive')
   const [history,     setHistory]     = useState([])          // all versions in the group
   const [sidebarMode, setSidebarMode] = useState('report')    // 'report' | 'compare_all'
-  const [sidebarOpen, setSidebarOpen] = useState(true)        // mobile toggle
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)        // hidden by default on mobile
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
   const [downloadMenuPos, setDownloadMenuPos] = useState({ top: 0, right: 0 })
   const [chatOpen, setChatOpen] = useState(false)
@@ -333,7 +333,7 @@ export default function ResultsPage() {
         <Navbar />
         <div className="flex flex-1">
           {/* Sidebar skeleton */}
-          <aside className="w-64 flex-shrink-0 border-r border-gray-800 p-3 space-y-3" style={{ height: 'calc(100vh - 64px)' }}>
+          <aside className="hidden md:block w-64 flex-shrink-0 border-r border-gray-800 p-3 space-y-3" style={{ height: 'calc(100vh - 64px)' }}>
             <div className="px-1 py-4 border-b border-gray-800 space-y-2">
               <div className="h-3 w-20 rounded bg-gray-800 animate-shimmer" />
               <div className="h-2 w-14 rounded bg-gray-800/60 animate-shimmer" />
@@ -358,7 +358,7 @@ export default function ResultsPage() {
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
               <div className="h-3 w-28 rounded bg-gray-800 animate-shimmer" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="space-y-1.5">
                     <div className="h-2.5 w-16 rounded bg-gray-800/70 animate-shimmer" />
@@ -404,13 +404,22 @@ export default function ResultsPage() {
 
       <div className="flex flex-1 overflow-hidden">
 
+        {/* ── MOBILE SIDEBAR BACKDROP ──────────────────────────────────────── */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
         <aside
           className={clsx(
             'flex-shrink-0 border-r border-gray-800 bg-gray-950 transition-all duration-300 overflow-hidden',
-            sidebarOpen ? 'w-64' : 'w-0',
+            'fixed md:sticky z-40 md:z-auto top-[60px] md:top-[64px] left-0 h-[calc(100vh-60px)] md:h-[calc(100vh-64px)]',
+            sidebarOpen ? 'w-72 md:w-64' : 'w-0',
           )}
-          style={{ position: 'sticky', top: 64, height: 'calc(100vh - 64px)', overflowY: 'auto' }}
+          style={{ overflowY: 'auto' }}
         >
           <DocumentSidebar
             versions={history}
@@ -424,22 +433,22 @@ export default function ResultsPage() {
 
         {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
         <main
-          className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-8 transition-all duration-300"
-          style={{ paddingRight: chatOpen ? 'clamp(328px, 29vw, 428px)' : undefined }}
+          className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 transition-all duration-300"
+          style={{ paddingRight: chatOpen ? 'clamp(0px, 29vw, 428px)' : undefined }}
         >
 
       {/* Sidebar toggle (always visible) */}
       <button
         onClick={() => setSidebarOpen(o => !o)}
-        className="fixed left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-12 bg-gray-800 border border-gray-700 border-l-0 rounded-r-lg flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-all"
-        style={{ left: sidebarOpen ? 256 : 0 }}
+        className="fixed z-30 w-5 h-12 bg-gray-800 border border-gray-700 border-l-0 rounded-r-lg flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-all duration-300"
+        style={{ left: sidebarOpen ? 256 : 0, top: '50%', transform: 'translateY(-50%)' }}
         title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
       >
         <span className="text-[10px]">{sidebarOpen ? '‹' : '›'}</span>
       </button>
         {/* Page header */}
         <div
-          className="flex items-start justify-between mb-5"
+          className="flex flex-wrap items-start justify-between gap-3 mb-5"
           style={{ animation: 'slide-up-fade 0.4s cubic-bezier(0.16,1,0.3,1) both' }}
         >
           <div>
@@ -573,7 +582,7 @@ export default function ResultsPage() {
           style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.06s both' }}
         >
           <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Session Details</h2>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
               <span className="text-gray-500">File Type</span>
               <p className="text-white uppercase">{session.file_type || '—'}</p>
@@ -665,12 +674,13 @@ export default function ResultsPage() {
 
                 return (
                   <div className="mb-5 animate-fade-in space-y-1.5">
-                    <div className="flex gap-2">
+                    {/* Mobile: horizontal scroll tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
 
                       {/* Group 1 — Analysis */}
-                      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                      <div className="flex-shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden min-w-0">
                         <div className="px-3 py-1.5 border-b border-gray-800">
-                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Analysis Views</span>
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest whitespace-nowrap">Analysis Views</span>
                         </div>
                         <div className="flex">
                           {[
@@ -681,9 +691,9 @@ export default function ResultsPage() {
                             const isActive = activeView === key
                             return (
                               <button key={key} onClick={() => setActiveView(key)}
-                                className={clsx('flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                                className={clsx('flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0 whitespace-nowrap',
                                   isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40')}>
-                                <Icon size={13} /><span>{label}</span>
+                                <Icon size={13} /><span className="hidden xs:inline sm:inline">{label}</span>
                                 {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
                               </button>
                             )
@@ -692,9 +702,9 @@ export default function ResultsPage() {
                       </div>
 
                       {/* Group 2 — Working views + optional Comparison */}
-                      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                      <div className="flex-shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden min-w-0">
                         <div className="px-3 py-1.5 border-b border-gray-800">
-                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Working Views</span>
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest whitespace-nowrap">Working Views</span>
                         </div>
                         <div className="flex">
                           {[
@@ -706,10 +716,10 @@ export default function ResultsPage() {
                             const isActive = activeView === key
                             return (
                               <button key={key} onClick={() => setActiveView(key)}
-                                className={clsx('flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0',
+                                className={clsx('flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2.5 text-xs font-medium transition-all duration-150 border-r border-gray-800 last:border-0 whitespace-nowrap',
                                   isActive ? active : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40',
                                   key === 'comparison' && !isActive && 'border border-dashed border-violet-900/40')}>
-                                <Icon size={13} /><span>{label}</span>
+                                <Icon size={13} /><span className="hidden xs:inline sm:inline">{label}</span>
                                 {isActive && <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dot)} />}
                               </button>
                             )
@@ -718,17 +728,17 @@ export default function ResultsPage() {
                       </div>
 
                       {/* Export */}
-                      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                      <div className="flex-shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
                         <div className="px-3 py-1.5 border-b border-gray-800">
-                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Export</span>
+                          <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest whitespace-nowrap">Export</span>
                         </div>
                         <div className="flex flex-1 items-center gap-1 px-2">
                           <button onClick={() => downloadJson(session.agent4_output, `verdict_${slug}.json`)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors">
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors whitespace-nowrap">
                             <FileJson size={11} /> JSON
                           </button>
                           <button onClick={() => downloadMarkdown(agent4ToMarkdown(session.agent4_output, sessionMeta), `verdict_${slug}.md`)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors">
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md transition-colors whitespace-nowrap">
                             <FileType size={11} /> MD
                           </button>
                         </div>

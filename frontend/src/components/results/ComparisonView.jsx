@@ -113,7 +113,7 @@ function ActionsDiff({ prevOutput, currOutput }) {
       </h3>
 
       {/* Count summary */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {[
           { label: 'Critical (Must Fix)', prev: prevMust.length, curr: currMust.length },
           { label: 'Important (Should Fix)', prev: prevShould.length, curr: currShould.length },
@@ -346,7 +346,7 @@ function ProgressSummary({ prevOutput, currOutput, prevVersion, currVersion }) {
     <div className={clsx('rounded-2xl border bg-gradient-to-br overflow-hidden', color)}
       style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
       <div className={clsx('h-1', accent)} />
-      <div className="p-6 flex items-center gap-6">
+      <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
         <div className="flex-shrink-0">
           <div className="relative w-20 h-20">
             <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
@@ -420,7 +420,7 @@ export default function ComparisonView({ currentSession, prevSession }) {
         <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mb-3">
           Score Breakdown — V{prevVer} → V{currVer}
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ScoreCard label="Overall Score"    prev={prev.overall_score}  curr={curr.overall_score} />
           <ScoreCard label="Completeness (A1)" prev={prev.agent1_score}   curr={curr.agent1_score} />
           <ScoreCard label="Commercial (A2)"   prev={prev.agent2_score}   curr={curr.agent2_score} />

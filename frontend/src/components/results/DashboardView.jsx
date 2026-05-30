@@ -445,7 +445,7 @@ function ScoreTileGrid({ sectionScorecard }) {
         title="Sub-score Heat Map"
         info="Each tile is one evaluation dimension. Color shows health at a glance: green (7+) = strong, amber (5–7) = acceptable, red (below 5) = needs work. Hover a tile to read the exact score."
       />
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {entries.map(([key, val], i) => (
           <div
             key={key}
@@ -598,7 +598,7 @@ function PriorityKanban({ priorityActions }) {
         title="Priority Action Plan"
         info="Kanban board grouping all recommended actions by urgency. 'Must Fix' items should be resolved before submission. 'Should Fix' improves the proposal. 'Next Time' is future advice."
       />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {KANBAN.map(col => {
           const items = priorityActions[col.key] || []
           return (
@@ -709,7 +709,7 @@ export default function DashboardView({ output }) {
     <div className="space-y-4 pb-8">
 
       {/* ── Row 1: KPI strip ──────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard label="Overall Score"  score={overall_score} theme="overall" sublabel={verdict}                     delay={0}   info="Weighted combination of all three agent scores. 7+ = Ready to Send, 5–7 = Revise, below 5 = Major revision needed." />
         <KPICard label="Completeness"   score={agent1_score}  theme="a1"      sublabel="Clarity & Writing"            delay={60}  info="Agent 1 score: evaluates proposal structure, writing clarity, scope definition, and whether all required sections are present." />
         <KPICard label="Commercial"     score={agent2_score}  theme="a2"      sublabel="Estimation & Pricing"         delay={120} info="Agent 2 score: evaluates pricing completeness, phase coverage, estimation methodology, and arithmetic accuracy." />
@@ -726,14 +726,14 @@ export default function DashboardView({ output }) {
       )}
 
       {/* ── Row 2: Gauge + Checklist Donut + Priority Column ─────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GaugeChart score={overall_score} verdict={verdict} />
         <ChecklistDonut checklistCoverage={checklist_coverage} />
         <PriorityColumnChart priorityActions={priority_actions} />
       </div>
 
       {/* ── Row 3: Agent Ring Trio + Score Tile Grid ─────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AgentRingTrio a1={agent1_score} a2={agent2_score} a3={agent3_score} />
         {section_scorecard
           ? <ScoreTileGrid sectionScorecard={section_scorecard} />
@@ -742,7 +742,7 @@ export default function DashboardView({ output }) {
       </div>
 
       {/* ── Row 4: Radar + Checklist Breakdown + Agent Bars ─────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ScoreRadar sectionScorecard={section_scorecard} />
         <div className="flex flex-col gap-4">
           <ChecklistBreakdown checklistCoverage={checklist_coverage} />
@@ -754,7 +754,7 @@ export default function DashboardView({ output }) {
       <PriorityKanban priorityActions={priority_actions} />
 
       {/* ── Row 6: Double-flagged + Consistency ────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DoubleFlaggedCompact issues={double_flagged_issues} />
         <ConsistencyCompact   issues={cross_consistency_issues} />
       </div>

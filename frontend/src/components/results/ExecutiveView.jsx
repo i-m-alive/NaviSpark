@@ -173,14 +173,14 @@ function VerdictHero({ output }) {
       style={{ animation: 'slide-up-fade 0.55s cubic-bezier(0.16,1,0.3,1) both' }}
     >
       <div className={clsx('h-1', accentCls)} />
-      <div className="p-8">
-        <div className="flex items-center gap-7">
-          <ScoreRing score={overall_score} size={116} animDelay={250} />
-          <div className="flex-1">
+      <div className="p-5 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-7">
+          <ScoreRing score={overall_score} size={110} animDelay={250} />
+          <div className="flex-1 text-center sm:text-left">
             <p className={clsx('text-[11px] font-mono uppercase tracking-[0.15em] mb-2', tagCls)}>
               {verdict}
             </p>
-            <h2 className="text-[22px] font-bold text-white leading-snug">
+            <h2 className="text-lg sm:text-[22px] font-bold text-white leading-snug">
               {humanVerdict(verdict, mustFix)}
             </h2>
             {plain_english_summary && (
@@ -247,9 +247,9 @@ function ReadinessGauge({ score }) {
       className="bg-gray-900 border border-gray-800 rounded-2xl p-6"
       style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.35s both' }}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-1 mb-4">
         <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Proposal Readiness</p>
-        <span className={clsx('text-sm font-semibold', labelColor)}>{readiness}</span>
+        <span className={clsx('text-xs sm:text-sm font-semibold', labelColor)}>{readiness}</span>
       </div>
 
       <div className="relative h-5 bg-gray-800 rounded-full overflow-hidden mb-2">
@@ -295,7 +295,7 @@ export default function ExecutiveView({ output }) {
 
       {/* Traffic lights */}
       <div
-        className="grid grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4"
         style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.08s both' }}
       >
         <TrafficLight
@@ -320,7 +320,7 @@ export default function ExecutiveView({ output }) {
 
       {/* Fixes + Strengths split */}
       <div
-        className="grid grid-cols-2 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         style={{ animation: 'slide-up-fade 0.5s cubic-bezier(0.16,1,0.3,1) 0.18s both' }}
       >
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">

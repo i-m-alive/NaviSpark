@@ -194,7 +194,8 @@ export function ThemeSwitcher() {
             background: '#0d1117',
             border: '1px solid rgba(255,255,255,0.08)',
             boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
-            width: 280,
+            width: 'min(280px, calc(100vw - 24px))',
+            maxWidth: '100vw',
             zIndex: 9999,
           }}
         >

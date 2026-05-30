@@ -58,8 +58,8 @@ export default function ScoreRadar({ sectionScorecard }) {
         Dimension Score Radar — All 11 Sub-Scores
       </h3>
 
-      <div className="flex justify-center">
-        <svg width={360} height={320} viewBox="0 0 360 320" className="w-full max-w-sm">
+      <div className="flex justify-center w-full">
+        <svg width={360} height={320} viewBox="0 0 360 320" className="w-full max-w-sm mx-auto">
           {/* Grid circles */}
           {[1, 2, 3, 4, 5].map(level => (
             <polygon
@@ -134,7 +134,7 @@ export default function ScoreRadar({ sectionScorecard }) {
       </div>
 
       {/* Legend grid */}
-      <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 mt-2 border-t border-gray-800 pt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 mt-2 border-t border-gray-800 pt-4">
         {DIMENSIONS.map(d => {
           const score = sectionScorecard[d.key] ?? 0
           const colour = score >= 7 ? 'text-green-400' : score >= 4 ? 'text-yellow-400' : 'text-red-400'
