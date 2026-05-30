@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getSession, getReportUrl, startAnalysis, getSessionHistory } from '../api/client'
 import Navbar from '../components/Navbar'
@@ -27,7 +28,7 @@ import DocumentSidebar       from '../components/results/DocumentSidebar'
 import ComparisonDashboard   from '../components/results/ComparisonDashboard'
 import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor, GitCompare } from 'lucide-react'
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
-import { downloadCurrentView, VIEW_DOWNLOAD_META } from '../utils/viewDownloads'
+import { downloadCurrentView, VIEW_DOWNLOAD_META, FORMAT_LABELS } from '../utils/viewDownloads'
 import { clsx } from 'clsx'
 
 function formatDate(dateStr) {
@@ -225,6 +226,11 @@ export default function ResultsPage() {
   const [history,     setHistory]     = useState([])          // all versions in the group
   const [sidebarMode, setSidebarMode] = useState('report')    // 'report' | 'compare_all'
   const [sidebarOpen, setSidebarOpen] = useState(true)        // mobile toggle
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false)
+  const [downloadMenuPos, setDownloadMenuPos] = useState({ top: 0, right: 0 })
+  const downloadMenuRef      = useRef(null)
+  const downloadBtnRef       = useRef(null)
+  const downloadDropdownRef  = useRef(null)
   const pollRef = useRef(null)
 
   const stopPolling = () => {
@@ -273,6 +279,17 @@ export default function ResultsPage() {
         .catch(() => {})  // non-critical — history panel just won't show
     }
   }, [session?.status, sessionId])
+
+  // Close download menu when clicking outside
+  useEffect(() => {
+    function onClickOutside(e) {
+      const inBtn      = downloadMenuRef.current     && downloadMenuRef.current.contains(e.target)
+      const inDropdown = downloadDropdownRef.current && downloadDropdownRef.current.contains(e.target)
+      if (!inBtn && !inDropdown) setShowDownloadMenu(false)
+    }
+    if (showDownloadMenu) document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [showDownloadMenu])
 
   const handleDownload = async () => {
     setDownloading(true)
@@ -448,53 +465,92 @@ export default function ResultsPage() {
           </div>
 
           {session.status === 'complete' && session.agent4_output && (() => {
-            const viewKey = sidebarMode === 'compare_all' ? 'compare_all' : activeView
-            const meta    = VIEW_DOWNLOAD_META[viewKey] || VIEW_DOWNLOAD_META.executive
-            const currentIdx = history.findIndex(v => v.id === sessionId)
+            const viewKey     = sidebarMode === 'compare_all' ? 'compare_all' : activeView
+            const meta        = VIEW_DOWNLOAD_META[viewKey] || VIEW_DOWNLOAD_META.executive
+            const currentIdx  = history.findIndex(v => v.id === sessionId)
             const prevSession = currentIdx > 0 ? history[currentIdx - 1] : null
+            const defFmt      = meta.defaultFormat || 'pdf'
+            const fmtInfo     = FORMAT_LABELS[defFmt] || FORMAT_LABELS.pdf
+
             return (
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Context-aware primary download */}
-                <div className="flex flex-col items-end gap-0.5">
-                  <button
-                    onClick={() => downloadCurrentView({
-                      activeView,
-                      sidebarMode,
-                      output: session.agent4_output,
-                      session,
-                      history,
-                      prevSession,
-                    })}
-                    className="flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-lg text-white transition-all relative overflow-hidden"
-                    style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', boxShadow: '0 0 16px rgba(99,102,241,0.3)' }}
-                    title={meta.ext === 'PDF'
-                      ? 'Opens in a new tab — use the Print dialog to save as PDF'
-                      : `Download as ${meta.ext}`}
-                  >
-                    <Download size={13} />
-                    Download {meta.ext === 'PDF' ? 'PDF' : meta.ext}
-                    <span className="text-[9px] opacity-60 font-mono ml-0.5">
-                      ({meta.label})
-                    </span>
-                  </button>
-                  {meta.ext === 'PDF' && (
-                    <span className="text-[9px] text-gray-600 pr-0.5">
-                      Opens print dialog → Save as PDF
-                    </span>
+                {/* Split download button + format dropdown */}
+                <div className="relative" ref={downloadMenuRef}>
+                  <div className="flex items-stretch rounded-lg border border-blue-700/60"
+                    style={{ boxShadow: '0 0 14px rgba(99,102,241,0.25)' }}>
+                    {/* Primary action */}
+                    <button
+                      onClick={() => {
+                        setShowDownloadMenu(false)
+                        downloadCurrentView({ activeView, sidebarMode, output: session.agent4_output, session, history, prevSession, format: defFmt })
+                      }}
+                      className="flex items-center gap-2 text-sm font-medium px-3.5 py-2 text-white transition-all"
+                      style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)' }}
+                      title={defFmt === 'pdf' ? 'Opens print dialog — Save as PDF' : `Download as ${defFmt.toUpperCase()}`}
+                    >
+                      <Download size={13} />
+                      <span>{fmtInfo.label}</span>
+                      <span className="text-[9px] opacity-55 font-mono hidden sm:inline">({meta.label})</span>
+                    </button>
+                    {/* Dropdown arrow */}
+                    <button
+                      ref={downloadBtnRef}
+                      onClick={() => {
+                        if (!showDownloadMenu && downloadBtnRef.current) {
+                          const rect = downloadBtnRef.current.getBoundingClientRect()
+                          setDownloadMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right })
+                        }
+                        setShowDownloadMenu(v => !v)
+                      }}
+                      className="flex items-center justify-center w-8 text-white/70 hover:text-white border-l border-blue-700/50 transition-colors"
+                      style={{ background: 'linear-gradient(135deg,#1d4ed8,#6d28d9)' }}
+                      title="More formats"
+                    >
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
+                        <path d="M0 0l5 6 5-6z"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Format dropdown — portal-rendered to escape all ancestor stacking contexts */}
+                  {showDownloadMenu && createPortal(
+                    <div ref={downloadDropdownRef}
+                      className="fixed w-52 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+                      style={{ top: downloadMenuPos.top, right: downloadMenuPos.right, zIndex: 9999, animation: 'slide-up-fade 0.18s cubic-bezier(0.16,1,0.3,1) both' }}>
+                      <div className="px-3 py-2 border-b border-gray-800">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Download Format</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">{meta.label}</p>
+                      </div>
+                      {meta.formats.map(fmt => {
+                        const info    = FORMAT_LABELS[fmt] || {}
+                        const isCurr  = fmt === defFmt
+                        return (
+                          <button
+                            key={fmt}
+                            onClick={() => {
+                              setShowDownloadMenu(false)
+                              downloadCurrentView({ activeView, sidebarMode, output: session.agent4_output, session, history, prevSession, format: fmt })
+                            }}
+                            className={clsx(
+                              'w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
+                              isCurr
+                                ? 'bg-blue-950/50 text-blue-300'
+                                : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+                            )}
+                          >
+                            <span className="text-base leading-none w-5 text-center">{info.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-xs">{info.label}</div>
+                              <div className="text-[10px] text-gray-600">{info.hint}</div>
+                            </div>
+                            {isCurr && <span className="text-[9px] text-blue-500 font-mono">default</span>}
+                          </button>
+                        )
+                      })}
+                    </div>,
+                    document.body
                   )}
                 </div>
-                {/* Raw MD download (kept as secondary) */}
-                {session.report_storage_path && (
-                  <button
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="btn-secondary flex items-center gap-1.5 text-xs px-2.5 py-2"
-                    title="Download raw Markdown from storage"
-                  >
-                    <FileType size={12} />
-                    {downloading ? '…' : 'Raw MD'}
-                  </button>
-                )}
               </div>
             )
           })()}

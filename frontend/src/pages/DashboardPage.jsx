@@ -74,7 +74,7 @@ function exportCSV(proposals) {
 // ── Background orbs ───────────────────────────────────────────────────────────
 function BackgroundOrbs() {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+    <div className="theme-orbs" style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       {/* Top-left violet orb */}
       <div className="animate-float-orb" style={{
         position: 'absolute', top: '-15%', left: '-8%',
@@ -233,7 +233,7 @@ function StatCard({ label, value, sub, icon: Icon, colour, delay, enterAnim, ico
       {/* ── Inner card ──────────────────────────────────────────────────────── */}
       <div style={{
         borderRadius: '17px',
-        background: `linear-gradient(135deg, ${c.glow}, #04060e 55%)`,
+        background: `linear-gradient(135deg, ${c.glow}, var(--t-card-inner, #04060e) 55%)`,
         padding: '16px',
         overflow: 'hidden',
         position: 'relative',
@@ -474,7 +474,7 @@ function ScoreTrendChart({ proposals }) {
 
   return (
     <div className="rounded-2xl border border-gray-800/60 mb-5 overflow-hidden animate-slide-up"
-      style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.04), rgba(99,102,241,0.02), #0a0f1a)' }}>
+      style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.06), rgba(99,102,241,0.04), var(--t-bg2, #0a0f1a))' }}>
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-blue-950/60 border border-blue-900/40">
@@ -509,7 +509,7 @@ function ScoreTrendChart({ proposals }) {
           {/* Grid lines */}
           {[2.5, 5, 7.5].map(v => {
             const y = PY + (1 - v / 10) * (H - PY * 2)
-            return <line key={v} x1={PX} y1={y} x2={W - PX} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+            return <line key={v} x1={PX} y1={y} x2={W - PX} y2={y} stroke="var(--t-svg-grid, rgba(255,255,255,0.04))" strokeWidth="1" />
           })}
           {/* Area fill */}
           <path d={areaPath} fill="url(#areaGrad)" />
@@ -525,7 +525,7 @@ function ScoreTrendChart({ proposals }) {
               <g key={i}>
                 {isLatest && <circle cx={p.x} cy={p.y} r={7} fill={dotColor(scores[i])} opacity="0.15" />}
                 <circle cx={p.x} cy={p.y} r={isLatest ? 4 : 3} fill={dotColor(scores[i])}
-                  stroke="#0a0f1a" strokeWidth={isLatest ? 2 : 1.5} />
+                  stroke="var(--t-bg1, #0a0f1a)" strokeWidth={isLatest ? 2 : 1.5} />
               </g>
             )
           })}

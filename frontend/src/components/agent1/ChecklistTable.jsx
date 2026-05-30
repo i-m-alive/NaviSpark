@@ -52,7 +52,7 @@ export default function ChecklistTable({ sectionAudit }) {
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-800/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-white">GSK Proposal Checklist Coverage</span>
+          <span className="text-sm font-semibold text-white">Proposal Checklist Coverage</span>
           <span className="text-xs font-mono text-gray-500">22 items</span>
         </div>
         <div className="flex items-center gap-3">

@@ -25,7 +25,7 @@ const PRIORITY_OPTIONS = [
 // ── Floating background orbs ───────────────────────────────────────────────────
 function BgOrbs() {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div className="theme-orbs fixed inset-0 pointer-events-none overflow-hidden z-0">
       <div className="absolute top-1/4 -left-48 w-[480px] h-[480px] rounded-full bg-blue-600/5 blur-3xl animate-float-orb" />
       <div className="absolute bottom-1/4 -right-48 w-96 h-96 rounded-full bg-purple-600/5 blur-3xl animate-float-orb-r" />
       <div

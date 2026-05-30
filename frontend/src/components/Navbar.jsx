@@ -1,8 +1,9 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../api/client'
-import { LogOut, LayoutDashboard, Upload } from 'lucide-react'
+import { LogOut, Home, Upload, BookOpen } from 'lucide-react'
 import NaviSparkLogo from './NaviSparkLogo'
+import { ThemeSwitcher } from './ThemePicker'
 
 // ── Spark SVG mark only (for the animated logo in nav) ───────────────────────
 function SparkMark({ size = 26 }) {
@@ -90,50 +91,55 @@ export default function Navbar() {
     <nav
       className="sticky top-0 z-50"
       style={{
-        background: 'rgba(9, 11, 17, 0.85)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
-        boxShadow: '0 1px 0 0 rgba(59,130,246,0.06)',
+        background: 'var(--t-nav, rgba(9,11,17,0.88))',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(128,128,128,0.12)',
+        boxShadow: '0 1px 0 0 rgba(59,130,246,0.08)',
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-13" style={{ height: 52 }}>
+        <div className="flex items-center justify-between" style={{ height: 60 }}>
 
           {/* ── Logo ───────────────────────────────────────────────────────── */}
           <Link
             to="/dashboard"
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2.5 group"
             style={{ textDecoration: 'none' }}
           >
-            {/* Spark mark with subtle hover scale */}
-            <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-              <SparkMark size={26} />
+            {/* Spark mark — larger, with glow on hover */}
+            <div
+              className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
+              style={{ filter: 'drop-shadow(0 0 0px rgba(59,130,246,0))' }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'drop-shadow(0 0 8px rgba(99,102,241,0.6))'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'drop-shadow(0 0 0px rgba(59,130,246,0))'}
+            >
+              <SparkMark size={34} />
             </div>
 
-            {/* Wordmark */}
+            {/* Wordmark — bigger */}
             <div className="flex flex-col leading-none">
-              <span className="font-bold tracking-tight text-[15px]">
+              <span className="font-black tracking-tight text-[20px]">
                 <span
                   className="text-white"
-                  style={{ fontFamily: "'Inter', 'DM Sans', system-ui, sans-serif", letterSpacing: '-0.01em' }}
+                  style={{ fontFamily: "'Inter', 'DM Sans', system-ui, sans-serif", letterSpacing: '-0.02em' }}
                 >
                   NAVI
                 </span>
                 <span
                   style={{
-                    background: 'linear-gradient(90deg, #60a5fa 0%, #3b82f6 60%, #2563eb 100%)',
+                    background: 'linear-gradient(90deg, #60a5fa 0%, #818cf8 50%, #c084fc 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
                     fontFamily: "'Inter', 'DM Sans', system-ui, sans-serif",
-                    letterSpacing: '-0.01em',
+                    letterSpacing: '-0.02em',
                   }}
                 >
                   SPARK
                 </span>
               </span>
-              <span className="text-[9px] text-gray-600 uppercase tracking-[0.18em] font-medium mt-0.5 hidden sm:block">
+              <span className="text-[9.5px] text-gray-600 uppercase tracking-[0.2em] font-medium mt-0.5 hidden sm:block">
                 Proposal Intelligence
               </span>
             </div>
@@ -141,12 +147,15 @@ export default function Navbar() {
 
           {/* ── Centre nav links ────────────────────────────────────────────── */}
           <div className="flex items-center gap-0.5">
-            <NavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at('/dashboard')} />
-            <NavLink to="/upload"    icon={Upload}          label="New Review" active={at('/upload')} />
+            <NavLink to="/dashboard"   icon={Home}      label="Home"         active={at('/dashboard')} />
+            <NavLink to="/upload"      icon={Upload}    label="New Review"   active={at('/upload')} />
+            <NavLink to="/how-it-works" icon={BookOpen} label="How It Works" active={at('/how-it-works')} />
           </div>
 
-          {/* ── Right: user info + sign out ─────────────────────────────────── */}
+          {/* ── Right: theme switcher + user info + sign out ────────────────── */}
           <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+
             {user?.email && (
               <div className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-900/60 border border-gray-800">
                 <UserAvatar name={user.name} email={user.email} avatarUrl={user.avatar_url} />

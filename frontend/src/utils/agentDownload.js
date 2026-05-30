@@ -73,7 +73,7 @@ export function agent1ToMarkdown(output, meta) {
   // Section audit / checklist
   const audit = output.section_audit || output.checklist_coverage || []
   if (audit.length > 0) {
-    const lines = ['\n## GSK Proposal Checklist Coverage\n',
+    const lines = ['\n## Proposal Checklist Coverage\n',
       '| ID | Section | Mandatory | Status | Note |',
       '|----|---------|:---------:|--------|------|']
     audit.forEach(item => {
@@ -195,7 +195,7 @@ export function agent2ToMarkdown(output, meta) {
   const phases = output.missing_phases || []
   if (phases.length > 0) {
     const lines = ['\n## Missing / Uncosted Phases\n',
-      '| GSK Item | Phase | Severity |',
+      '| Checklist Item | Phase | Severity |',
       '|----------|-------|----------|']
     phases.forEach(p => {
       lines.push(`| ${p.gsk_item || '—'} | ${p.phase || '—'} | ${severityLabel(p.severity)} |`)
@@ -375,7 +375,7 @@ export function agent4ToMarkdown(output, meta) {
     const missing  = cl.filter(i => i.status === 'MISSING').length
 
     const lines = [
-      `\n## GSK Checklist Coverage — All Three Sheets (${cl.length} items)\n`,
+      `\n## Proposal Checklist Coverage — All Three Sheets (${cl.length} items)\n`,
       `**Summary:** ${covered} covered · ${partial} partial · ${missing} missing\n`,
       '| ID | Sheet | Topic | Mandatory | Status | Agent |',
       '|----|-------|-------|:---------:|--------|-------|',
@@ -515,7 +515,7 @@ export function agent3ToMarkdown(output, meta) {
   // GSK Checklist Coverage
   const checklist = output.checklist_coverage || []
   if (checklist.length > 0) {
-    const lines = ['\n## GSK Proposal Checklist Coverage\n',
+    const lines = ['\n## Proposal Checklist Coverage\n',
       '| ID | Topic | Skill | Status | Note |',
       '|----|-------|-------|--------|------|']
     checklist.forEach(item => {

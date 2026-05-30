@@ -369,7 +369,7 @@ function Agent2Panel({ output }) {
           : <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-gray-800">
-                  <th className="text-left text-gray-600 font-normal px-4 py-2">GSK Item</th>
+                  <th className="text-left text-gray-600 font-normal px-4 py-2">Checklist Item</th>
                   <th className="text-left text-gray-600 font-normal px-3 py-2">Phase</th>
                   <th className="text-left text-gray-600 font-normal px-3 py-2 w-24">Severity</th>
                 </tr></thead>
@@ -706,7 +706,7 @@ function Agent3Panel({ output }) {
       {/* Agent 3 checklist */}
       {checklist.length > 0 && (
         <div>
-          <SecHead title="GSK Checklist Coverage (Agent 3)" count={checklist.length} />
+          <SecHead title="Proposal Checklist Coverage (Agent 3)" count={checklist.length} />
           <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
             <table className="w-full text-xs">
               <thead><tr className="border-b border-gray-800">
@@ -858,7 +858,7 @@ const DOT_CLS = {
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function InDepthView({ output, session }) {
-  const [tab, setTab] = useState('a1')
+  const [tab, setTab] = useState('a4')
 
   if (!output) return <p className="text-gray-500 text-sm py-8 text-center">No data available.</p>
 

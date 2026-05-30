@@ -1,0 +1,151 @@
+name: Build and Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # allows manual trigger from GitHub UI
+
+env:
+  RESOURCE_GROUP: navispark-rg
+  CONTAINER_APP_ENV: navispark-env
+  BACKEND_APP_NAME: navispark-backend
+  FRONTEND_APP_NAME: navispark-frontend
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Job 1: Build and push backend image
+  # ─────────────────────────────────────────────────────────────
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push backend image
+        id: image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/navispark-backend:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/navispark-backend:${{ github.sha }}
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 2: Deploy backend to Azure Container Apps
+  # ─────────────────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: build-backend
+    outputs:
+      backend_url: ${{ steps.get-url.outputs.url }}
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy backend to Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: navisparkacr
+          containerAppName: ${{ env.BACKEND_APP_NAME }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/navispark-backend:${{ github.sha }}
+          targetPort: 8000
+          ingress: external
+          environmentVariables: >
+            PYTHONPATH=/app
+
+      - name: Get backend URL
+        id: get-url
+        run: |
+          URL=$(az containerapp show \
+            --name ${{ env.BACKEND_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          echo "url=https://$URL" >> $GITHUB_OUTPUT
+          echo "Backend URL: https://$URL"
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 3: Build and push frontend image (needs backend URL)
+  # ─────────────────────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/navispark-frontend:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/navispark-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=${{ needs.deploy-backend.outputs.backend_url }}
+            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 4: Deploy frontend to Azure Container Apps
+  # ─────────────────────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: build-frontend
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy frontend to Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: navisparkacr
+          containerAppName: ${{ env.FRONTEND_APP_NAME }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/navispark-frontend:${{ github.sha }}
+          targetPort: 80
+          ingress: external
+
+      - name: Print frontend URL
+        run: |
+          URL=$(az containerapp show \
+            --name ${{ env.FRONTEND_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          echo "========================================="
+          echo "Frontend deployed at: https://$URL"
+          echo "========================================="
