@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   CheckCircle2, Loader2, AlertCircle, Clock,
-  BarChart3, FileText, ChevronRight, Upload,
+  BarChart3, FileText, ChevronRight, Upload, Trash2, X, Check,
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,72 +80,146 @@ function StatusDot({ status }) {
 
 // ── Individual version card ───────────────────────────────────────────────────
 
-function VersionCard({ version, isCurrent, onClick }) {
+function VersionCard({ version, isCurrent, onClick, onDelete, deleting }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const score   = version.agent4_output?.overall_score
   const verdict = verdictShort(version.agent4_output?.verdict)
   const name    = version.original_filename || 'Untitled'
   const nameTruncated = name.length > 22 ? name.slice(0, 19) + '…' : name
 
+  function handleDeleteClick(e) {
+    e.stopPropagation()
+    setConfirmDelete(true)
+  }
+
+  function handleConfirm(e) {
+    e.stopPropagation()
+    setConfirmDelete(false)
+    onDelete(version.id)
+  }
+
+  function handleCancel(e) {
+    e.stopPropagation()
+    setConfirmDelete(false)
+  }
+
   return (
-    <button
-      onClick={onClick}
-      disabled={isCurrent}
+    <div
       className={clsx(
-        'w-full flex items-start gap-2.5 px-3 py-3 rounded-xl border text-left transition-all duration-150',
+        'relative group rounded-xl border transition-all duration-150 overflow-hidden',
         isCurrent
-          ? 'bg-blue-950/35 border-blue-800/60 cursor-default'
-          : 'bg-gray-900/50 border-gray-800 hover:border-gray-600 hover:bg-gray-800/50 cursor-pointer',
+          ? 'bg-blue-950/35 border-blue-800/60'
+          : 'bg-gray-900/50 border-gray-800 hover:border-gray-600 hover:bg-gray-800/50',
       )}
     >
-      {/* Score ring */}
-      <MiniRing score={score} size={38} />
+      {/* Main clickable area */}
+      <button
+        onClick={onClick}
+        disabled={isCurrent}
+        className="w-full flex items-start gap-2.5 px-3 py-3 text-left"
+      >
+        {/* Score ring */}
+        <MiniRing score={score} size={38} />
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <span className={clsx(
-            'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0',
-            isCurrent
-              ? 'bg-blue-950 text-blue-300 border-blue-800'
-              : 'bg-gray-800 text-gray-400 border-gray-700',
-          )}>
-            V{version.version_number}
-          </span>
-          {isCurrent && (
-            <span className="text-[8px] text-blue-400 bg-blue-950/60 border border-blue-800/60 px-1 rounded-full">
-              viewing
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={clsx(
+              'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0',
+              isCurrent
+                ? 'bg-blue-950 text-blue-300 border-blue-800'
+                : 'bg-gray-800 text-gray-400 border-gray-700',
+            )}>
+              V{version.version_number}
             </span>
+            {isCurrent && (
+              <span className="text-[8px] text-blue-400 bg-blue-950/60 border border-blue-800/60 px-1 rounded-full">
+                viewing
+              </span>
+            )}
+            <StatusDot status={version.status} />
+          </div>
+
+          <p className="text-[11px] text-gray-200 font-medium leading-snug truncate pr-6">
+            {nameTruncated}
+          </p>
+
+          {verdict && (
+            <p className={clsx('text-[10px] mt-0.5', verdict.cls)}>{verdict.text}</p>
           )}
-          <StatusDot status={version.status} />
+
+          <p className="text-[9px] text-gray-600 mt-0.5">{timeAgo(version.created_at)}</p>
         </div>
 
-        <p className="text-[11px] text-gray-200 font-medium leading-snug truncate">{nameTruncated}</p>
-
-        {verdict && (
-          <p className={clsx('text-[10px] mt-0.5', verdict.cls)}>{verdict.text}</p>
+        {!isCurrent && !confirmDelete && (
+          <ChevronRight size={12} className="text-gray-600 flex-shrink-0 mt-2" />
         )}
+      </button>
 
-        <p className="text-[9px] text-gray-600 mt-0.5">{timeAgo(version.created_at)}</p>
-      </div>
-
-      {!isCurrent && (
-        <ChevronRight size={12} className="text-gray-600 flex-shrink-0 mt-2" />
+      {/* Delete button — appears on hover (top-right corner) */}
+      {!confirmDelete && !deleting && (
+        <button
+          onClick={handleDeleteClick}
+          title="Delete this document"
+          className={clsx(
+            'absolute top-2 right-2 p-1 rounded-md transition-all duration-150',
+            'text-gray-700 hover:text-red-400 hover:bg-red-950/40',
+            'opacity-0 group-hover:opacity-100',
+          )}
+        >
+          <Trash2 size={11} />
+        </button>
       )}
-    </button>
+
+      {/* Deletion in progress */}
+      {deleting && (
+        <div className="absolute top-2 right-2 p-1">
+          <Loader2 size={11} className="text-red-400 animate-spin" />
+        </div>
+      )}
+
+      {/* Inline confirm strip */}
+      {confirmDelete && (
+        <div
+          className="flex items-center justify-between px-3 py-2 bg-red-950/40 border-t border-red-900/40"
+          onClick={e => e.stopPropagation()}
+        >
+          <span className="text-[10px] text-red-300">Delete this document?</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleCancel}
+              className="p-1 rounded text-gray-500 hover:text-gray-200 hover:bg-gray-700 transition-colors"
+              title="Cancel"
+            >
+              <X size={11} />
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="p-1 rounded text-red-400 hover:text-white hover:bg-red-700 transition-colors"
+              title="Confirm delete"
+            >
+              <Check size={11} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 
 export default function DocumentSidebar({
-  versions,           // [{id, version_number, status, agent4_output, ...}]
-  currentSessionId,   // currently viewed session
-  sidebarMode,        // 'report' | 'compare_all'
-  onCompareDashboard, // () => void — switch to compare mode
-  onReportMode,       // () => void — switch back to report mode
-  currentSession,     // full session object for "upload" quick action
+  versions,             // [{id, version_number, status, agent4_output, ...}]
+  currentSessionId,     // currently viewed session
+  sidebarMode,          // 'report' | 'compare_all'
+  onCompareDashboard,   // () => void — switch to compare mode
+  onReportMode,         // () => void — switch back to report mode
+  currentSession,       // full session object for "upload" quick action
+  onDeleteVersion,      // (sessionId: string) => void — called when user confirms delete
 }) {
   const navigate = useNavigate()
+  const [deletingId, setDeletingId] = useState(null)
 
   // If history hasn't loaded yet, show a placeholder with the current session
   const list = versions.length > 0 ? versions : currentSession ? [{
@@ -157,6 +232,15 @@ export default function DocumentSidebar({
   }] : []
 
   const canCompare = list.filter(v => v.status === 'complete' && v.agent4_output).length >= 2
+
+  async function handleDelete(sessionId) {
+    setDeletingId(sessionId)
+    try {
+      await onDeleteVersion(sessionId)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -177,6 +261,7 @@ export default function DocumentSidebar({
             key={v.id}
             version={v}
             isCurrent={v.id === currentSessionId && sidebarMode === 'report'}
+            deleting={deletingId === v.id}
             onClick={() => {
               if (v.id !== currentSessionId) {
                 navigate(`/results/${v.id}`)
@@ -184,6 +269,7 @@ export default function DocumentSidebar({
                 onReportMode()
               }
             }}
+            onDelete={handleDelete}
           />
         ))}
 

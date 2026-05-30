@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getSession, getReportUrl, startAnalysis, getSessionHistory } from '../api/client'
+import { getSession, getReportUrl, getSourceFileUrl, startAnalysis, getSessionHistory, generateModifiedPpt, getModificationGuide, cancelAnalysis, deleteSession } from '../api/client'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -24,9 +24,11 @@ import PresentationView     from '../components/results/PresentationView'
 import ComparisonView        from '../components/results/ComparisonView'
 import VersionTimeline       from '../components/results/VersionTimeline'
 import UploadRevisionPanel   from '../components/results/UploadRevisionPanel'
-import DocumentSidebar       from '../components/results/DocumentSidebar'
-import ComparisonDashboard   from '../components/results/ComparisonDashboard'
-import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor, GitCompare } from 'lucide-react'
+import DocumentSidebar         from '../components/results/DocumentSidebar'
+import ComparisonDashboard     from '../components/results/ComparisonDashboard'
+import ModificationReportPanel  from '../components/agent5/ModificationReportPanel'
+import ModificationResultSection from '../components/agent5/ModificationResultSection'
+import { FileText, Clock, Download, ArrowLeft, Home, Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileJson, FileType, Eye, BarChart3, Layers, BookOpen, CheckSquare, Monitor, GitCompare, Wand2, Square, FileDown } from 'lucide-react'
 import { downloadJson, downloadMarkdown, agent4ToMarkdown } from '../utils/agentDownload'
 import { downloadCurrentView, VIEW_DOWNLOAD_META, FORMAT_LABELS } from '../utils/viewDownloads'
 import { clsx } from 'clsx'
@@ -142,12 +144,26 @@ const COLOUR_MAP = {
   teal:   { border: 'border-teal-800',   text: 'text-teal-400',   bg: 'bg-teal-950' },
 }
 
-function PipelineProgressScreen({ status }) {
+function PipelineProgressScreen({ status, onStop, stopping }) {
   const specialistsDone = status === 'agents_complete' || status === 'complete'
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Analysis in progress</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Analysis in progress</p>
+        {/* Stop button */}
+        <button
+          onClick={onStop}
+          disabled={stopping}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-800/60 text-red-300 hover:text-white hover:border-red-600 hover:bg-red-950/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {stopping
+            ? <Loader2 size={11} className="animate-spin" />
+            : <Square size={11} />
+          }
+          {stopping ? 'Stopping…' : 'Stop Analysis'}
+        </button>
+      </div>
 
       {/* Three parallel agent cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -223,6 +239,10 @@ export default function ResultsPage() {
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [startingAnalysis, setStartingAnalysis] = useState(false)
+  const [generatingPpt, setGeneratingPpt] = useState(false)
+  const [pptResult, setPptResult] = useState(null)
+  const [cancellingAnalysis, setCancellingAnalysis] = useState(false)
+  const [downloadingSource, setDownloadingSource] = useState(false)
   const [activeView, setActiveView] = useState('executive')
   const [history,     setHistory]     = useState([])          // all versions in the group
   const [sidebarMode, setSidebarMode] = useState('report')    // 'report' | 'compare_all'
@@ -314,6 +334,65 @@ export default function ResultsPage() {
       setError(err.message)
     } finally {
       setStartingAnalysis(false)
+    }
+  }
+
+  const handleGeneratePpt = async () => {
+    setGeneratingPpt(true)
+    setPptResult(null)
+    try {
+      const result = await getModificationGuide(sessionId)
+      setPptResult(result)
+    } catch (err) {
+      alert('Could not generate edit guide: ' + err.message)
+    } finally {
+      setGeneratingPpt(false)
+    }
+  }
+
+  const handleCancelAnalysis = async () => {
+    setCancellingAnalysis(true)
+    try {
+      await cancelAnalysis(sessionId)
+      await fetchSession()
+    } catch (err) {
+      alert('Could not cancel analysis: ' + err.message)
+    } finally {
+      setCancellingAnalysis(false)
+    }
+  }
+
+  const handleDownloadSource = async () => {
+    setDownloadingSource(true)
+    try {
+      const { download_url, filename } = await getSourceFileUrl(sessionId)
+      const a = document.createElement('a')
+      a.href = download_url
+      a.download = filename
+      a.target = '_blank'
+      a.rel = 'noreferrer'
+      a.click()
+    } catch (err) {
+      alert('Could not get file download link: ' + err.message)
+    } finally {
+      setDownloadingSource(false)
+    }
+  }
+
+  const handleDeleteVersion = async (targetSessionId) => {
+    try {
+      await deleteSession(targetSessionId)
+      // If we deleted the session we're currently viewing, go home
+      if (targetSessionId === sessionId) {
+        navigate('/')
+        return
+      }
+      // Otherwise refresh the history list
+      getSessionHistory(sessionId)
+        .then(data => setHistory(data.versions || []))
+        .catch(() => {})
+    } catch (err) {
+      alert('Could not delete document: ' + err.message)
     }
   }
 
@@ -428,6 +507,7 @@ export default function ResultsPage() {
             onCompareDashboard={() => setSidebarMode('compare_all')}
             onReportMode={() => setSidebarMode('report')}
             currentSession={session}
+            onDeleteVersion={handleDeleteVersion}
           />
         </aside>
 
@@ -473,9 +553,24 @@ export default function ResultsPage() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-              <Clock size={11} /> {formatDate(session.created_at)}
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                <Clock size={11} /> {formatDate(session.created_at)}
+              </p>
+              {/* Download original file — always visible */}
+              <button
+                onClick={handleDownloadSource}
+                disabled={downloadingSource}
+                title={`Download ${session.original_filename || 'original file'}`}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-medium rounded-md border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 hover:bg-gray-800 disabled:opacity-50 transition-all"
+              >
+                {downloadingSource
+                  ? <Loader2 size={10} className="animate-spin" />
+                  : <FileDown size={10} />
+                }
+                {downloadingSource ? 'Getting link…' : `Download ${(session.file_type || 'file').toUpperCase()}`}
+              </button>
+            </div>
           </div>
 
           {session.status === 'complete' && session.agent4_output && (() => {
@@ -488,6 +583,25 @@ export default function ResultsPage() {
 
             return (
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Generate Modified PPT — only for PPTX uploads */}
+                {session.file_type && session.file_type !== 'pdf' && (
+                  <button
+                    onClick={handleGeneratePpt}
+                    disabled={generatingPpt}
+                    title="Agent 5: Generate a copy-paste edit guide for your PPT"
+                    className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 text-purple-200 hover:text-white hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)' }}
+                  >
+                    {generatingPpt
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <Wand2 size={13} />
+                    }
+                    <span className="hidden sm:inline">
+                      {generatingPpt ? 'Analysing…' : 'Edit Guide'}
+                    </span>
+                  </button>
+                )}
+
                 {/* AI Chat toggle */}
                 <ChatToggleButton
                   onClick={() => setChatOpen(o => !o)}
@@ -641,7 +755,34 @@ export default function ResultsPage() {
 
           {/* Pipeline running */}
           {POLLING_STATUSES.has(session.status) && (
-            <PipelineProgressScreen status={session.status} />
+            <PipelineProgressScreen
+              status={session.status}
+              onStop={handleCancelAnalysis}
+              stopping={cancellingAnalysis}
+            />
+          )}
+
+          {/* Cancelled */}
+          {session.status === 'cancelled' && (
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 text-center">
+              <Square size={28} className="text-gray-500 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-white mb-1">Analysis stopped</p>
+              <p className="text-xs text-gray-400 mb-4">
+                You stopped this analysis. Any results collected before cancellation are shown above.
+                You can re-run the full analysis any time.
+              </p>
+              <button
+                onClick={handleStartAnalysis}
+                disabled={startingAnalysis}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-60"
+              >
+                {startingAnalysis ? (
+                  <><Loader2 size={14} className="animate-spin" /> Starting…</>
+                ) : (
+                  <><RefreshCw size={14} /> Re-run Analysis</>
+                )}
+              </button>
+            </div>
           )}
 
           {/* Pipeline failed */}
@@ -664,6 +805,14 @@ export default function ResultsPage() {
                 )}
               </button>
             </div>
+          )}
+
+          {/* ── AI-Modified PPT result section ──────────────────────────────── */}
+          {pptResult && (
+            <ModificationResultSection
+              result={pptResult}
+              onDismiss={() => setPptResult(null)}
+            />
           )}
 
           {/* Complete — multi-view report (hidden when comparison dashboard is active) */}
@@ -804,6 +953,7 @@ export default function ResultsPage() {
           onClose={() => setChatOpen(false)}
         />
       )}
+
     </div>
   )
 }

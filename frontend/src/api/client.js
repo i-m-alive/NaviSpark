@@ -100,6 +100,13 @@ export async function getReportUrl(sessionId) {
   return handleResponse(res)
 }
 
+export async function getSourceFileUrl(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/source-file-url`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
 // ── Revision / versioning ─────────────────────────────────
 
 export async function uploadRevision(parentSessionId, file) {
@@ -124,6 +131,14 @@ export async function getSessionHistory(sessionId) {
 
 export async function startAnalysis(sessionId) {
   const res = await fetch(`${API_URL}/sessions/${sessionId}/run-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function cancelAnalysis(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/cancel-analysis`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -158,6 +173,22 @@ export async function runAgent3(sessionId) {
 
 export async function runAgent4(sessionId) {
   const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent4`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function generateModifiedPpt(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/generate-modified-ppt`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function getModificationGuide(sessionId) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/modification-guide`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })

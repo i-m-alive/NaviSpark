@@ -1,0 +1,373 @@
+import { useState } from 'react'
+import { clsx } from 'clsx'
+import {
+  FileEdit, X, ChevronDown, ChevronRight,
+  CheckCircle2, AlertTriangle, SkipForward,
+  Copy, Check, Replace, ListPlus, Plus,
+} from 'lucide-react'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const PRIORITY_STYLES = {
+  must_fix:     { label: 'Must Fix',     cls: 'bg-red-950/70 text-red-300 border-red-800' },
+  should_fix:   { label: 'Should Fix',   cls: 'bg-yellow-950/70 text-yellow-300 border-yellow-800' },
+  nice_to_have: { label: 'Nice to Have', cls: 'bg-gray-800 text-gray-400 border-gray-700' },
+}
+
+const SEVERITY_CLS = { CRITICAL: 'text-red-400', MAJOR: 'text-yellow-400', MINOR: 'text-gray-400' }
+
+const ACTION_META = {
+  replace_text:   { icon: Replace,  label: 'Replace text' },
+  append_bullets: { icon: ListPlus, label: 'Add bullets'  },
+  append_text:    { icon: Plus,     label: 'Append text'  },
+}
+
+function StatPill({ value, label, cls }) {
+  return (
+    <div className="flex flex-col items-center px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl min-w-[72px]">
+      <span className={clsx('text-xl font-mono font-bold', cls)}>{value}</span>
+      <span className="text-[9px] text-gray-600 mt-0.5 whitespace-nowrap">{label}</span>
+    </div>
+  )
+}
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1800)
+        })
+      }}
+      className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border transition-all border-gray-700 text-gray-500 hover:text-white hover:border-gray-500"
+    >
+      {copied ? <Check size={9} className="text-green-400" /> : <Copy size={9} />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
+
+// ── Single guide-item row ─────────────────────────────────────────────────────
+
+function GuideRow({ item, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const action  = ACTION_META[item.action] || ACTION_META.replace_text
+  const ActionIcon = action.icon
+  const pStyle  = PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.nice_to_have
+  const sevCls  = SEVERITY_CLS[item.severity] || 'text-gray-500'
+
+  return (
+    <div className="border border-gray-800 rounded-xl overflow-hidden">
+
+      {/* Header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-gray-900/50 hover:bg-gray-800/50 transition-colors text-left"
+      >
+        <span className="w-5 h-5 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-[9px] font-mono text-gray-500 flex-shrink-0">
+          {item.change_number}
+        </span>
+
+        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="text-xs font-semibold text-white">Slide {item.slide_number}</span>
+          <span className="text-gray-600 text-[10px]">—</span>
+          <span className="text-[11px] text-gray-300 truncate max-w-[200px]">{item.slide_title}</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className={clsx('text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded border hidden sm:inline', pStyle.cls)}>
+            {pStyle.label}
+          </span>
+          <span className={clsx('text-[9px] font-semibold', sevCls)}>{item.severity}</span>
+          <span className="hidden md:flex items-center gap-1 text-[9px] text-gray-500">
+            <ActionIcon size={9} />{action.label}
+          </span>
+        </div>
+
+        <span className="text-gray-600 flex-shrink-0 ml-1">
+          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </span>
+      </button>
+
+      {/* Body */}
+      {open && (
+        <div className="px-4 py-3 space-y-3 border-t border-gray-800 bg-gray-950/50">
+
+          {/* Why — Agent 4 issue */}
+          {item.addresses_finding && (
+            <div className="rounded-lg border border-purple-900/40 bg-purple-950/20 p-2.5">
+              <p className="text-[8px] font-mono text-purple-400 uppercase tracking-wider mb-1">
+                Agent 4 action-plan issue this fixes
+              </p>
+              <p className="text-[11px] text-purple-200/80 leading-relaxed">{item.addresses_finding}</p>
+            </div>
+          )}
+
+          {/* Where */}
+          <div>
+            <p className="text-[9px] font-mono text-gray-600 uppercase tracking-wider mb-1">Location in slide</p>
+            <span className="text-[10px] font-mono text-gray-400 bg-gray-800 px-2 py-1 rounded">
+              {item.shape_name || '(body text area)'}
+            </span>
+          </div>
+
+          {/* replace_text */}
+          {item.action === 'replace_text' && (
+            <div className="space-y-2">
+              {item.find_text && (
+                <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[8px] font-mono text-red-400 uppercase tracking-wider">
+                      1. Find this text in your PPT
+                    </p>
+                    <CopyButton text={item.find_text} />
+                  </div>
+                  <p className="text-[11px] text-red-200/80 leading-relaxed italic">"{item.find_text}"</p>
+                </div>
+              )}
+              {item.replace_with && (
+                <div className="rounded-lg border border-green-900/50 bg-green-950/20 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[8px] font-mono text-green-400 uppercase tracking-wider">
+                      2. Replace with
+                    </p>
+                    <CopyButton text={item.replace_with} />
+                  </div>
+                  <p className="text-[11px] text-green-200/80 leading-relaxed">"{item.replace_with}"</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* append_bullets */}
+          {item.action === 'append_bullets' && item.bullets_to_add?.length > 0 && (
+            <div className="rounded-lg border border-blue-900/50 bg-blue-950/20 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[8px] font-mono text-blue-400 uppercase tracking-wider">
+                  Add these bullet points at end of section
+                </p>
+                <CopyButton text={item.bullets_to_add.map(b => `• ${b}`).join('\n')} />
+              </div>
+              <ul className="space-y-1">
+                {item.bullets_to_add.map((b, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[11px] text-blue-200/80">
+                    <span className="text-blue-500 mt-0.5 flex-shrink-0">•</span>{b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* append_text */}
+          {item.action === 'append_text' && item.replace_with && (
+            <div className="rounded-lg border border-purple-900/50 bg-purple-950/20 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[8px] font-mono text-purple-400 uppercase tracking-wider">
+                  Add this text at end of section
+                </p>
+                <CopyButton text={item.replace_with} />
+              </div>
+              <p className="text-[11px] text-purple-200/80 leading-relaxed">"{item.replace_with}"</p>
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function ModificationResultSection({ result, onDismiss }) {
+  const [reportOpen, setReportOpen] = useState(true)
+  const [tab, setTab] = useState('guide')
+
+  if (!result) return null
+
+  const { guide = [], skipped = [], summary = {} } = result
+
+  const mustFix   = guide.filter(c => c.priority === 'must_fix')
+  const shouldFix = guide.filter(c => c.priority === 'should_fix')
+  const niceFix   = guide.filter(c => c.priority === 'nice_to_have')
+
+  return (
+    <div
+      className="rounded-2xl border border-purple-800/40 bg-gray-950 overflow-hidden"
+      style={{ animation: 'slide-up-fade 0.4s cubic-bezier(0.16,1,0.3,1) both' }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-5 py-4 border-b border-gray-800"
+        style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.25), rgba(59,7,100,0.15))' }}
+      >
+        <div className="p-2 bg-purple-950/70 rounded-lg border border-purple-800/50 flex-shrink-0">
+          <FileEdit size={16} className="text-purple-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-white">PPT Edit Guide</h3>
+          <p className="text-[10px] text-purple-300/70 mt-0.5">
+            Agent 5 — copy-paste fixes based on all 4 agent findings
+          </p>
+        </div>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="p-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors flex-shrink-0"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="px-5 py-4 border-b border-gray-800 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <StatPill value={summary.must_fix   ?? mustFix.length}   label="Must Fix"     cls="text-red-400"    />
+          <StatPill value={summary.should_fix ?? shouldFix.length} label="Should Fix"   cls="text-yellow-400" />
+          <StatPill value={summary.nice_to_have ?? niceFix.length} label="Nice to Have" cls="text-gray-300"   />
+          <StatPill value={summary.skipped    ?? skipped.length}   label="Skipped"      cls="text-gray-500"   />
+          {summary.must_fix_coverage && (
+            <p className="text-[10px] text-gray-600 ml-1 flex-1">
+              Coverage: {summary.must_fix_coverage}
+            </p>
+          )}
+        </div>
+
+        {/* How-to tip */}
+        <div className="rounded-lg border border-blue-900/40 bg-blue-950/20 px-3 py-2">
+          <p className="text-[10px] text-blue-300/80 leading-relaxed">
+            Open your PPT, find each text below using <strong>Ctrl+F</strong>, then replace it
+            with the suggested text. Use the <span className="font-mono bg-gray-800 px-1 rounded">Copy</span> button on each block to paste directly.
+          </p>
+        </div>
+      </div>
+
+      {/* Report section (collapsible) */}
+      <div>
+        <button
+          onClick={() => setReportOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-3 border-b border-gray-800 hover:bg-gray-900/40 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-200">Edits to Make</span>
+            <span className="text-[10px] text-gray-600">— slide, location, find &amp; replace</span>
+          </div>
+          {reportOpen ? <ChevronDown size={14} className="text-gray-500" /> : <ChevronRight size={14} className="text-gray-500" />}
+        </button>
+
+        {reportOpen && (
+          <div className="px-5 py-4 space-y-3">
+            {/* Tabs */}
+            <div className="flex border-b border-gray-800">
+              {[
+                { key: 'guide',   label: `All Edits (${guide.length})`              },
+                { key: 'skipped', label: `Skipped — Manual (${skipped.length})` },
+              ].map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={clsx(
+                    'px-4 py-2 text-xs font-medium transition-colors',
+                    tab === t.key
+                      ? 'text-white border-b-2 border-purple-500'
+                      : 'text-gray-500 hover:text-gray-300',
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Guide tab */}
+            {tab === 'guide' && (
+              <div className="space-y-4">
+                {guide.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <AlertTriangle size={22} className="text-gray-700 mb-2" />
+                    <p className="text-sm text-gray-500">No edits were generated.</p>
+                    <p className="text-xs text-gray-600 mt-1">See the Skipped tab for details.</p>
+                  </div>
+                ) : (
+                  <>
+                    {mustFix.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-mono text-red-400 uppercase tracking-widest">
+                          Must Fix · {mustFix.length} edit{mustFix.length !== 1 ? 's' : ''}
+                        </p>
+                        {mustFix.map((c, i) => <GuideRow key={c.change_number} item={c} defaultOpen={i < 2} />)}
+                      </div>
+                    )}
+                    {shouldFix.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-mono text-yellow-400 uppercase tracking-widest">
+                          Should Fix · {shouldFix.length} edit{shouldFix.length !== 1 ? 's' : ''}
+                        </p>
+                        {shouldFix.map(c => <GuideRow key={c.change_number} item={c} defaultOpen={false} />)}
+                      </div>
+                    )}
+                    {niceFix.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">
+                          Nice to Have · {niceFix.length} edit{niceFix.length !== 1 ? 's' : ''}
+                        </p>
+                        {niceFix.map(c => <GuideRow key={c.change_number} item={c} defaultOpen={false} />)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Skipped tab */}
+            {tab === 'skipped' && (
+              <div className="space-y-2">
+                {skipped.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <CheckCircle2 size={22} className="text-green-700 mb-2" />
+                    <p className="text-sm text-gray-400">All findings were addressed.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-gray-500 pb-1">
+                      These findings need manual editing — Agent 5 could not generate
+                      an exact find-and-replace for them.
+                    </p>
+                    {skipped.map((item, i) => (
+                      <div key={i} className="border border-gray-800 rounded-xl px-4 py-3 bg-gray-900/40 space-y-1.5">
+                        <div className="flex items-start gap-2">
+                          <SkipForward size={11} className="text-gray-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 space-y-1">
+                            <p className="text-[11px] text-gray-200 font-medium leading-snug">
+                              {item.finding || 'Unnamed finding'}
+                            </p>
+                            <p className="text-[10px] text-gray-500">
+                              <span className="text-gray-600">Reason: </span>{item.reason}
+                            </p>
+                            {item.manual_action_required && (
+                              <p className="text-[10px] text-yellow-500/80">
+                                <span className="text-yellow-600 font-semibold">Action needed: </span>
+                                {item.manual_action_required}
+                              </p>
+                            )}
+                            {item.source_agent && (
+                              <span className="text-[9px] font-mono text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded">
+                                {item.source_agent}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

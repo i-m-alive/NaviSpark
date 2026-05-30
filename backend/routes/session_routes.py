@@ -4,7 +4,7 @@ from typing import Optional
 from models import UploadResponse, ReportUrlResponse
 from auth import get_current_user
 from storage import upload_file_to_storage, get_signed_url
-from services.file_service import validate_and_detect, convert_pptx_to_pdf, count_pdf_pages
+from services.file_service import validate_and_detect, count_file_pages, CONTENT_TYPES, FILE_EXTENSIONS
 from pydantic import BaseModel
 from typing import List as TypingList
 from services.session_service import (
@@ -56,22 +56,14 @@ async def upload_document(
     # Step 4: Detect MIME type and validate
     detected_type = validate_and_detect(file_bytes, original_filename)
 
-    # Step 5: Convert PPTX/PPT → PDF via CloudConvert; PDFs pass through as-is
-    if detected_type in ("pptx", "ppt"):
-        pdf_bytes = await convert_pptx_to_pdf(file_bytes, filename=original_filename)
-        file_type_label = "pptx"
-    else:
-        pdf_bytes = file_bytes
-        file_type_label = "pdf"
+    # Step 5: Count pages/slides (no conversion — store the original file as-is)
+    page_count = count_file_pages(file_bytes, detected_type)
 
-    # Step 6: Count pages in the final PDF
-    page_count = count_pdf_pages(pdf_bytes)
-
-    # Step 7: Create session row in DB
+    # Step 6: Create session row in DB
     session = create_session(
         user_id=user_id,
         original_filename=original_filename,
-        file_type=file_type_label,
+        file_type=detected_type,
         page_count=page_count,
         client_industry=industry_list,
         proposal_type=proposal_type.strip(),
@@ -79,22 +71,24 @@ async def upload_document(
     )
     session_id = session["id"]
 
-    # Step 8: Upload the PDF to Supabase Storage
-    storage_path = f"uploads/{user_id}/{session_id}/document.pdf"
-    upload_file_to_storage(storage_path, pdf_bytes, content_type="application/pdf")
+    # Step 7: Upload the original file to Supabase Storage (preserving its format)
+    ext = FILE_EXTENSIONS[detected_type]
+    storage_path = f"uploads/{user_id}/{session_id}/document.{ext}"
+    upload_file_to_storage(storage_path, file_bytes, content_type=CONTENT_TYPES[detected_type])
 
-    # Step 9: Update session
+    # Step 8: Update session
     update_session(session_id, user_id, {
         "storage_path": storage_path,
         "status": "ready"
     })
 
+    label = "slides" if detected_type in ("pptx", "ppt") else "pages"
     return UploadResponse(
         session_id=session_id,
         page_count=page_count,
-        file_type=file_type_label,
+        file_type=detected_type,
         status="ready",
-        message=f"File uploaded successfully. {page_count} pages detected."
+        message=f"File uploaded successfully. {page_count} {label} detected."
     )
 
 
@@ -179,20 +173,13 @@ async def upload_revision(
     original_filename = file.filename or "revised_proposal"
     detected_type     = validate_and_detect(file_bytes, original_filename)
 
-    if detected_type in ("pptx", "ppt"):
-        pdf_bytes      = await convert_pptx_to_pdf(file_bytes, filename=original_filename)
-        file_type_label = "pptx"
-    else:
-        pdf_bytes      = file_bytes
-        file_type_label = "pdf"
-
-    page_count = count_pdf_pages(pdf_bytes)
+    page_count = count_file_pages(file_bytes, detected_type)
 
     # Create new session row inheriting context from parent
     new_session = create_session(
         user_id           = user_id,
         original_filename = original_filename,
-        file_type         = file_type_label,
+        file_type         = detected_type,
         page_count        = page_count,
         client_industry   = parent.get("client_industry") or [],
         proposal_type     = parent.get("proposal_type") or "",
@@ -203,9 +190,10 @@ async def upload_revision(
     )
     new_session_id = new_session["id"]
 
-    # Upload revised PDF to storage
-    storage_path = f"uploads/{user_id}/{new_session_id}/document.pdf"
-    upload_file_to_storage(storage_path, pdf_bytes, content_type="application/pdf")
+    # Upload revised file to storage (preserving its original format)
+    ext = FILE_EXTENSIONS[detected_type]
+    storage_path = f"uploads/{user_id}/{new_session_id}/document.{ext}"
+    upload_file_to_storage(storage_path, file_bytes, content_type=CONTENT_TYPES[detected_type])
 
     update_session(new_session_id, user_id, {
         "storage_path": storage_path,
@@ -242,6 +230,29 @@ async def get_session_history(
         "group_id": group_id,
         "current_session_id": session_id,
         "versions": versions,
+    }
+
+
+@router.get("/sessions/{session_id}/source-file-url")
+async def get_source_file_url(
+    session_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """Returns a 1-hour signed download URL for the original uploaded file (PDF or PPTX)."""
+    user = await get_current_user(authorization)
+    session = get_session(session_id, user["id"])
+
+    if not session.get("storage_path"):
+        raise HTTPException(
+            status_code=404,
+            detail="No source file found for this session."
+        )
+
+    download_url = get_signed_url(session["storage_path"], expires_in=3600)
+    return {
+        "download_url": download_url,
+        "filename": session.get("original_filename", "document"),
+        "file_type": session.get("file_type", "pdf"),
     }
 
 
