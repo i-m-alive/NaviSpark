@@ -1,3 +1,4 @@
+import io
 import boto3
 import json
 import base64
@@ -48,13 +49,53 @@ def _clean_json_response(raw_text: str) -> str:
     return text.strip()
 
 
-def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: bytes) -> dict:
+def _extract_pptx_text(pptx_bytes: bytes) -> str:
+    """Extracts all text from a PPTX/PPT file, slide by slide."""
+    from pptx import Presentation
+    prs = Presentation(io.BytesIO(pptx_bytes))
+    slides_text = []
+    for i, slide in enumerate(prs.slides, 1):
+        texts = []
+        for shape in slide.shapes:
+            if hasattr(shape, "text") and shape.text.strip():
+                texts.append(shape.text.strip())
+        if texts:
+            slides_text.append(f"--- Slide {i} ---\n" + "\n".join(texts))
+    return "\n\n".join(slides_text) if slides_text else "(No text content found in presentation)"
+
+
+def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: bytes, file_type: str = "pdf") -> dict:
     """
-    Calls Claude Sonnet 4 on Bedrock with a PDF as a native document block.
-    Bedrock reads the PDF natively — no OCR or preprocessing needed.
+    Calls Claude Sonnet 4 on Bedrock with a document.
+    - PDF: sent as a native base64 document block.
+    - PPTX/PPT: text extracted slide-by-slide and prepended to the user message.
     """
     client = get_bedrock_client()
-    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+
+    if file_type in ("pptx", "ppt"):
+        slide_content = _extract_pptx_text(pdf_bytes)
+        content = [
+            {
+                "type": "text",
+                "text": f"PROPOSAL CONTENT (PowerPoint presentation, {file_type.upper()}):\n\n{slide_content}\n\n{user_message}",
+            }
+        ]
+    else:
+        pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+        content = [
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": pdf_b64,
+                },
+            },
+            {
+                "type": "text",
+                "text": user_message,
+            },
+        ]
 
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
@@ -63,22 +104,9 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
         "messages": [
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": pdf_b64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": user_message,
-                    }
-                ]
+                "content": content,
             }
-        ]
+        ],
     }
 
     try:
@@ -107,13 +135,13 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
         )
 
 
-def invoke_agent_text_only(system_prompt: str, user_message: str) -> dict:
-    """Calls Claude Sonnet 4 on Bedrock with text input only (no PDF). Used by Agent 4."""
+def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: int = 8000) -> dict:
+    """Calls Claude Sonnet 4 on Bedrock with text input only (no PDF). Used by Agent 4 and Agent 5."""
     client = get_bedrock_client()
 
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 8000,
+        "max_tokens": max_tokens,
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_message}]
     }

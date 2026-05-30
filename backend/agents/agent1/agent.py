@@ -356,6 +356,7 @@ def run(
     client_industry: list[str],
     proposal_type: str,
     client_priorities: list[str],
+    file_type: str = "pdf",
 ) -> dict:
     """
     Runs Agent 1 analysis on a proposal PDF.
@@ -383,5 +384,6 @@ def run(
         system_prompt=system_prompt,
         user_message=user_message,
         pdf_bytes=pdf_bytes,
+        file_type=file_type,
     )
     return _apply_score_caps(result)

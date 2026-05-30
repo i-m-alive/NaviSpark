@@ -537,18 +537,20 @@ def run(
     client_industry: list[str],
     proposal_type: str,
     client_priorities: list[str],
+    file_type: str = "pdf",
 ) -> dict:
     """
-    Runs Agent 2 analysis on a proposal PDF.
+    Runs Agent 2 analysis on a proposal PDF or PowerPoint.
 
     Composes the full system prompt from all 7 skill modules,
     makes ONE Bedrock call, and returns the parsed result dict.
 
     Args:
-        pdf_bytes:          Raw bytes of the proposal PDF.
+        pdf_bytes:          Raw bytes of the proposal file (PDF or PPTX/PPT).
         client_industry:    List of selected industries (e.g. ["Healthcare / Pharma"]).
         proposal_type:      Type of proposal (e.g. "Fixed Price").
         client_priorities:  List of client priorities (e.g. ["Cost Certainty"]).
+        file_type:          File type: 'pdf', 'pptx', or 'ppt'.
 
     Returns:
         Parsed dict matching the Agent 2 output JSON schema.
@@ -564,5 +566,6 @@ def run(
         system_prompt=system_prompt,
         user_message=user_message,
         pdf_bytes=pdf_bytes,
+        file_type=file_type,
     )
     return _apply_score_caps(result)

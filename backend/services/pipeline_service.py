@@ -33,6 +33,15 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=6)
 
 
+def _is_cancelled(session_id: str, user_id: str) -> bool:
+    """Re-fetches the session and returns True if the user requested cancellation."""
+    try:
+        s = get_session(session_id, user_id)
+        return s.get("status") == "cancelled"
+    except Exception:
+        return False
+
+
 async def _in_thread(fn):
     """Run a zero-argument callable in the shared thread pool."""
     loop = asyncio.get_running_loop()
@@ -47,10 +56,11 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
     """
     try:
         session = get_session(session_id, user_id)
-        pdf_bytes = download_file_from_storage(session["storage_path"])
-        if not pdf_bytes:
+        file_bytes = download_file_from_storage(session["storage_path"])
+        if not file_bytes:
             raise ValueError("Downloaded proposal file is empty.")
 
+        file_type = session.get("file_type") or "pdf"
         client_industry = session.get("client_industry") or []
         proposal_type = session.get("proposal_type") or ""
         client_priorities = session.get("client_priorities") or []
@@ -61,21 +71,24 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
         r1, r2, r3 = await asyncio.gather(
             _in_thread(partial(
                 _run_agent1,
-                pdf_bytes=pdf_bytes,
+                pdf_bytes=file_bytes,
+                file_type=file_type,
                 client_industry=client_industry,
                 proposal_type=proposal_type,
                 client_priorities=client_priorities,
             )),
             _in_thread(partial(
                 _run_agent2,
-                pdf_bytes=pdf_bytes,
+                pdf_bytes=file_bytes,
+                file_type=file_type,
                 client_industry=client_industry,
                 proposal_type=proposal_type,
                 client_priorities=client_priorities,
             )),
             _in_thread(partial(
                 _run_agent3,
-                pdf_bytes=pdf_bytes,
+                pdf_bytes=file_bytes,
+                file_type=file_type,
                 client_industry=client_industry,
                 proposal_type=proposal_type,
                 client_priorities=client_priorities,
@@ -99,6 +112,11 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             update_session(session_id, user_id, {"status": "pipeline_failed"})
             return
 
+        # ── Cancellation checkpoint 1: after specialist agents ────────────────
+        if _is_cancelled(session_id, user_id):
+            logger.info("Pipeline cancelled by user after specialist agents for session %s", session_id)
+            return  # status is already 'cancelled' in DB
+
         # ── Step 2: Save agent 1/2/3 outputs to Storage ───────────────────────
         await asyncio.gather(
             _in_thread(partial(save_agent_output_to_storage, user_id, session_id, "agent1", r1, _a1_md(r1))),
@@ -113,6 +131,11 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             "agent3_output": r3,
             "status": "agents_complete",
         })
+
+        # ── Cancellation checkpoint 2: before Agent 4 ─────────────────────────
+        if _is_cancelled(session_id, user_id):
+            logger.info("Pipeline cancelled by user before Agent 4 for session %s", session_id)
+            return  # status is already 'cancelled' in DB
 
         # ── Step 4: Agent 4 (sequential) ──────────────────────────────────────
         r4 = await _in_thread(partial(
