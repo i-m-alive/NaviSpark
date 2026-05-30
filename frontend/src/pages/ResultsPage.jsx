@@ -518,7 +518,11 @@ export default function ResultsPage() {
                       onClick={() => {
                         if (!showDownloadMenu && downloadBtnRef.current) {
                           const rect = downloadBtnRef.current.getBoundingClientRect()
-                          setDownloadMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right })
+                          const DROPDOWN_W = 208 // w-52
+                          const rawRight = window.innerWidth - rect.right
+                          // Clamp so dropdown never bleeds off the left edge on mobile
+                          const clampedRight = Math.max(8, Math.min(rawRight, window.innerWidth - DROPDOWN_W - 8))
+                          setDownloadMenuPos({ top: rect.bottom + 6, right: clampedRight })
                         }
                         setShowDownloadMenu(v => !v)
                       }}
@@ -535,8 +539,8 @@ export default function ResultsPage() {
                   {/* Format dropdown — portal-rendered to escape all ancestor stacking contexts */}
                   {showDownloadMenu && createPortal(
                     <div ref={downloadDropdownRef}
-                      className="fixed w-52 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
-                      style={{ top: downloadMenuPos.top, right: downloadMenuPos.right, zIndex: 9999, animation: 'slide-up-fade 0.18s cubic-bezier(0.16,1,0.3,1) both' }}>
+                      className="fixed bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+                      style={{ top: downloadMenuPos.top, right: downloadMenuPos.right, width: Math.min(208, window.innerWidth - 16), zIndex: 9999, animation: 'slide-up-fade 0.18s cubic-bezier(0.16,1,0.3,1) both' }}>
                       <div className="px-3 py-2 border-b border-gray-800">
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Download Format</p>
                         <p className="text-[10px] text-gray-600 mt-0.5">{meta.label}</p>

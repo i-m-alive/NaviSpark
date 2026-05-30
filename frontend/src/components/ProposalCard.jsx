@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  FileText, ChevronRight, Download,
+  FileText, ChevronRight,
   Trash2, CheckCircle, AlertCircle, Loader2, Wrench,
 } from 'lucide-react'
-import { getReportUrl } from '../api/client'
 
 // ── Relative time ─────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -179,32 +178,12 @@ function cardGlowColor(status, score) {
 
 // ── Main card ─────────────────────────────────────────────────────────────────
 export default function ProposalCard({ proposal, selected, onToggleSelect, onDelete, selectionMode }) {
-  const [downloading, setDownloading] = useState(false)
-  const hasReport = proposal.status === 'complete' && proposal.agent4_output
   const score     = proposal.agent4_output?.overall_score
   const glowColor = cardGlowColor(proposal.status, score)
 
-  const handleDownload = async (e) => {
-    e.preventDefault()
-    setDownloading(true)
-    try {
-      const { download_url } = await getReportUrl(proposal.id)
-      window.open(download_url, '_blank')
-    } catch (err) {
-      alert('Could not get download link: ' + err.message)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  const baseBorder = selected ? 'rgba(37,99,235,0.5)' : 'rgba(55,65,81,0.8)'
-  const hoverGlow  = selected
-    ? '0 0 0 2px rgba(37,99,235,0.4), 0 8px 32px rgba(0,0,0,0.5)'
-    : `0 0 0 1px rgba(59,130,246,0.2), 0 8px 32px rgba(0,0,0,0.4)${glowColor ? `, 0 0 40px ${glowColor}` : ''}`
-
   return (
     <div
-      className="card-hover-glow relative group rounded-2xl overflow-hidden cursor-pointer"
+      className="card-hover-glow relative group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
       style={{
         border: `1px solid ${selected ? 'var(--card-border-selected)' : 'var(--card-border)'}`,
         background: selected ? 'var(--card-bg-selected)' : 'var(--card-bg)',
@@ -298,22 +277,21 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
         {/* ── Actions ────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 pt-2.5 border-t" style={{ borderColor: 'var(--card-divider)' }}
           onClick={e => e.stopPropagation()}>
-          <Link to={`/results/${proposal.id}`}
-            className="flex items-center gap-1 text-xs font-semibold transition-colors"
-            style={{ color: 'var(--card-link-color)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--card-link-hover)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--card-link-color)'}>
-            View Details <ChevronRight size={12} />
+
+          {/* View Details — highlighted pill button */}
+          <Link
+            to={`/results/${proposal.id}`}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200
+              text-blue-400 bg-blue-950/0 border border-transparent
+              group-hover:bg-blue-950/60 group-hover:border-blue-700/60 group-hover:text-blue-300
+              hover:!bg-blue-900/70 hover:!border-blue-600 hover:!text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.3)]
+              active:scale-95"
+          >
+            View Details
+            <ChevronRight size={12} className="transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
-            {hasReport && (
-              <button onClick={handleDownload} disabled={downloading}
-                className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-white transition-colors disabled:opacity-40">
-                {downloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-                {downloading ? 'Loading…' : 'Report'}
-              </button>
-            )}
             <button onClick={() => onDelete(proposal.id)} title="Delete"
               className="text-[11px] text-gray-700 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
               <Trash2 size={11} />
