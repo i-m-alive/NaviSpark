@@ -38,7 +38,7 @@ function ScoreRing({ score, size = 52 }) {
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         {/* Track */}
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--score-track)" strokeWidth="3.5" />
         {/* Fill */}
         <circle cx={size/2} cy={size/2} r={r} fill="none"
           stroke={color} strokeWidth="3.5" strokeLinecap="round"
@@ -50,7 +50,7 @@ function ScoreRing({ score, size = 52 }) {
       {/* Center label */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
         <span style={{ fontSize: 12, fontWeight: 800, color, lineHeight: 1 }}>{score.toFixed(1)}</span>
-        <span style={{ fontSize: 7, color: 'rgba(156,163,175,0.7)', lineHeight: 1 }}>/10</span>
+        <span style={{ fontSize: 7, color: 'var(--score-label)', lineHeight: 1 }}>/10</span>
       </div>
     </div>
   )
@@ -106,7 +106,7 @@ function TopMustFix({ agent4Output }) {
   if (!first) return null
   return (
     <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg mb-2.5"
-      style={{ background: 'rgba(127,29,29,0.2)', border: '1px solid rgba(185,28,28,0.2)' }}>
+      style={{ background: 'var(--mustfix-bg)', border: '1px solid var(--mustfix-border)' }}>
       <Wrench size={10} className="text-red-400 shrink-0 mt-0.5" />
       <p className="text-[10px] text-red-300 leading-relaxed line-clamp-2">
         <span className="font-semibold">Fix: </span>{first}
@@ -134,7 +134,7 @@ function PipelineProgressRow({ status }) {
       <div className="flex gap-1.5">
         {bars.map(({ label, color }) => (
           <div key={label} className="flex-1">
-            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--pipe-track)' }}>
               <div className="h-full rounded-full animate-pipeline-wave" style={{
                 width: isFinalise ? '100%' : '60%',
                 background: color,
@@ -142,7 +142,7 @@ function PipelineProgressRow({ status }) {
                 transition: 'width 0.5s ease',
               }} />
             </div>
-            <p style={{ fontSize: 8, color: 'rgba(156,163,175,0.5)', marginTop: 2, textAlign: 'center' }}>{label}</p>
+            <p style={{ fontSize: 8, color: 'var(--pipe-label)', marginTop: 2, textAlign: 'center' }}>{label}</p>
           </div>
         ))}
       </div>
@@ -206,11 +206,9 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
     <div
       className="card-hover-glow relative group rounded-2xl overflow-hidden cursor-pointer"
       style={{
-        border: `1px solid ${baseBorder}`,
-        background: selected
-          ? 'linear-gradient(135deg, rgba(29,78,216,0.1), rgba(30,27,75,0.15))'
-          : 'linear-gradient(135deg, rgba(17,24,39,0.95), rgba(11,15,25,0.98))',
-        boxShadow: `0 2px 16px rgba(0,0,0,0.4)${glowColor ? `, 0 0 24px ${glowColor}` : ''}`,
+        border: `1px solid ${selected ? 'var(--card-border-selected)' : 'var(--card-border)'}`,
+        background: selected ? 'var(--card-bg-selected)' : 'var(--card-bg)',
+        boxShadow: `var(--card-shadow)${glowColor ? `, 0 0 24px ${glowColor}` : ''}`,
       }}
       onClick={() => selectionMode && onToggleSelect()}
     >
@@ -239,7 +237,7 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
 
           {/* File icon */}
           <div className="flex-shrink-0 p-1.5 rounded-lg transition-colors"
-            style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.15)' }}>
+            style={{ background: 'var(--card-icon-bg)', border: '1px solid var(--card-icon-border)' }}>
             <FileText size={16} className="text-blue-400" />
           </div>
 
@@ -272,7 +270,7 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
             proposal.proposal_type,
           ].filter(Boolean).map((tag, i) => (
             <span key={i} className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#9ca3af' }}>
+              style={{ background: 'var(--tag-bg)', border: '1px solid var(--tag-border)', color: 'var(--tag-color)' }}>
               {tag}
             </span>
           ))}
@@ -283,7 +281,7 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
           <div className="flex flex-wrap gap-1 mb-2.5">
             {proposal.client_industry.map((ind, i) => (
               <span key={i} className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: '#93c5fd' }}>
+                style={{ background: 'var(--ind-tag-bg)', border: '1px solid var(--ind-tag-border)', color: 'var(--ind-tag-color)' }}>
                 {ind}
               </span>
             ))}
@@ -298,13 +296,13 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
         )}
 
         {/* ── Actions ────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 pt-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+        <div className="flex items-center gap-2 pt-2.5 border-t" style={{ borderColor: 'var(--card-divider)' }}
           onClick={e => e.stopPropagation()}>
           <Link to={`/results/${proposal.id}`}
             className="flex items-center gap-1 text-xs font-semibold transition-colors"
-            style={{ color: '#60a5fa' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#93c5fd'}
-            onMouseLeave={e => e.currentTarget.style.color = '#60a5fa'}>
+            style={{ color: 'var(--card-link-color)' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--card-link-hover)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--card-link-color)'}>
             View Details <ChevronRight size={12} />
           </Link>
 

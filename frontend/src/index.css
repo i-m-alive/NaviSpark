@@ -764,3 +764,209 @@ html[data-theme="sage"]                .theme-orbs,
 html[data-theme="high-contrast-light"] .theme-orbs {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RGB CHANNEL VARIABLES — for opacity variant overrides (bg-gray-X/NN)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root, html[data-theme="obsidian"]      { --r1:3;  --g1:7;  --b1:18;  --r2:17; --g2:24; --b2:39;  --r3:31; --g3:41; --b3:55;  --rb1:31;--gb1:41;--bb1:55;  --rb2:55;--gb2:65;--bb2:81; }
+html[data-theme="midnight-blue"]        { --r1:2;  --g1:10; --b1:24;  --r2:7;  --g2:21; --b2:40;  --r3:13; --g3:32; --b3:64;  --rb1:13;--gb1:32;--bb1:64;  --rb2:26;--gb2:53;--bb2:96; }
+html[data-theme="forest"]              { --r1:5;  --g1:15; --b1:8;   --r2:10; --g2:26; --b2:14;  --r3:16; --g3:38; --b3:24;  --rb1:16;--gb1:38;--bb1:24;  --rb2:30;--gb2:74;--bb2:48; }
+html[data-theme="crimson"]             { --r1:15; --g1:5;  --b1:5;   --r2:26; --g2:8;  --b2:8;   --r3:38; --g3:16; --b3:16;  --rb1:38;--gb1:16;--bb1:16;  --rb2:61;--gb2:28;--bb2:28; }
+html[data-theme="aurora"]              { --r1:2;  --g1:8;  --b1:20;  --r2:5;  --g2:14; --b2:32;  --r3:10; --g3:24; --b3:48;  --rb1:10;--gb1:24;--bb1:48;  --rb2:21;--gb2:40;--bb2:80; }
+html[data-theme="neon-cyber"]          { --r1:2;  --g1:2;  --b1:2;   --r2:5;  --g2:5;  --b2:5;   --r3:10; --g3:10; --b3:10;  --rb1:0; --gb1:24;--bb1:0;   --rb2:0; --gb2:42;--bb2:0; }
+html[data-theme="arctic-light"]        { --r1:240;--g1:249;--b1:255; --r2:255;--g2:255;--b2:255; --r3:241;--g3:245;--b3:249; --rb1:226;--gb1:232;--bb1:240; --rb2:203;--gb2:213;--bb2:225; }
+html[data-theme="parchment"]           { --r1:250;--g1:247;--b1:240; --r2:245;--g2:240;--b2:232; --r3:236;--g3:229;--b3:213; --rb1:221;--gb1:213;--bb1:192; --rb2:200;--gb2:184;--bb2:152; }
+html[data-theme="lavender-mist"]       { --r1:250;--g1:245;--b1:255; --r2:245;--g2:238;--b2:255; --r3:237;--g3:233;--b3:254; --rb1:221;--gb1:214;--bb1:254; --rb2:196;--gb2:181;--bb2:253; }
+html[data-theme="warm-sand"]           { --r1:253;--g1:248;--b1:240; --r2:250;--g2:240;--b2:230; --r3:245;--g3:232;--b3:213; --rb1:238;--gb1:220;--bb1:192; --rb2:224;--gb2:200;--bb2:160; }
+html[data-theme="ocean-breeze"]        { --r1:240;--g1:251;--b1:255; --r2:224;--g2:247;--b2:250; --r3:178;--g3:235;--b3:242; --rb1:178;--gb1:235;--bb1:242; --rb2:128;--gb2:222;--bb2:234; }
+html[data-theme="sage"]                { --r1:244;--g1:250;--b1:244; --r2:236;--g2:245;--b2:236; --r3:222;--g3:237;--b3:222; --rb1:204;--gb1:227;--bb1:204; --rb2:176;--gb2:212;--bb2:176; }
+html[data-theme="high-contrast-dark"]  { --r1:0;  --g1:0;  --b1:0;   --r2:10; --g2:10; --b2:10;  --r3:17; --g3:17; --b3:17;  --rb1:68;--gb1:68;--bb1:68;   --rb2:102;--gb2:102;--bb2:102; }
+html[data-theme="high-contrast-light"] { --r1:255;--g1:255;--b1:255; --r2:255;--g2:255;--b2:255; --r3:238;--g3:238;--b3:238; --rb1:0;--gb1:0;--bb1:0;       --rb2:0;--gb2:0;--bb2:0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRAY OPACITY VARIANT OVERRIDES — written once, RGB vars do the work
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme] .bg-gray-950\/80 { background-color: rgba(var(--r1),var(--g1),var(--b1),0.80); }
+html[data-theme] .bg-gray-950\/50 { background-color: rgba(var(--r1),var(--g1),var(--b1),0.50); }
+html[data-theme] .bg-gray-950\/30 { background-color: rgba(var(--r1),var(--g1),var(--b1),0.30); }
+html[data-theme] .bg-gray-900\/80 { background-color: rgba(var(--r2),var(--g2),var(--b2),0.80); }
+html[data-theme] .bg-gray-900\/70 { background-color: rgba(var(--r2),var(--g2),var(--b2),0.70); }
+html[data-theme] .bg-gray-900\/60 { background-color: rgba(var(--r2),var(--g2),var(--b2),0.60); }
+html[data-theme] .bg-gray-900\/50 { background-color: rgba(var(--r2),var(--g2),var(--b2),0.50); }
+html[data-theme] .bg-gray-900\/40 { background-color: rgba(var(--r2),var(--g2),var(--b2),0.40); }
+html[data-theme] .bg-gray-800\/80 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.80); }
+html[data-theme] .bg-gray-800\/70 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.70); }
+html[data-theme] .bg-gray-800\/60 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.60); }
+html[data-theme] .bg-gray-800\/50 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.50); }
+html[data-theme] .bg-gray-800\/40 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.40); }
+html[data-theme] .bg-gray-800\/30 { background-color: rgba(var(--r3),var(--g3),var(--b3),0.30); }
+
+html[data-theme] .border-gray-800\/70 { border-color: rgba(var(--rb1),var(--gb1),var(--bb1),0.70); }
+html[data-theme] .border-gray-800\/60 { border-color: rgba(var(--rb1),var(--gb1),var(--bb1),0.60); }
+html[data-theme] .border-gray-800\/50 { border-color: rgba(var(--rb1),var(--gb1),var(--bb1),0.50); }
+html[data-theme] .border-gray-800\/40 { border-color: rgba(var(--rb1),var(--gb1),var(--bb1),0.40); }
+html[data-theme] .border-gray-700\/60 { border-color: rgba(var(--rb2),var(--gb2),var(--bb2),0.60); }
+html[data-theme] .border-gray-700\/50 { border-color: rgba(var(--rb2),var(--gb2),var(--bb2),0.50); }
+html[data-theme] .border-gray-700\/40 { border-color: rgba(var(--rb2),var(--gb2),var(--bb2),0.40); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES — flip dark colored classes to light equivalents
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Blue/Indigo family ───────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-blue-950,
+html[data-theme-mode="light"] .bg-blue-950\/60,
+html[data-theme-mode="light"] .bg-blue-950\/40,
+html[data-theme-mode="light"] .bg-blue-950\/30,
+html[data-theme-mode="light"] .bg-blue-950\/20,
+html[data-theme-mode="light"] .bg-blue-900,
+html[data-theme-mode="light"] .bg-blue-900\/70,
+html[data-theme-mode="light"] .bg-blue-900\/50,
+html[data-theme-mode="light"] .bg-indigo-950,
+html[data-theme-mode="light"] .bg-indigo-950\/60,
+html[data-theme-mode="light"] .bg-indigo-950\/40,
+html[data-theme-mode="light"] .bg-indigo-950\/25  { background-color: #dbeafe; }
+
+html[data-theme-mode="light"] .border-blue-800\/60,
+html[data-theme-mode="light"] .border-blue-800\/50,
+html[data-theme-mode="light"] .border-blue-800\/40,
+html[data-theme-mode="light"] .border-blue-700\/60,
+html[data-theme-mode="light"] .border-blue-700\/50,
+html[data-theme-mode="light"] .border-blue-900\/40,
+html[data-theme-mode="light"] .border-blue-900\/50  { border-color: #93c5fd; }
+
+/* ── Red family ───────────────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-red-950,
+html[data-theme-mode="light"] .bg-red-950\/50,
+html[data-theme-mode="light"] .bg-red-950\/30,
+html[data-theme-mode="light"] .bg-red-950\/25,
+html[data-theme-mode="light"] .bg-red-950\/20,
+html[data-theme-mode="light"] .bg-red-900,
+html[data-theme-mode="light"] .bg-red-900\/70      { background-color: #fee2e2; }
+
+html[data-theme-mode="light"] .border-red-900\/50,
+html[data-theme-mode="light"] .border-red-900\/40,
+html[data-theme-mode="light"] .border-red-800\/50  { border-color: #fca5a5; }
+
+/* ── Green family ─────────────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-green-950,
+html[data-theme-mode="light"] .bg-green-950\/40,
+html[data-theme-mode="light"] .bg-green-950\/25,
+html[data-theme-mode="light"] .bg-green-950\/10,
+html[data-theme-mode="light"] .bg-green-900,
+html[data-theme-mode="light"] .bg-green-900\/70,
+html[data-theme-mode="light"] .bg-green-900\/40    { background-color: #dcfce7; }
+
+html[data-theme-mode="light"] .border-green-800\/60,
+html[data-theme-mode="light"] .border-green-800\/50,
+html[data-theme-mode="light"] .border-green-900\/50 { border-color: #86efac; }
+
+/* ── Amber / Yellow family ────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-amber-950,
+html[data-theme-mode="light"] .bg-amber-950\/60,
+html[data-theme-mode="light"] .bg-amber-950\/40,
+html[data-theme-mode="light"] .bg-amber-950\/20,
+html[data-theme-mode="light"] .bg-yellow-950,
+html[data-theme-mode="light"] .bg-yellow-950\/40,
+html[data-theme-mode="light"] .bg-yellow-950\/15,
+html[data-theme-mode="light"] .bg-yellow-900\/70   { background-color: #fef9c3; }
+
+html[data-theme-mode="light"] .border-yellow-800\/50,
+html[data-theme-mode="light"] .border-amber-800\/50 { border-color: #fde047; }
+
+/* ── Orange family ────────────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-orange-950,
+html[data-theme-mode="light"] .bg-orange-950\/25,
+html[data-theme-mode="light"] .bg-orange-900\/70   { background-color: #ffedd5; }
+
+/* ── Purple / Violet family ───────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-purple-950,
+html[data-theme-mode="light"] .bg-purple-950\/40,
+html[data-theme-mode="light"] .bg-purple-950\/25,
+html[data-theme-mode="light"] .bg-violet-950,
+html[data-theme-mode="light"] .bg-violet-950\/50   { background-color: #f3e8ff; }
+
+/* ── Teal family ──────────────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-teal-950,
+html[data-theme-mode="light"] .bg-teal-950\/30     { background-color: #ccfbf1; }
+
+/* ── Text accent colors — darken for light backgrounds ───────────────────── */
+html[data-theme-mode="light"] .text-blue-400   { color: #2563eb; }
+html[data-theme-mode="light"] .text-blue-300   { color: #1d4ed8; }
+html[data-theme-mode="light"] .text-indigo-400 { color: #4338ca; }
+html[data-theme-mode="light"] .text-indigo-300 { color: #3730a3; }
+html[data-theme-mode="light"] .text-purple-400 { color: #7e22ce; }
+html[data-theme-mode="light"] .text-violet-400 { color: #6d28d9; }
+html[data-theme-mode="light"] .text-green-400  { color: #15803d; }
+html[data-theme-mode="light"] .text-green-300  { color: #166534; }
+html[data-theme-mode="light"] .text-teal-400   { color: #0f766e; }
+html[data-theme-mode="light"] .text-teal-300   { color: #0d9488; }
+html[data-theme-mode="light"] .text-yellow-400 { color: #a16207; }
+html[data-theme-mode="light"] .text-yellow-300 { color: #854d0e; }
+html[data-theme-mode="light"] .text-amber-400  { color: #b45309; }
+html[data-theme-mode="light"] .text-amber-300  { color: #92400e; }
+html[data-theme-mode="light"] .text-orange-400 { color: #c2410c; }
+html[data-theme-mode="light"] .text-orange-300 { color: #9a3412; }
+html[data-theme-mode="light"] .text-red-400    { color: #dc2626; }
+html[data-theme-mode="light"] .text-red-300    { color: #b91c1c; }
+html[data-theme-mode="light"] .text-pink-400   { color: #be185d; }
+
+/* ── NavLink active state text in light mode ──────────────────────────────── */
+html[data-theme-mode="light"] .text-gray-500.hover\:text-gray-200:hover { color: var(--t-text2); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROPOSAL CARD CSS VARIABLES
+   Used by ProposalCard.jsx inline styles via var()
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --card-bg:              linear-gradient(135deg, rgba(17,24,39,0.95), rgba(11,15,25,0.98));
+  --card-bg-selected:     linear-gradient(135deg, rgba(29,78,216,0.1), rgba(30,27,75,0.15));
+  --card-border:          rgba(55,65,81,0.8);
+  --card-border-selected: rgba(37,99,235,0.5);
+  --card-shadow:          0 2px 16px rgba(0,0,0,0.4);
+  --card-divider:         rgba(255,255,255,0.05);
+  --tag-bg:               rgba(255,255,255,0.04);
+  --tag-border:           rgba(255,255,255,0.07);
+  --tag-color:            #9ca3af;
+  --ind-tag-bg:           rgba(37,99,235,0.08);
+  --ind-tag-border:       rgba(59,130,246,0.15);
+  --ind-tag-color:        #93c5fd;
+  --card-icon-bg:         rgba(37,99,235,0.1);
+  --card-icon-border:     rgba(37,99,235,0.15);
+  --score-track:          rgba(255,255,255,0.06);
+  --score-label:          rgba(156,163,175,0.7);
+  --pipe-track:           rgba(255,255,255,0.05);
+  --pipe-label:           rgba(156,163,175,0.5);
+  --card-link-color:      #60a5fa;
+  --card-link-hover:      #93c5fd;
+  --mustfix-bg:           rgba(127,29,29,0.2);
+  --mustfix-border:       rgba(185,28,28,0.2);
+}
+
+html[data-theme-mode="light"] {
+  --card-bg:              linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+  --card-bg-selected:     linear-gradient(135deg, rgba(219,234,254,0.6), rgba(238,242,255,0.8));
+  --card-border:          rgba(203,213,225,0.9);
+  --card-border-selected: rgba(37,99,235,0.4);
+  --card-shadow:          0 2px 12px rgba(0,0,0,0.08);
+  --card-divider:         rgba(0,0,0,0.08);
+  --tag-bg:               rgba(0,0,0,0.04);
+  --tag-border:           rgba(0,0,0,0.08);
+  --tag-color:            #64748b;
+  --ind-tag-bg:           rgba(219,234,254,0.7);
+  --ind-tag-border:       rgba(147,197,253,0.5);
+  --ind-tag-color:        #1d4ed8;
+  --card-icon-bg:         rgba(219,234,254,0.7);
+  --card-icon-border:     rgba(147,197,253,0.4);
+  --score-track:          rgba(0,0,0,0.07);
+  --score-label:          rgba(100,116,139,0.7);
+  --pipe-track:           rgba(0,0,0,0.06);
+  --pipe-label:           rgba(100,116,139,0.5);
+  --card-link-color:      #2563eb;
+  --card-link-hover:      #1d4ed8;
+  --mustfix-bg:           rgba(254,226,226,0.8);
+  --mustfix-border:       rgba(252,165,165,0.5);
+}

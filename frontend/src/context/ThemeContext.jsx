@@ -109,10 +109,16 @@ export const THEMES = [
 
 export const THEME_CATEGORIES = ['Dark', 'Vibrant', 'Light', 'Subtle', 'Accessibility']
 
+export const LIGHT_THEME_IDS = new Set([
+  'arctic-light', 'parchment', 'lavender-mist',
+  'warm-sand', 'ocean-breeze', 'sage', 'high-contrast-light',
+])
+
 const ThemeContext = createContext(null)
 
 function applyThemeToDOM(themeId) {
   document.documentElement.setAttribute('data-theme', themeId)
+  document.documentElement.setAttribute('data-theme-mode', LIGHT_THEME_IDS.has(themeId) ? 'light' : 'dark')
 }
 
 export function ThemeProvider({ children }) {
