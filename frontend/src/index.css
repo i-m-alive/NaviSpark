@@ -129,6 +129,174 @@
   background-size: 40px 40px;
 }
 
+/* ── Stat card entry animations ──────────────────────────────────────────────── */
+
+@keyframes card-enter-left {
+  0%   { transform: translateX(-48px) scale(0.88); opacity: 0; filter: blur(4px); }
+  55%  { transform: translateX(6px)  scale(1.02); opacity: 1; filter: blur(0); }
+  75%  { transform: translateX(-3px) scale(0.99); }
+  100% { transform: translateX(0)    scale(1);    opacity: 1; }
+}
+@keyframes card-enter-right {
+  0%   { transform: translateX(48px)  scale(0.88); opacity: 0; filter: blur(4px); }
+  55%  { transform: translateX(-6px)  scale(1.02); opacity: 1; filter: blur(0); }
+  75%  { transform: translateX(3px)   scale(0.99); }
+  100% { transform: translateX(0)     scale(1);    opacity: 1; }
+}
+@keyframes card-enter-pop {
+  0%   { transform: scale(0.65); opacity: 0; filter: blur(6px); }
+  55%  { transform: scale(1.06); opacity: 1; filter: blur(0); }
+  75%  { transform: scale(0.97); }
+  88%  { transform: scale(1.02); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes card-enter-drop {
+  0%   { transform: translateY(-40px) scale(0.9); opacity: 0; filter: blur(4px); }
+  55%  { transform: translateY(6px)   scale(1.02); opacity: 1; filter: blur(0); }
+  75%  { transform: translateY(-3px)  scale(0.99); }
+  100% { transform: translateY(0)     scale(1);    opacity: 1; }
+}
+
+/* ── Stat card icon hover animations ────────────────────────────────────────── */
+
+@keyframes icon-heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.25); }
+  28%       { transform: scale(1.05); }
+  42%       { transform: scale(1.2); }
+  56%       { transform: scale(1); }
+}
+@keyframes icon-pulse-glow {
+  0%, 100% { transform: scale(1);    filter: brightness(1); }
+  50%       { transform: scale(1.3); filter: brightness(1.6) drop-shadow(0 0 8px currentColor); }
+}
+@keyframes icon-wobble {
+  0%   { transform: rotate(0deg) scale(1); }
+  15%  { transform: rotate(18deg) scale(1.15); }
+  35%  { transform: rotate(-12deg) scale(1.08); }
+  55%  { transform: rotate(8deg) scale(1.12); }
+  75%  { transform: rotate(-5deg) scale(1.05); }
+  90%  { transform: rotate(3deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+@keyframes icon-bounce-up {
+  0%, 100% { transform: translateY(0)   scale(1); }
+  25%       { transform: translateY(-9px) scale(1.2); }
+  50%       { transform: translateY(-4px) scale(1.1); }
+  75%       { transform: translateY(-7px) scale(1.15); }
+}
+
+/* ── Stat card shimmer sweep ─────────────────────────────────────────────────── */
+
+@keyframes shimmer-sweep {
+  0%   { left: -80%; opacity: 0;   }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { left: 130%; opacity: 0; }
+}
+
+/* ── Stat card floating particles ────────────────────────────────────────────── */
+
+@keyframes particle-rise {
+  0%   { transform: translate(0, 0)    scale(1);   opacity: 0.8; }
+  100% { transform: translate(var(--dx), -50px)    scale(0.2); opacity: 0; }
+}
+@keyframes particle-rise-2 {
+  0%   { transform: translate(0, 0)  scale(1);   opacity: 0.7; }
+  100% { transform: translate(var(--dx2), -40px) scale(0.1); opacity: 0; }
+}
+
+/* ── Stat number hover pop ────────────────────────────────────────────────────── */
+
+@keyframes number-hover-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.14); }
+  65%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+/* ── Dashboard visual animations ────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0 }
+  100% { background-position:  400px 0 }
+}
+@keyframes float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(20px, -30px) scale(1.05); }
+  66%       { transform: translate(-15px, -15px) scale(0.95); }
+}
+@keyframes float-orb-r {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-25px, 20px) scale(1.03); }
+  66%       { transform: translate(15px, 30px) scale(0.97); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 800; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes score-ring-fill {
+  from { stroke-dashoffset: 999; }
+}
+@keyframes count-pop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes badge-glow-green {
+  0%, 100% { box-shadow: 0 0 6px rgba(52,211,153,0.3); }
+  50%       { box-shadow: 0 0 16px rgba(52,211,153,0.6); }
+}
+@keyframes badge-glow-red {
+  0%, 100% { box-shadow: 0 0 6px rgba(248,113,113,0.3); }
+  50%       { box-shadow: 0 0 16px rgba(248,113,113,0.6); }
+}
+@keyframes badge-glow-yellow {
+  0%, 100% { box-shadow: 0 0 6px rgba(251,191,36,0.3); }
+  50%       { box-shadow: 0 0 16px rgba(251,191,36,0.5); }
+}
+@keyframes stat-enter {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pipeline-wave {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+.animate-float-orb   { animation: float-orb   16s ease-in-out infinite; }
+.animate-float-orb-r { animation: float-orb-r 20s ease-in-out infinite; }
+.animate-draw-line   { animation: draw-line 1.2s cubic-bezier(0.4,0,0.2,1) forwards; }
+.animate-score-ring  { animation: score-ring-fill 1s cubic-bezier(0.4,0,0.2,1) forwards; }
+.animate-count-pop   { animation: count-pop 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-stat-enter  { animation: stat-enter 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-pipeline-wave { animation: pipeline-wave 2s ease-in-out infinite; }
+
+.glow-green  { animation: badge-glow-green  2s ease-in-out infinite; }
+.glow-red    { animation: badge-glow-red    2s ease-in-out infinite; }
+.glow-yellow { animation: badge-glow-yellow 2s ease-in-out infinite; }
+
+.card-hover-glow {
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+}
+.card-hover-glow:hover {
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.2), 0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(59,130,246,0.04);
+  border-color: rgba(59,130,246,0.25) !important;
+  transform: translateY(-1px);
+}
+
+.dash-bg {
+  background-color: #030712;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
 /* ── Password strength bar transition ───────────────────────────────────────── */
 
 .strength-bar {
