@@ -402,6 +402,7 @@ function PipelineBanner({ proposals }) {
 
 // ── Needs attention ───────────────────────────────────────────────────────────
 function NeedsAttentionSection({ proposals }) {
+  const [open, setOpen] = useState(false)
   const items = proposals.filter(p =>
     p.status === 'pipeline_failed' ||
     (p.agent4_output?.overall_score != null && p.agent4_output.overall_score < 5.0) ||
@@ -410,32 +411,41 @@ function NeedsAttentionSection({ proposals }) {
   if (!items.length) return null
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-2.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-red-400 glow-red" />
-        <p className="text-xs font-semibold text-red-400 uppercase tracking-widest">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 mb-2.5 group cursor-pointer focus:outline-none"
+      >
+        <div className="w-1.5 h-1.5 rounded-full bg-red-400 glow-red shrink-0" />
+        <p className="text-xs font-semibold text-red-400 uppercase tracking-widest flex-1 text-left">
           Needs Attention · {items.length}
         </p>
-      </div>
-      <div className="rounded-xl border border-red-900/40 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, rgba(127,29,29,0.15), rgba(69,10,10,0.08))' }}>
-        {items.map((p, i) => {
-          const score   = p.agent4_output?.overall_score
-          const verdict = p.agent4_output?.verdict
-          const reason  = p.status === 'pipeline_failed'
-            ? 'Analysis failed — click to retry'
-            : verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND'
-            ? `Needs Major Revision · Score ${score?.toFixed(1)}`
-            : `Low score: ${score?.toFixed(1)} / 10`
-          return (
-            <Link key={p.id} to={`/results/${p.id}`}
-              className={`flex items-center gap-3 px-4 py-2.5 hover:bg-red-950/30 transition-colors ${i < items.length - 1 ? 'border-b border-red-900/30' : ''}`}>
-              <AlertCircle size={12} className="text-red-400 shrink-0" />
-              <p className="text-xs text-gray-300 truncate flex-1">{p.original_filename || 'Untitled'}</p>
-              <p className="text-[10px] text-red-400 shrink-0 font-medium">{reason}</p>
-            </Link>
-          )
-        })}
-      </div>
+        <ChevronDown
+          size={13}
+          className={`text-red-400 transition-transform duration-200 ${open ? 'rotate-180' : 'rotate-0'}`}
+        />
+      </button>
+      {open && (
+        <div className="rounded-xl border border-red-900/40 overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, rgba(127,29,29,0.15), rgba(69,10,10,0.08))' }}>
+          {items.map((p, i) => {
+            const score   = p.agent4_output?.overall_score
+            const verdict = p.agent4_output?.verdict
+            const reason  = p.status === 'pipeline_failed'
+              ? 'Analysis failed — click to retry'
+              : verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND'
+              ? `Needs Major Revision · Score ${score?.toFixed(1)}`
+              : `Low score: ${score?.toFixed(1)} / 10`
+            return (
+              <Link key={p.id} to={`/results/${p.id}`}
+                className={`flex items-center gap-3 px-4 py-2.5 hover:bg-red-950/30 transition-colors ${i < items.length - 1 ? 'border-b border-red-900/30' : ''}`}>
+                <AlertCircle size={12} className="text-red-400 shrink-0" />
+                <p className="text-xs text-gray-300 truncate flex-1">{p.original_filename || 'Untitled'}</p>
+                <p className="text-[10px] text-red-400 shrink-0 font-medium">{reason}</p>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
