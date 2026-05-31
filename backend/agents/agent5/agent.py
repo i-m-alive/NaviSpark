@@ -9,7 +9,7 @@ Makes ONE Bedrock text-only call (no document block — slide map is in the user
 """
 
 import json
-from bedrock_client import invoke_agent_text_only
+from bedrock_client import invoke_agent_text_only, invoke_agent_with_pdf
 from fastapi import HTTPException
 
 from agents.agent5.skills import (
@@ -385,3 +385,213 @@ def run(
     must = final.get("modification_summary", {}).get("must_fix_count", "?")
     _e(f"Modification plan ready — {total} changes ({must} must-fix)", "completed")
     return final
+
+
+# ── PDF mode ──────────────────────────────────────────────────────────────────
+
+_PDF_IDENTITY = """You are Agent 5: Edit Recommendations Generator for NAVISPARK PS03.
+
+You receive:
+  1. A PDF proposal document (attached).
+  2. Complete outputs from Agents 1, 2, 3, and 4 — which have already identified
+     every writing issue, scope gap, commercial problem, and competitive weakness.
+
+Your job is to generate PRECISE, ACTIONABLE text edit recommendations that fix as many
+of those findings as possible. For each recommendation:
+  - Name the section of the document where the change belongs.
+  - Quote enough of the CURRENT text that a human editor can locate it with Ctrl+F.
+    The quote must be at least 15 words and be verbatim from the document.
+  - Provide the full REPLACEMENT text.
+  - Explain in one sentence what changed and why it matters.
+
+Focus ONLY on text changes. Do not recommend visual, structural, or layout changes —
+add those to skipped[] instead.
+
+Every must_fix action from agent4_output.priority_actions.must_fix[] must appear
+in either edit_recommendations[] or skipped[]. Missing coverage is not acceptable."""
+
+_PDF_FORMAT = """
+═══════════════════════════════════════════════════
+CRITICAL — OUTPUT FORMAT
+═══════════════════════════════════════════════════
+
+Return ONLY a single valid JSON object. No preamble, no markdown fences, no text outside.
+The response must start with { and end with }.
+
+{
+  "edit_recommendations": [
+    {
+      "section":        "<section heading as it appears in the document>",
+      "page_hint":      "<Page N, or 'Throughout' if it recurs>",
+      "priority":       "<must_fix | should_fix | nice_to_have>",
+      "severity":       "<CRITICAL | MAJOR | MINOR>",
+      "source_finding": "<which agent finding this addresses, e.g. 'Agent 1 writing_issue: filler_phrase'>",
+      "current_text":   "<exact verbatim quote from document — at least 15 words, distinctive enough to Ctrl+F>",
+      "suggested_text": "<full replacement text — same length or shorter, active voice, specific>",
+      "what_changed":   "<one sentence explaining what was changed and why>"
+    }
+  ],
+  "skipped": [
+    {
+      "finding":                "<the finding that could not be auto-addressed>",
+      "reason":                 "<why a text replacement cannot fix this>",
+      "source_agent":           "<Agent 1 | Agent 2 | Agent 3 | Agent 4>",
+      "manual_action_required": "<exact action the human must take>"
+    }
+  ],
+  "edit_summary": {
+    "total_recommendations": <integer>,
+    "must_fix_count":        <integer>,
+    "should_fix_count":      <integer>,
+    "nice_to_have_count":    <integer>,
+    "skipped_count":         <integer>,
+    "must_fix_coverage":     "<e.g. '4 of 5 must_fix actions addressed'>"
+  }
+}
+
+Sort edit_recommendations: must_fix first, then should_fix, then nice_to_have.
+FINAL REMINDER: Return ONLY the JSON. Nothing before {. Nothing after }."""
+
+
+def _build_pdf_user_message(
+    agent1_output: dict,
+    agent2_output: dict,
+    agent3_output: dict,
+    agent4_output: dict,
+    client_industry: list,
+    proposal_type: str,
+    client_priorities: list,
+) -> str:
+    return f"""Please review the attached PDF proposal and generate edit recommendations.
+
+PROPOSAL CONTEXT:
+  Client Industry:   {', '.join(client_industry) if client_industry else 'Not specified'}
+  Proposal Type:     {proposal_type or 'Not specified'}
+  Client Priorities: {', '.join(client_priorities) if client_priorities else 'Not specified'}
+
+────────────────────────────────────────────────
+AGENT 1 OUTPUT — Completeness & Clarity
+────────────────────────────────────────────────
+{json.dumps(agent1_output, indent=2)}
+
+────────────────────────────────────────────────
+AGENT 2 OUTPUT — Estimation & Commercial Integrity
+────────────────────────────────────────────────
+{json.dumps(agent2_output, indent=2)}
+
+────────────────────────────────────────────────
+AGENT 3 OUTPUT — Competitive Strength
+────────────────────────────────────────────────
+{json.dumps(agent3_output, indent=2)}
+
+────────────────────────────────────────────────
+AGENT 4 OUTPUT — Aggregated Review & Priority Actions
+────────────────────────────────────────────────
+{json.dumps(agent4_output, indent=2)}
+
+────────────────────────────────────────────────
+INSTRUCTIONS
+────────────────────────────────────────────────
+Using the attached PDF and all four agent outputs, generate the complete
+edit_recommendations JSON. Address every must_fix action from Agent 4.
+Return ONLY the JSON object — no other text."""
+
+
+def _normalize_pdf_result(raw: dict) -> dict:
+    """
+    Converts the PDF LLM output into the same guide-item shape that
+    ModificationReportPanel.jsx already understands.
+    """
+    recs = raw.get("edit_recommendations", [])
+    skipped = raw.get("skipped", [])
+    summary_raw = raw.get("edit_summary", {})
+
+    guide = []
+    for i, rec in enumerate(recs):
+        guide.append({
+            "change_number":     i + 1,
+            # For PDF we store page_hint in slide_title / shape_name fields
+            # so the existing ChangeCard renders meaningful text.
+            "slide_number":      0,                            # unused in PDF mode
+            "slide_title":       rec.get("section", ""),
+            "shape_name":        rec.get("page_hint", ""),
+            "action":            "replace_text",
+            "priority":          rec.get("priority", "nice_to_have"),
+            "severity":          rec.get("severity", "MINOR"),
+            "source_skill":      "pdf",
+            "addresses_finding": rec.get("source_finding", ""),
+            # rename fields to match existing component expectations
+            "find_text":         rec.get("current_text", ""),
+            "replace_with":      rec.get("suggested_text", ""),
+            "what_changed":      rec.get("what_changed", ""),
+            "bullets_to_add":    [],
+        })
+
+    must  = sum(1 for g in guide if g["priority"] == "must_fix")
+    shld  = sum(1 for g in guide if g["priority"] == "should_fix")
+    nice  = sum(1 for g in guide if g["priority"] == "nice_to_have")
+
+    return {
+        "mode":    "pdf",
+        "guide":   guide,
+        "skipped": skipped,
+        "summary": {
+            "total":             len(guide),
+            "must_fix":          must,
+            "should_fix":        shld,
+            "nice_to_have":      nice,
+            "skipped":           len(skipped),
+            "must_fix_coverage": summary_raw.get("must_fix_coverage", ""),
+        },
+    }
+
+
+def run_pdf(
+    pdf_bytes: bytes,
+    file_type: str,
+    agent1_output: dict,
+    agent2_output: dict,
+    agent3_output: dict,
+    agent4_output: dict,
+    client_industry: list,
+    proposal_type: str,
+    client_priorities: list,
+    emit=None,
+) -> dict:
+    """
+    Runs Agent 5 on a PDF proposal.
+
+    Sends the PDF directly to Bedrock alongside all four agent outputs.
+    Returns a normalized guide dict compatible with ModificationReportPanel.
+    """
+    _e = emit if emit else (lambda a, s="running": None)
+
+    _e("PDF received — preparing edit recommendations prompt")
+    _e("Loading all agent findings (completeness, commercial, competitive, chief review)")
+    _e("Planning section-level text improvements")
+
+    system_prompt = f"{_PDF_IDENTITY}\n\n{_PDF_FORMAT}"
+    user_message = _build_pdf_user_message(
+        agent1_output=agent1_output,
+        agent2_output=agent2_output,
+        agent3_output=agent3_output,
+        agent4_output=agent4_output,
+        client_industry=client_industry,
+        proposal_type=proposal_type,
+        client_priorities=client_priorities,
+    )
+
+    _e("Generating edit recommendations via AI")
+    raw = invoke_agent_with_pdf(
+        system_prompt=system_prompt,
+        user_message=user_message,
+        pdf_bytes=pdf_bytes,
+        file_type=file_type,
+    )
+
+    _e("Normalizing recommendations")
+    result = _normalize_pdf_result(raw)
+    total = result["summary"]["total"]
+    must  = result["summary"]["must_fix"]
+    _e(f"Edit guide ready — {total} recommendations ({must} must-fix)", "completed")
+    return result

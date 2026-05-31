@@ -742,14 +742,14 @@ async def get_modification_guide(
     authorization: Optional[str] = Header(None),
 ):
     """
-    Runs Agent 5 and returns a structured copy-paste guide of every text change
-    that should be made to the proposal.  Does NOT generate or modify any file.
+    Runs Agent 5 and returns a structured copy-paste edit guide.
+    Works for both PDF and PPTX uploads. Does NOT modify any file.
 
-    Each guide item contains:
-      - Where:   slide_number (1-based), slide_title, shape_name
-      - What:    find_text + replace_with  (or bullets_to_add / text_to_add)
-      - Why:     addresses_finding — the Agent 4 action-plan item driving the change
-      - Priority/Severity for ordering
+    PDF:  section-based find-and-replace recommendations.
+    PPTX: slide+shape-targeted find-and-replace recommendations.
+
+    Both return the same guide-item schema so the frontend panel works
+    identically — only the labels differ (Section vs Slide).
     """
     user    = await get_current_user(authorization)
     user_id = user["id"]
@@ -765,26 +765,19 @@ async def get_modification_guide(
             ),
         )
 
-    file_type = session.get("file_type", "pdf")
-    if file_type not in ("pptx", "ppt"):
-        raise HTTPException(
-            status_code=400,
-            detail="Edit guide is only available for PowerPoint uploads.",
-        )
-
     if not session.get("storage_path"):
         raise HTTPException(status_code=400, detail="No original file found for this session.")
 
-    # ── Download original PPTX ────────────────────────────────────────────────
+    # ── Download the proposal file ────────────────────────────────────────────
     try:
-        pptx_bytes = download_file_from_storage(session["storage_path"])
+        file_bytes = download_file_from_storage(session["storage_path"])
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to download presentation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download file: {str(e)}")
 
-    if not pptx_bytes:
-        raise HTTPException(status_code=500, detail="Downloaded presentation file is empty.")
+    if not file_bytes:
+        raise HTTPException(status_code=500, detail="Downloaded file is empty.")
 
-    # ── Session context ───────────────────────────────────────────────────────
+    file_type         = session.get("file_type") or "pdf"
     agent1_output     = session.get("agent1_output")     or {}
     agent2_output     = session.get("agent2_output")     or {}
     agent3_output     = session.get("agent3_output")     or {}
@@ -793,15 +786,37 @@ async def get_modification_guide(
     proposal_type     = session.get("proposal_type")     or ""
     client_priorities = session.get("client_priorities") or []
 
-    # ── Build slide-title lookup ──────────────────────────────────────────────
-    slide_map   = extract_slide_map(pptx_bytes)
+    event_emitter.ensure_session(session_id)
+    emit = event_emitter.make_emitter(session_id, "agent5")
+
+    # ── PDF path ──────────────────────────────────────────────────────────────
+    if file_type == "pdf":
+        from agents.agent5 import run_pdf as run_agent5_pdf
+        try:
+            return run_agent5_pdf(
+                pdf_bytes         = file_bytes,
+                file_type         = file_type,
+                agent1_output     = agent1_output,
+                agent2_output     = agent2_output,
+                agent3_output     = agent3_output,
+                agent4_output     = agent4_output,
+                client_industry   = client_industry,
+                proposal_type     = proposal_type,
+                client_priorities = client_priorities,
+                emit              = emit,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Agent 5 PDF analysis failed: {str(e)}")
+
+    # ── PPTX path ─────────────────────────────────────────────────────────────
+    slide_map    = extract_slide_map(file_bytes)
     slide_titles = {s["slide_index"]: s["slide_title"] for s in slide_map}
 
-    # ── Run Agent 5 ───────────────────────────────────────────────────────────
-    event_emitter.ensure_session(session_id)
     try:
         agent5_result = run_agent5_analysis(
-            pptx_bytes        = pptx_bytes,
+            pptx_bytes        = file_bytes,
             agent1_output     = agent1_output,
             agent2_output     = agent2_output,
             agent3_output     = agent3_output,
@@ -809,14 +824,13 @@ async def get_modification_guide(
             client_industry   = client_industry,
             proposal_type     = proposal_type,
             client_priorities = client_priorities,
-            emit=event_emitter.make_emitter(session_id, "agent5"),
+            emit              = emit,
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Agent 5 analysis failed: {str(e)}")
 
-    # ── Build guide items ─────────────────────────────────────────────────────
     modifications = agent5_result.get("modifications", [])
     guide = []
     for i, mod in enumerate(modifications, 1):
@@ -832,10 +846,8 @@ async def get_modification_guide(
             "severity":          mod.get("severity", "MINOR"),
             "source_skill":      mod.get("source_skill", ""),
             "addresses_finding": mod.get("source_finding", ""),
-            # replace_text fields
             "find_text":         mod.get("original_text", "") if action == "replace_text" else "",
             "replace_with":      mod.get("new_text", "")      if action in ("replace_text", "append_text") else "",
-            # append_bullets fields
             "bullets_to_add":    mod.get("bullets", [])       if action == "append_bullets" else [],
         })
 
@@ -843,14 +855,15 @@ async def get_modification_guide(
     a5_sum  = agent5_result.get("modification_summary", {})
 
     return {
+        "mode":    "pptx",
         "guide":   guide,
         "skipped": skipped,
         "summary": {
-            "total":              len(guide),
-            "must_fix":           sum(1 for m in guide if m["priority"] == "must_fix"),
-            "should_fix":         sum(1 for m in guide if m["priority"] == "should_fix"),
-            "nice_to_have":       sum(1 for m in guide if m["priority"] == "nice_to_have"),
-            "skipped":            len(skipped),
-            "must_fix_coverage":  a5_sum.get("must_fix_coverage", ""),
+            "total":             len(guide),
+            "must_fix":          sum(1 for m in guide if m["priority"] == "must_fix"),
+            "should_fix":        sum(1 for m in guide if m["priority"] == "should_fix"),
+            "nice_to_have":      sum(1 for m in guide if m["priority"] == "nice_to_have"),
+            "skipped":           len(skipped),
+            "must_fix_coverage": a5_sum.get("must_fix_coverage", ""),
         },
     }

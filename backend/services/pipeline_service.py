@@ -181,7 +181,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             score = r1.get("scores", {}).get("overall", "n/a") if isinstance(r1, dict) else "n/a"
             logger.info("[PIPELINE] [%s] [+%s] Agent 1 (Completeness & Clarity) — DONE  (overall score: %s)",
                         sid, _elapsed(), score)
-            event_emitter.emit_sync(session_id, "agent1", f"Completeness review done (score: {score})", "completed")
+            # agent1 already emits its own completion message — no duplicate needed here
 
         if isinstance(r2, BaseException):
             errors.append(f"Agent 2: {r2}")
@@ -191,7 +191,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             score = r2.get("scores", {}).get("overall", "n/a") if isinstance(r2, dict) else "n/a"
             logger.info("[PIPELINE] [%s] [+%s] Agent 2 (Estimation & Commercial) — DONE  (overall score: %s)",
                         sid, _elapsed(), score)
-            event_emitter.emit_sync(session_id, "agent2", f"Commercial review done (score: {score})", "completed")
+            # agent2 already emits its own completion message — no duplicate needed here
 
         if isinstance(r3, BaseException):
             errors.append(f"Agent 3: {r3}")
@@ -201,7 +201,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             score = r3.get("scores", {}).get("overall", "n/a") if isinstance(r3, dict) else "n/a"
             logger.info("[PIPELINE] [%s] [+%s] Agent 3 (Competitive Strength) — DONE  (overall score: %s)",
                         sid, _elapsed(), score)
-            event_emitter.emit_sync(session_id, "agent3", f"Competitive review done (score: {score})", "completed")
+            # agent3 already emits its own completion message — no duplicate needed here
 
         logger.info("[PIPELINE] [%s] Agents 1/2/3 wall-clock time: %.1fs", sid, agents_elapsed)
 

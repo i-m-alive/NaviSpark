@@ -64,17 +64,13 @@ const ACCENT_CLASSES = {
 
 // ── ActivityItem ──────────────────────────────────────────────────────────────
 
-function ActivityItem({ event, isLatest }) {
+/**
+ * isActiveStep — true only when this is the last event in the list AND it has
+ * status="running". Any earlier "running" event is implicitly done (the next
+ * step started) so it renders as a checkmark, not a spinner.
+ */
+function ActivityItem({ event, isActiveStep }) {
   const { activity, status } = event
-
-  if (status === 'completed') {
-    return (
-      <div className="flex items-start gap-2 py-0.5">
-        <CheckCircle2 size={12} className="text-green-400 mt-0.5 flex-shrink-0" />
-        <span className="text-xs text-gray-300 leading-relaxed">{activity}</span>
-      </div>
-    )
-  }
 
   if (status === 'error') {
     return (
@@ -85,10 +81,20 @@ function ActivityItem({ event, isLatest }) {
     )
   }
 
+  if (isActiveStep) {
+    return (
+      <div className="flex items-start gap-2 py-0.5">
+        <Loader2 size={12} className="text-blue-400 mt-0.5 flex-shrink-0 animate-spin" />
+        <span className="text-xs text-gray-200 leading-relaxed">{activity}</span>
+      </div>
+    )
+  }
+
+  // completed, or a past "running" step that is implicitly done
   return (
     <div className="flex items-start gap-2 py-0.5">
-      <Loader2 size={12} className="text-blue-400 mt-0.5 flex-shrink-0 animate-spin" />
-      <span className="text-xs text-gray-200 leading-relaxed">{activity}</span>
+      <CheckCircle2 size={12} className="text-green-400 mt-0.5 flex-shrink-0" />
+      <span className="text-xs text-gray-300 leading-relaxed">{activity}</span>
     </div>
   )
 }
@@ -139,7 +145,11 @@ function AgentCard({ agentId, events, isDone }) {
         className="flex flex-col gap-0.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700"
       >
         {events.map((evt, i) => (
-          <ActivityItem key={i} event={evt} isLatest={i === events.length - 1} />
+          <ActivityItem
+            key={i}
+            event={evt}
+            isActiveStep={i === events.length - 1 && evt.status === 'running'}
+          />
         ))}
       </div>
     </div>

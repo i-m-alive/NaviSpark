@@ -306,11 +306,6 @@ export default function ResultsPage() {
   }
 
   const handleGeneratePpt = async () => {
-    const fileType = session?.file_type || 'pdf'
-    if (fileType === 'pdf') {
-      alert('Edit Guide requires a PowerPoint upload.\n\nPlease re-upload your proposal as a .pptx file to use Agent 5.')
-      return
-    }
     setGeneratingPpt(true)
     setPptResult(null)
     try {
@@ -562,11 +557,7 @@ export default function ResultsPage() {
                 <button
                   onClick={handleGeneratePpt}
                   disabled={generatingPpt}
-                  title={
-                    session.file_type === 'pdf'
-                      ? 'Edit Guide requires a PowerPoint upload (.pptx)'
-                      : 'Agent 5: Generate a copy-paste edit guide for your PPT'
-                  }
+                  title="Agent 5: Generate a copy-paste edit guide for your proposal"
                   className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 text-purple-200 hover:text-white hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)' }}
                 >
