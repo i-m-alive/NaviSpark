@@ -357,6 +357,7 @@ def run(
     proposal_type: str,
     client_priorities: list[str],
     file_type: str = "pdf",
+    emit=None,
 ) -> dict:
     """
     Runs Agent 1 analysis on a proposal PDF.
@@ -369,6 +370,7 @@ def run(
         client_industry:    List of selected industries (e.g. ["Healthcare / Pharma"]).
         proposal_type:      Type of proposal (e.g. "Fixed Price").
         client_priorities:  List of client priorities (e.g. ["Cost Certainty"]).
+        emit:               Optional callable(activity, status) for live activity streaming.
 
     Returns:
         Parsed dict matching the Agent 1 output JSON schema.
@@ -377,8 +379,23 @@ def run(
         HTTPException(502): Bedrock API failure.
         HTTPException(500): JSON parse failure.
     """
+    def _e(activity: str, status: str = "running") -> None:
+        if emit:
+            emit(activity, status)
+
+    _e("Proposal document received", "completed")
+    _e("Building completeness analysis prompt", "running")
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
+    _e("Building completeness analysis prompt", "completed")
+
+    # All 6 skills execute inside a single Bedrock call — emit them as running now
+    _e("Skill 1.1 — Section completeness audit (22 items)", "running")
+    _e("Skill 1.2 — Writing quality analysis", "running")
+    _e("Skill 1.3 — Scope clarity check", "running")
+    _e("Skill 1.4 — Client-specific gap analysis", "running")
+    _e("Skill 1.5 — Jargon density check", "running")
+    _e("Skill 1.6 — Rewrite suggestions", "running")
 
     result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
@@ -386,4 +403,18 @@ def run(
         pdf_bytes=pdf_bytes,
         file_type=file_type,
     )
-    return _apply_score_caps(result)
+
+    # All skills complete together when the Bedrock call returns
+    _e("Skill 1.1 — Section completeness audit (22 items)", "completed")
+    _e("Skill 1.2 — Writing quality analysis", "completed")
+    _e("Skill 1.3 — Scope clarity check", "completed")
+    _e("Skill 1.4 — Client-specific gap analysis", "completed")
+    _e("Skill 1.5 — Jargon density check", "completed")
+    _e("Skill 1.6 — Rewrite suggestions", "completed")
+
+    _e("Applying scoring rules and caps", "running")
+    result = _apply_score_caps(result)
+    _e("Applying scoring rules and caps", "completed")
+    _e("Completeness & Clarity review complete", "completed")
+
+    return result

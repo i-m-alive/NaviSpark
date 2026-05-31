@@ -1,4 +1,8 @@
+import asyncio
+import json
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Header
+from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from auth import get_current_user
@@ -14,6 +18,7 @@ from services.pipeline_service import run_full_pipeline
 from services.pptx_modifier import apply_modifications
 from services.pptx_extractor import extract_slide_map
 from services.file_service import count_file_pages
+from services.stream_events import read_from as _stream_read, clear as _stream_clear
 
 router = APIRouter(tags=["agents"])
 
@@ -121,6 +126,60 @@ async def cancel_analysis(
         "status": "cancelled",
         "message": "Cancellation requested. The pipeline will stop at the next checkpoint.",
     }
+
+
+@router.get("/sessions/{session_id}/stream")
+async def stream_analysis_events(
+    session_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    SSE endpoint — streams live analysis progress events while the pipeline runs.
+
+    Connect with fetch() + ReadableStream (not EventSource, which doesn't support
+    custom headers). Each event is a JSON object on a 'data:' line.
+
+    Event types:
+      step        — pipeline milestone (downloading, launching agents, saving…)
+      agent_start — an agent has begun processing
+      agent_done  — an agent finished successfully
+      agent_error — an agent encountered an error
+      error       — pipeline-level error
+      done        — stream is finished (close the connection)
+    """
+    user = await get_current_user(authorization)
+    user_id = user["id"]
+    get_session(session_id, user_id)  # 404 if session not owned by user
+
+    async def generator():
+        cursor = 0
+        # Up to ~5 minutes of idle tolerance (1000 × 0.3 s = 300 s)
+        idle_limit = 1000
+        idle = 0
+
+        while idle < idle_limit:
+            events = _stream_read(session_id, cursor)
+            if events:
+                idle = 0
+                for event in events:
+                    cursor += 1
+                    yield f"data: {json.dumps(event)}\n\n"
+                    if event.get("type") == "done":
+                        _stream_clear(session_id)
+                        return
+            else:
+                idle += 1
+            await asyncio.sleep(0.3)
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.post("/sessions/{session_id}/run-agent1")

@@ -145,6 +145,61 @@ export async function cancelAnalysis(sessionId) {
   return handleResponse(res)
 }
 
+/**
+ * Opens an SSE stream for live pipeline progress events.
+ *
+ * Unlike EventSource, this uses fetch() so we can send auth headers.
+ * Returns an AbortController — call controller.abort() to stop early.
+ *
+ * @param {string}   sessionId
+ * @param {function} onEvent  - called with each parsed event object
+ * @param {function} onDone   - called when the stream ends cleanly
+ * @param {function} onError  - called on network / parse error
+ */
+export function streamAnalysisEvents(sessionId, onEvent, onDone, onError) {
+  const controller = new AbortController()
+
+  ;(async () => {
+    try {
+      const res = await fetch(`${API_URL}/sessions/${sessionId}/stream`, {
+        headers: { ...authHeaders() },
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        onError?.(new Error(`Stream ${res.status}: ${res.statusText}`))
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) { onDone?.(); break }
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() // keep any incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(line.slice(6))
+            onEvent?.(event)
+            if (event.type === 'done') { onDone?.(); return }
+          } catch { /* skip malformed line */ }
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') onError?.(err)
+    }
+  })()
+
+  return controller
+}
+
 // ── Agent Calls ───────────────────────────────────────────
 
 export async function runAgent1(sessionId) {

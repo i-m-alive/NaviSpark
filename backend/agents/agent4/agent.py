@@ -334,6 +334,7 @@ def run(
     client_industry: list,
     proposal_type: str,
     client_priorities: list,
+    emit=None,
 ) -> dict:
     """
     Runs Agent 4 aggregation.
@@ -362,7 +363,14 @@ def run(
         HTTPException(500): JSON parse failure.
     """
 
+    def _e(activity: str, status: str = "running") -> None:
+        if emit:
+            emit(activity, status)
+
+    _e("Specialist reviews received", "completed")
+
     # ── Task 4.1: Weighted score ──────────────────────────────────────────────
+    _e("Task 4.1 — Computing weighted overall score", "running")
     score_result = task_4_1_weighted_score.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
@@ -370,20 +378,25 @@ def run(
         proposal_type=proposal_type,
         client_priorities=client_priorities,
     )
+    _e("Task 4.1 — Computing weighted overall score", "completed")
 
     # ── Task 4.3: Double-flag detection ───────────────────────────────────────
+    _e("Task 4.3 — Detecting cross-agent double-flagged issues", "running")
     double_flagged = task_4_3_double_flag.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
         agent3_output=agent3_output,
     )
+    _e("Task 4.3 — Detecting cross-agent double-flagged issues", "completed")
 
     # ── Task 4.5: Unified checklist grid ─────────────────────────────────────
+    _e("Task 4.5 — Merging 57-item unified checklist", "running")
     checklist_coverage = task_4_5_checklist_merge.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
         agent3_output=agent3_output,
     )
+    _e("Task 4.5 — Merging 57-item unified checklist", "completed")
 
     # ── Package pre-computed data for the prompt ──────────────────────────────
     pre_computed = {
@@ -419,10 +432,18 @@ def run(
         double_flagged=double_flagged,
     )
 
+    _e("Task 4.2 — Cross-agent consistency check", "running")
+    _e("Task 4.4 — Generating priority action list", "running")
+    _e("Task 4.6 — Writing plain-English summary & strengths", "running")
+
     llm_result = invoke_agent_text_only(
         system_prompt=system_prompt,
         user_message=user_message,
     )
+
+    _e("Task 4.2 — Cross-agent consistency check", "completed")
+    _e("Task 4.4 — Generating priority action list", "completed")
+    _e("Task 4.6 — Writing plain-English summary & strengths", "completed")
 
     # ── Merge: Python-computed + LLM-computed ─────────────────────────────────
     final = {
@@ -454,4 +475,5 @@ def run(
         "top_3_strengths": llm_result.get("top_3_strengths", []),
     }
 
+    _e("Chief review synthesis complete", "completed")
     return final

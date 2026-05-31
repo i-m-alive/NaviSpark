@@ -577,6 +577,7 @@ def run(
     proposal_type: str,
     client_priorities: list[str],
     file_type: str = "pdf",
+    emit=None,
 ) -> dict:
     """
     Runs Agent 3 analysis on a proposal PDF or PowerPoint.
@@ -590,6 +591,7 @@ def run(
         proposal_type:      Type of proposal (e.g. "Fixed Price").
         client_priorities:  List of client priorities (e.g. ["Cost Certainty", "Speed to Market"]).
         file_type:          File type: 'pdf', 'pptx', or 'ppt'.
+        emit:               Optional callable(activity, status) for live activity streaming.
 
     Returns:
         Parsed dict matching the Agent 3 output JSON schema.
@@ -598,8 +600,24 @@ def run(
         HTTPException(502): Bedrock API failure.
         HTTPException(500): JSON parse failure.
     """
+    def _e(activity: str, status: str = "running") -> None:
+        if emit:
+            emit(activity, status)
+
+    _e("Proposal document received", "completed")
+    _e("Building competitive analysis prompt", "running")
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
+    _e("Building competitive analysis prompt", "completed")
+
+    # All 6 skills + 10-item checklist execute in a single Bedrock call
+    _e("Skill 3.0 — 10-item checklist coverage audit", "running")
+    _e("Skill 3.1 — Client understanding & priority fit", "running")
+    _e("Skill 3.2 — Solution differentiation (name-swap test)", "running")
+    _e("Skill 3.3 — Risk & dependency transparency", "running")
+    _e("Skill 3.4 — Credibility & trust signals", "running")
+    _e("Skill 3.5 — Proposal narrative assessment", "running")
+    _e("Skill 3.6 — Industry-specific win factors", "running")
 
     result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
@@ -607,4 +625,18 @@ def run(
         pdf_bytes=pdf_bytes,
         file_type=file_type,
     )
-    return _apply_score_caps(result, client_priorities, client_industry)
+
+    _e("Skill 3.0 — 10-item checklist coverage audit", "completed")
+    _e("Skill 3.1 — Client understanding & priority fit", "completed")
+    _e("Skill 3.2 — Solution differentiation (name-swap test)", "completed")
+    _e("Skill 3.3 — Risk & dependency transparency", "completed")
+    _e("Skill 3.4 — Credibility & trust signals", "completed")
+    _e("Skill 3.5 — Proposal narrative assessment", "completed")
+    _e("Skill 3.6 — Industry-specific win factors", "completed")
+
+    _e("Applying scoring rules and caps (5 rules)", "running")
+    result = _apply_score_caps(result, client_priorities, client_industry)
+    _e("Applying scoring rules and caps (5 rules)", "completed")
+    _e("Competitive Strength review complete", "completed")
+
+    return result

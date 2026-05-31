@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getSession, getReportUrl, getSourceFileUrl, startAnalysis, getSessionHistory, generateModifiedPpt, getModificationGuide, cancelAnalysis, deleteSession } from '../api/client'
+import { useActivityStream } from '../hooks/useActivityStream'
+import ActivityFeed from '../components/ActivityFeed'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -130,102 +132,6 @@ function Agent4Results({ output, onDownloadJson, onDownloadMarkdown }) {
   )
 }
 
-// ── Pipeline Progress Screen ──────────────────────────────────────────────────
-
-const AGENT_CARDS = [
-  { num: 1, label: 'Completeness & Clarity', colour: 'indigo' },
-  { num: 2, label: 'Estimation & Commercial Integrity', colour: 'purple' },
-  { num: 3, label: 'Competitive Strength', colour: 'teal' },
-]
-
-const COLOUR_MAP = {
-  indigo: { border: 'border-indigo-800', text: 'text-indigo-400', bg: 'bg-indigo-950' },
-  purple: { border: 'border-purple-800', text: 'text-purple-400', bg: 'bg-purple-950' },
-  teal:   { border: 'border-teal-800',   text: 'text-teal-400',   bg: 'bg-teal-950' },
-}
-
-function PipelineProgressScreen({ status, onStop, stopping }) {
-  const specialistsDone = status === 'agents_complete' || status === 'complete'
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Analysis in progress</p>
-        {/* Stop button */}
-        <button
-          onClick={onStop}
-          disabled={stopping}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-800/60 text-red-300 hover:text-white hover:border-red-600 hover:bg-red-950/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {stopping
-            ? <Loader2 size={11} className="animate-spin" />
-            : <Square size={11} />
-          }
-          {stopping ? 'Stopping…' : 'Stop Analysis'}
-        </button>
-      </div>
-
-      {/* Three parallel agent cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {AGENT_CARDS.map(({ num, label, colour }) => {
-          const c = COLOUR_MAP[colour]
-          return (
-            <div
-              key={num}
-              className={`bg-gray-900 border ${specialistsDone ? 'border-green-800' : c.border} rounded-xl p-4 transition-all duration-500`}
-              style={{ animation: `stat-enter 0.5s cubic-bezier(0.16,1,0.3,1) ${(num - 1) * 80}ms both` }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-1.5 ${specialistsDone ? 'bg-green-950' : c.bg} rounded-lg`}>
-                  {specialistsDone ? (
-                    <CheckCircle2 size={14} className="text-green-400" />
-                  ) : (
-                    <Loader2 size={14} className={`${c.text} animate-spin`} />
-                  )}
-                </div>
-                <p className={`text-xs font-semibold ${specialistsDone ? 'text-green-400' : c.text}`}>
-                  Agent {num}
-                </p>
-              </div>
-              <p className="text-xs text-gray-400">{label}</p>
-              <p className="text-xs text-gray-600 mt-1">
-                {specialistsDone ? 'Complete' : 'Analysing…'}
-              </p>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Agent 4 status */}
-      <div className={`bg-gray-900 border ${status === 'agents_complete' ? 'border-orange-800' : 'border-gray-800'} rounded-xl p-4 transition-all duration-500`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2 ${status === 'agents_complete' ? 'bg-orange-950' : 'bg-gray-800'} rounded-lg`}>
-            {status === 'agents_complete' ? (
-              <Loader2 size={16} className="text-orange-400 animate-spin" />
-            ) : (
-              <Sparkles size={16} className="text-gray-600" />
-            )}
-          </div>
-          <div>
-            <p className={`text-sm font-semibold ${status === 'agents_complete' ? 'text-orange-300' : 'text-gray-600'}`}>
-              Agent 4 — Chief Proposal Review Officer
-            </p>
-            <p className="text-xs text-gray-500">
-              {status === 'agents_complete'
-                ? 'Synthesising all specialist findings…'
-                : 'Waiting for specialist agents to complete…'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <p className="text-xs text-gray-600 text-center">
-        This typically takes 30–60 seconds. Page updates automatically.
-      </p>
-    </div>
-  )
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const POLLING_STATUSES = new Set(['pipeline_running', 'agents_complete'])
@@ -244,6 +150,13 @@ export default function ResultsPage() {
   const [cancellingAnalysis, setCancellingAnalysis] = useState(false)
   const [downloadingSource, setDownloadingSource] = useState(false)
   const [activeView, setActiveView] = useState('executive')
+  // Connect the WebSocket immediately — sessionId is always set on this page.
+  // Using !!sessionId (not !!session) means we open the socket before the
+  // first HTTP fetch completes.  The backend's replay buffer delivers any
+  // events that arrived in the gap, so nothing is ever missed.
+  // The hook disconnects itself when the component unmounts.
+  const { agentState, connected: wsConnected, reset: resetStream } =
+    useActivityStream(sessionId, !!sessionId)
   const [history,     setHistory]     = useState([])          // all versions in the group
   const [sidebarMode, setSidebarMode] = useState('report')    // 'report' | 'compare_all'
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)        // hidden by default on mobile
@@ -261,6 +174,7 @@ export default function ResultsPage() {
       pollRef.current = null
     }
   }
+
 
   const fetchSession = async () => {
     try {
@@ -327,8 +241,15 @@ export default function ResultsPage() {
 
   const handleStartAnalysis = async () => {
     setStartingAnalysis(true)
+    resetStream()
     try {
       await startAnalysis(sessionId)
+      // The pipeline background task sets status='pipeline_running' only AFTER
+      // downloading the file, which can take several seconds. Start polling NOW
+      // so we catch that transition without waiting for the user to refresh.
+      if (!pollRef.current) {
+        pollRef.current = setInterval(fetchSession, POLL_INTERVAL_MS)
+      }
       await fetchSession()
     } catch (err) {
       setError(err.message)
@@ -753,13 +674,33 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Pipeline running */}
+          {/* Pipeline running — live activity feed */}
           {POLLING_STATUSES.has(session.status) && (
-            <PipelineProgressScreen
-              status={session.status}
-              onStop={handleCancelAnalysis}
-              stopping={cancellingAnalysis}
-            />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                  Analysis in progress
+                </p>
+                <button
+                  onClick={handleCancelAnalysis}
+                  disabled={cancellingAnalysis}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-800/60 text-red-300 hover:text-white hover:border-red-600 hover:bg-red-950/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {cancellingAnalysis
+                    ? <Loader2 size={11} className="animate-spin" />
+                    : <Square  size={11} />}
+                  {cancellingAnalysis ? 'Stopping…' : 'Stop Analysis'}
+                </button>
+              </div>
+              <ActivityFeed
+                agentState={agentState}
+                connected={wsConnected}
+                dbStatus={session.status}
+              />
+              <p className="text-xs text-gray-600 text-center">
+                This typically takes 2–3 minutes. Page updates automatically.
+              </p>
+            </div>
           )}
 
           {/* Cancelled */}

@@ -65,6 +65,15 @@ Step 3: Supabase Auth Settings
 =============================================================
 """
 
+import logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s %(name)s: %(message)s",
+)
+# Suppress noisy third-party debug logs
+for _noisy in ("httpx", "httpcore", "boto3", "botocore", "urllib3", "s3transfer"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -72,6 +81,7 @@ from routes.auth_routes import router as auth_router
 from routes.session_routes import router as session_router
 from routes.agent_routes import router as agent_router
 from routes.chat_routes import router as chat_router
+from routes.ws_routes import router as ws_router
 
 app = FastAPI(
     title="NAVISPARK PS03 API",
@@ -98,6 +108,7 @@ app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(agent_router)
 app.include_router(chat_router)
+app.include_router(ws_router)
 
 
 @app.get("/health")

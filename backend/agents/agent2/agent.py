@@ -538,6 +538,7 @@ def run(
     proposal_type: str,
     client_priorities: list[str],
     file_type: str = "pdf",
+    emit=None,
 ) -> dict:
     """
     Runs Agent 2 analysis on a proposal PDF or PowerPoint.
@@ -551,6 +552,7 @@ def run(
         proposal_type:      Type of proposal (e.g. "Fixed Price").
         client_priorities:  List of client priorities (e.g. ["Cost Certainty"]).
         file_type:          File type: 'pdf', 'pptx', or 'ppt'.
+        emit:               Optional callable(activity, status) for live activity streaming.
 
     Returns:
         Parsed dict matching the Agent 2 output JSON schema.
@@ -559,8 +561,24 @@ def run(
         HTTPException(502): Bedrock API failure.
         HTTPException(500): JSON parse failure.
     """
+    def _e(activity: str, status: str = "running") -> None:
+        if emit:
+            emit(activity, status)
+
+    _e("Proposal document received", "completed")
+    _e("Building estimation analysis prompt", "running")
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
+    _e("Building estimation analysis prompt", "completed")
+
+    # All 7 skills execute inside a single Bedrock call — emit them as running now
+    _e("Skill 2.1 — Estimation rigour & WBS quality", "running")
+    _e("Skill 2.2 — Phase coverage check (17 delivery phases)", "running")
+    _e("Skill 2.3 — Reuse & IP asset check", "running")
+    _e("Skill 2.4 — Pricing completeness audit", "running")
+    _e("Skill 2.5 — Commercial model fit", "running")
+    _e("Skill 2.6 — Arithmetic validation (5 checks)", "running")
+    _e("Skill 2.7 — Internal hygiene flags", "running")
 
     result = invoke_agent_with_pdf(
         system_prompt=system_prompt,
@@ -568,4 +586,18 @@ def run(
         pdf_bytes=pdf_bytes,
         file_type=file_type,
     )
-    return _apply_score_caps(result)
+
+    _e("Skill 2.1 — Estimation rigour & WBS quality", "completed")
+    _e("Skill 2.2 — Phase coverage check (17 delivery phases)", "completed")
+    _e("Skill 2.3 — Reuse & IP asset check", "completed")
+    _e("Skill 2.4 — Pricing completeness audit", "completed")
+    _e("Skill 2.5 — Commercial model fit", "completed")
+    _e("Skill 2.6 — Arithmetic validation (5 checks)", "completed")
+    _e("Skill 2.7 — Internal hygiene flags", "completed")
+
+    _e("Applying scoring rules and caps (8 rules)", "running")
+    result = _apply_score_caps(result)
+    _e("Applying scoring rules and caps (8 rules)", "completed")
+    _e("Estimation & Commercial review complete", "completed")
+
+    return result
