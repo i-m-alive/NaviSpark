@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { CheckCircle2, Loader2, AlertCircle, Clock, GitBranch } from 'lucide-react'
+import { useTheme, LIGHT_THEME_IDS } from '../../context/ThemeContext'
 
-function scoreColor(score) {
-  if (!score && score !== 0) return '#6b7280'
-  if (score >= 7) return '#34d399'
-  if (score >= 5) return '#fbbf24'
-  return '#f87171'
+function scoreColor(score, isLight = false) {
+  if (!score && score !== 0) return isLight ? '#374151' : '#6b7280'
+  if (isLight) return score >= 7 ? '#15803d' : score >= 5 ? '#a16207' : '#dc2626'
+  return score >= 7 ? '#34d399' : score >= 5 ? '#fbbf24' : '#f87171'
 }
 
 function verdictShort(verdict) {
@@ -38,6 +38,8 @@ function timeAgo(dateStr) {
 
 export default function VersionTimeline({ versions, currentSessionId }) {
   const navigate = useNavigate()
+  const { theme } = useTheme()
+  const isLight = LIGHT_THEME_IDS.has(theme)
   if (!versions || versions.length <= 1) return null
 
   return (
@@ -92,9 +94,9 @@ export default function VersionTimeline({ versions, currentSessionId }) {
                   <div className="flex items-center gap-1">
                     <div
                       className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: scoreColor(score) }}
+                      style={{ backgroundColor: scoreColor(score, isLight) }}
                     />
-                    <span className="text-[11px] font-mono font-bold" style={{ color: scoreColor(score) }}>
+                    <span className="text-[11px] font-mono font-bold" style={{ color: scoreColor(score, isLight) }}>
                       {score.toFixed(1)}
                     </span>
                   </div>

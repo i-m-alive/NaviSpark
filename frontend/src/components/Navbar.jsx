@@ -88,7 +88,13 @@ function UserAvatar({ name, email, avatarUrl }) {
   }
   const initial = ((name || email || 'U')[0]).toUpperCase()
   return (
-    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-sm">
+    <div
+      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm"
+      style={{
+        background: 'linear-gradient(135deg, var(--t-accent), var(--t-accent-hover))',
+        color: 'var(--t-accent-text, #ffffff)',
+      }}
+    >
       {initial}
     </div>
   )

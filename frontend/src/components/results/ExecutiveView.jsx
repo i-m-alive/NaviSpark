@@ -67,7 +67,7 @@ function ScoreRing({ score, size = 110, animDelay = 0 }) {
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg viewBox="0 0 88 88" className="w-full h-full -rotate-90">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth="8" />
         <circle
           cx="44" cy="44" r={r}
           fill="none"

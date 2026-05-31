@@ -5,21 +5,21 @@ import {
   CheckCircle2, Loader2, AlertCircle, Clock,
   BarChart3, FileText, ChevronRight, Upload, Trash2, X, Check,
 } from 'lucide-react'
+import { useTheme, LIGHT_THEME_IDS } from '../../context/ThemeContext'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function scoreHex(score) {
-  if (score == null) return '#4b5563'
-  if (score >= 7) return '#34d399'
-  if (score >= 5) return '#fbbf24'
-  return '#f87171'
+function scoreHex(score, isLight = false) {
+  if (score == null) return isLight ? '#374151' : '#4b5563'
+  if (isLight) return score >= 7 ? '#15803d' : score >= 5 ? '#a16207' : '#dc2626'
+  return score >= 7 ? '#34d399' : score >= 5 ? '#fbbf24' : '#f87171'
 }
 
 function verdictShort(verdict) {
   if (!verdict) return null
-  if (verdict === 'READY TO SEND')                              return { text: 'Ready',         cls: 'text-green-400' }
-  if (verdict === 'REVISE BEFORE SENDING')                      return { text: 'Revise',         cls: 'text-yellow-400' }
-  if (verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND') return { text: 'Major revision', cls: 'text-red-400' }
+  if (verdict === 'READY TO SEND')                              return { text: 'Ready',         cls: 'text-green-500' }
+  if (verdict === 'REVISE BEFORE SENDING')                      return { text: 'Revise',         cls: 'text-amber-500' }
+  if (verdict === 'NEEDS MAJOR REVISION' || verdict === 'DO NOT SEND') return { text: 'Major revision', cls: 'text-red-500' }
   return { text: verdict, cls: 'text-gray-400' }
 }
 
@@ -37,16 +37,20 @@ function timeAgo(dateStr) {
 // ── Tiny score ring ───────────────────────────────────────────────────────────
 
 function MiniRing({ score, size = 40 }) {
+  const { theme } = useTheme()
+  const isLight = LIGHT_THEME_IDS.has(theme)
   const r     = size * 0.38
   const circ  = 2 * Math.PI * r
   const pct   = score != null ? Math.min(100, (score / 10) * 100) : 0
-  const color = scoreHex(score)
+  const color = scoreHex(score, isLight)
   const cx    = size / 2
+  // Track: use a semi-opaque dark in light mode, subtle light in dark mode
+  const trackColor = isLight ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.12)'
 
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#1f2937" strokeWidth={size * 0.13} />
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke={trackColor} strokeWidth={size * 0.13} />
         {score != null && (
           <circle cx={cx} cy={cx} r={r} fill="none"
             stroke={color} strokeWidth={size * 0.13} strokeLinecap="round"
@@ -59,7 +63,7 @@ function MiniRing({ score, size = 40 }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {score != null
           ? <span className="font-mono font-bold" style={{ fontSize: size * 0.22, color }}>{score.toFixed(1)}</span>
-          : <span className="text-gray-700" style={{ fontSize: size * 0.18 }}>—</span>
+          : <span style={{ fontSize: size * 0.18, color: 'var(--t-text4)' }}>—</span>
         }
       </div>
     </div>

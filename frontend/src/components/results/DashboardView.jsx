@@ -101,7 +101,7 @@ function KPICard({ label, score, theme, sublabel, delay = 0, info }) {
           <span className="text-sm text-gray-600 mb-1.5">/10</span>
         </div>
         {sublabel && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{sublabel}</p>}
-        <div className="mt-3 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--t-bg4, #1f2937)' }}>
           <div
             className={clsx('h-full rounded-full', t.bar)}
             style={{ width: `${pct}%`, transition: `width 1.1s cubic-bezier(0.4,0,0.2,1) ${delay}ms` }}
@@ -157,11 +157,11 @@ function GaugeChart({ score }) {
       >
         {/* Background track */}
         <path d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`}
-          fill="none" stroke="#1f2937" strokeWidth={sw} strokeLinecap="round" />
+          fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth={sw} strokeLinecap="round" />
         {/* Zone colors */}
-        <path d={zoneArc(0, 5)}  fill="none" stroke="#450a0a" strokeWidth={sw} strokeOpacity="0.85" />
-        <path d={zoneArc(5, 7)}  fill="none" stroke="#451a03" strokeWidth={sw} strokeOpacity="0.85" />
-        <path d={zoneArc(7, 10)} fill="none" stroke="#052e16" strokeWidth={sw} strokeOpacity="0.85" />
+        <path d={zoneArc(0, 5)}  fill="none" stroke="#f87171" strokeWidth={sw} strokeOpacity="0.25" />
+        <path d={zoneArc(5, 7)}  fill="none" stroke="#fbbf24" strokeWidth={sw} strokeOpacity="0.25" />
+        <path d={zoneArc(7, 10)} fill="none" stroke="#34d399" strokeWidth={sw} strokeOpacity="0.25" />
         {/* Animated score fill */}
         <path
           d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`}
@@ -178,7 +178,7 @@ function GaugeChart({ score }) {
             <line key={tick}
               x1={(cx + (R - sw / 2 + 1) * ox).toFixed(2)} y1={(cy + (R - sw / 2 + 1) * oy).toFixed(2)}
               x2={(cx + (R + sw / 2 + 3) * ox).toFixed(2)} y2={(cy + (R + sw / 2 + 3) * oy).toFixed(2)}
-              stroke="#4b5563" strokeWidth="1.5"
+              stroke="var(--t-text5, #4b5563)" strokeWidth="1.5"
             />
           )
         })}
@@ -188,20 +188,20 @@ function GaugeChart({ score }) {
           const lr = R + sw + 10
           return (
             <text key={v} x={(cx + lr * Math.cos(a)).toFixed(2)} y={(cy - lr * Math.sin(a) + 3).toFixed(2)}
-              textAnchor="middle" fill="#4b5563" fontSize="9" fontFamily="monospace">{lbl}</text>
+              textAnchor="middle" fill="var(--t-text4, #4b5563)" fontSize="9" fontFamily="monospace">{lbl}</text>
           )
         })}
         {/* Needle */}
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={hex} strokeWidth="2.5" strokeLinecap="round"
           style={{ filter: `drop-shadow(0 0 4px ${hex})` }} />
         <circle cx={cx} cy={cy} r="7" fill={hex} style={{ filter: `drop-shadow(0 0 6px ${hex}88)` }} />
-        <circle cx={cx} cy={cy} r="3.5" fill="#0a0f1a" />
+        <circle cx={cx} cy={cy} r="3.5" fill="var(--t-bg1, #0a0f1a)" />
         {/* Score label */}
         <text x={cx} y={cy - R * 0.42} textAnchor="middle" fill={hex}
           fontSize="22" fontFamily="monospace, ui-monospace" fontWeight="700">{s.toFixed(1)}</text>
-        <text x={cx} y={cy - R * 0.42 + 15} textAnchor="middle" fill="#6b7280" fontSize="9">/10</text>
+        <text x={cx} y={cy - R * 0.42 + 15} textAnchor="middle" fill="var(--t-text5, #6b7280)" fontSize="9">/10</text>
         {/* Zone label */}
-        <text x={cx} y={cy + 20} textAnchor="middle" fill="#6b7280" fontSize="9">
+        <text x={cx} y={cy + 20} textAnchor="middle" fill="var(--t-text5, #6b7280)" fontSize="9">
           {s >= 7 ? 'Ready to Send' : s >= 5 ? 'Revise First' : 'Major Revision'}
         </text>
       </svg>
@@ -227,7 +227,7 @@ function SingleRing({ score, label, sub, color, delay = 0 }) {
     <div className="flex flex-col items-center gap-2.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth={sw} />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth={sw} />
           <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={sw}
             strokeLinecap="round"
             strokeDasharray={circ}
@@ -240,7 +240,7 @@ function SingleRing({ score, label, sub, color, delay = 0 }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono font-bold leading-none" style={{ fontSize: 18, color }}>{score?.toFixed(1)}</span>
-          <span className="text-gray-600 mt-0.5" style={{ fontSize: 9 }}>/10</span>
+          <span className="text-gray-400 mt-0.5" style={{ fontSize: 9 }}>/10</span>
         </div>
       </div>
       <div className="text-center">
@@ -318,7 +318,7 @@ function ChecklistDonut({ checklistCoverage }) {
         <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
           <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
             {/* Background ring */}
-            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth={sw} />
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth={sw} />
             {/* Segments */}
             {arcs.map(arc => (
               <circle key={arc.label} cx={cx} cy={cy} r={r} fill="none"

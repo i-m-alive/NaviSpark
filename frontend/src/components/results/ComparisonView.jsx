@@ -350,7 +350,7 @@ function ProgressSummary({ prevOutput, currOutput, prevVersion, currVersion }) {
         <div className="flex-shrink-0">
           <div className="relative w-20 h-20">
             <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-              <circle cx="40" cy="40" r="30" fill="none" stroke="#1f2937" strokeWidth="7" />
+              <circle cx="40" cy="40" r="30" fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth="7" />
               <circle cx="40" cy="40" r="30" fill="none"
                 stroke={delta > 0 ? '#34d399' : delta < 0 ? '#f87171' : '#6b7280'}
                 strokeWidth="7" strokeLinecap="round"

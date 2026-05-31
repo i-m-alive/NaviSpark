@@ -589,8 +589,8 @@ export default function ResultsPage() {
                     onClick={handleGeneratePpt}
                     disabled={generatingPpt}
                     title="Agent 5: Generate a copy-paste edit guide for your PPT"
-                    className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 text-purple-200 hover:text-white hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)' }}
+                    className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)', color: '#e9d5ff' }}
                   >
                     {generatingPpt
                       ? <Loader2 size={13} className="animate-spin" />
@@ -624,7 +624,7 @@ export default function ResultsPage() {
                     >
                       <Download size={13} />
                       <span>{fmtInfo.label}</span>
-                      <span className="text-[9px] opacity-55 font-mono hidden sm:inline">({meta.label})</span>
+                      <span className="text-[11px] font-semibold hidden sm:inline opacity-90">({meta.label})</span>
                     </button>
                     {/* Dropdown arrow */}
                     <button

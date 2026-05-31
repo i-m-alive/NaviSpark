@@ -280,7 +280,7 @@ function ReadinessBanner({ criticalTotal, criticalDone, totalDone, totalItems })
       {/* Overall progress ring */}
       <div className="relative flex-shrink-0" style={{ width: 48, height: 48 }}>
         <svg viewBox="0 0 48 48" className="w-full h-full -rotate-90">
-          <circle cx="24" cy="24" r="18" fill="none" stroke="#1f2937" strokeWidth="5" />
+          <circle cx="24" cy="24" r="18" fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth="5" />
           <circle
             cx="24" cy="24" r="18"
             fill="none"

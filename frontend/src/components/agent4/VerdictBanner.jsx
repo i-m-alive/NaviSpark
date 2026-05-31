@@ -65,7 +65,7 @@ export default function VerdictBanner({ overallScore, verdict, agent1Score, agen
           {/* Circular score */}
           <div className="relative flex-shrink-0" style={{ width: 72, height: 72 }}>
             <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#1f2937" strokeWidth="8" />
+              <circle cx="40" cy="40" r="32" fill="none" stroke="var(--t-bg4, #1f2937)" strokeWidth="8" />
               <circle
                 cx="40" cy="40" r="32"
                 fill="none"
@@ -89,7 +89,7 @@ export default function VerdictBanner({ overallScore, verdict, agent1Score, agen
               <span>Overall Score</span>
               <span>{overallScore?.toFixed(1)} / 10</span>
             </div>
-            <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-3 rounded-full overflow-hidden" style={{ background: 'var(--t-bg4, #1f2937)' }}>
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${scorePct}%`, background: scoreColour }}

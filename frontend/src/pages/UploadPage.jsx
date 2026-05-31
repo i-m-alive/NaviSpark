@@ -43,7 +43,7 @@ function Chip({ label, selected, onClick, color = 'blue' }) {
     purple: 'bg-purple-600/15 border-purple-500/70 text-purple-300 shadow-[0_0_6px_rgba(147,51,234,0.22)]',
     teal:   'bg-teal-600/15 border-teal-500/70 text-teal-300 shadow-[0_0_6px_rgba(20,184,166,0.22)]',
   }
-  const off = 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
+  const off = 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'
   return (
     <button
       type="button"
@@ -90,7 +90,7 @@ function SummaryRow({ label, value, color }) {
     <div className="flex items-start gap-2 animate-slide-down">
       <div className={clsx('w-1.5 h-1.5 rounded-full mt-[5px] flex-shrink-0', dot[color] || dot.gray)} />
       <div className="min-w-0 flex-1">
-        <span className="text-[9px] text-gray-600 uppercase tracking-wider">{label}: </span>
+        <span className="text-[9px] text-gray-400 uppercase tracking-wider">{label}: </span>
         <span className="text-[11px] text-gray-300 break-words">{value}</span>
       </div>
     </div>
@@ -284,7 +284,7 @@ export default function UploadPage() {
                   )} />
                   <span className={clsx(
                     'text-[9px] font-medium uppercase tracking-wider',
-                    done ? 'text-green-500' : 'text-gray-600',
+                    done ? 'text-green-500' : 'text-gray-400',
                   )}>{label}</span>
                   {i < completions.length - 1 && (
                     <div className={clsx('w-5 h-px mx-1', done ? 'bg-green-800' : 'bg-gray-800')} />
@@ -419,7 +419,7 @@ export default function UploadPage() {
                 {/* Live summary — appears as fields are filled */}
                 {hasSummary && (
                   <div className="auth-card p-3 space-y-2 animate-slide-down">
-                    <p className="text-[9px] font-semibold text-gray-600 uppercase tracking-widest mb-1.5">
+                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
                       Summary Preview
                     </p>
                     {clientIndustry.length > 0 && (
@@ -446,7 +446,7 @@ export default function UploadPage() {
                     'transition-all duration-300 relative overflow-hidden',
                     canSubmit
                       ? 'text-white'
-                      : 'text-gray-600 bg-gray-800/50 border border-gray-700 cursor-not-allowed',
+                      : 'text-gray-400 bg-gray-800/50 border border-gray-700 cursor-not-allowed',
                   )}
                   style={canSubmit ? {
                     background: 'linear-gradient(135deg,#2563eb 0%,#7c3aed 100%)',
@@ -465,7 +465,7 @@ export default function UploadPage() {
 
                 {/* Inline validation hint */}
                 {!canSubmit && (
-                  <p className="text-[10px] text-gray-600 text-center -mt-1">
+                  <p className="text-[10px] text-gray-400 text-center -mt-1">
                     Still needed:{' '}
                     {[
                       !clientIndustry.length && 'industry',

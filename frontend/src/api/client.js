@@ -20,6 +20,7 @@ async function handleResponse(res) {
     if (res.status === 401) {
       localStorage.removeItem('navispark_token')
       localStorage.removeItem('navispark_user')
+      throw new Error('Session expired. Please log in again.')
     }
 
     throw new Error(errorDetail)

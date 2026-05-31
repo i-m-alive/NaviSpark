@@ -279,6 +279,10 @@
   background-size: 400px 100%;
   animation: shimmer 1.4s linear infinite;
 }
+html[data-theme-mode="light"] .animate-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400px 100%;
+}
 .animate-float-orb   { animation: float-orb   16s ease-in-out infinite; }
 .animate-float-orb-r { animation: float-orb-r 20s ease-in-out infinite; }
 .animate-draw-line   { animation: draw-line 1.2s cubic-bezier(0.4,0,0.2,1) forwards; }
@@ -330,6 +334,17 @@
   box-shadow: 0 0 0 1px rgba(59,130,246,0.05), 0 20px 60px rgba(0,0,0,0.4);
 }
 
+html[data-theme-mode="light"] .auth-card {
+  background: var(--t-bg2, #ffffff);
+  border: 1px solid var(--t-border1);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme-mode="light"] .auth-card:focus-within {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.1), 0 8px 32px rgba(0,0,0,0.1);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME SYSTEM
    CSS variables defined once per theme on html[data-theme="..."].
@@ -355,11 +370,13 @@ html[data-theme="obsidian"] {
   --t-border2:#374151;
   --t-border3:#4b5563;
   --t-nav:    rgba(9,11,17,0.88);
-  /* dot/grid patterns and SVG helpers */
   --t-dot:        rgba(255,255,255,0.018);
   --t-grid-line:  rgba(59,130,246,0.03);
   --t-svg-grid:   rgba(255,255,255,0.05);
   --t-card-inner: #04060e;
+  --t-accent:       #3b82f6;
+  --t-accent-hover: #2563eb;
+  --t-accent-text:  #ffffff;
   color-scheme: dark;
 }
 
@@ -384,6 +401,9 @@ html[data-theme="midnight-blue"] {
   --t-grid-line: rgba(96,160,248,0.04);
   --t-svg-grid:  rgba(255,255,255,0.05);
   --t-card-inner:#010810;
+  --t-accent:       #60a0f8;
+  --t-accent-hover: #3b82f6;
+  --t-accent-text:  #ffffff;
   color-scheme: dark;
 }
 
@@ -408,6 +428,9 @@ html[data-theme="forest"] {
   --t-grid-line: rgba(80,168,80,0.04);
   --t-svg-grid:  rgba(255,255,255,0.05);
   --t-card-inner:#020a04;
+  --t-accent:       #50a850;
+  --t-accent-hover: #3d8040;
+  --t-accent-text:  #ffffff;
   color-scheme: dark;
 }
 
@@ -432,6 +455,9 @@ html[data-theme="crimson"] {
   --t-grid-line: rgba(200,56,56,0.04);
   --t-svg-grid:  rgba(255,255,255,0.05);
   --t-card-inner:#080202;
+  --t-accent:       #c83838;
+  --t-accent-hover: #a02020;
+  --t-accent-text:  #ffffff;
   color-scheme: dark;
 }
 
@@ -456,6 +482,9 @@ html[data-theme="aurora"] {
   --t-grid-line: rgba(0,198,218,0.04);
   --t-svg-grid:  rgba(255,255,255,0.05);
   --t-card-inner:#010610;
+  --t-accent:       #00c6da;
+  --t-accent-hover: #0098a8;
+  --t-accent-text:  #ffffff;
   color-scheme: dark;
 }
 
@@ -480,6 +509,9 @@ html[data-theme="neon-cyber"] {
   --t-grid-line: rgba(0,255,136,0.04);
   --t-svg-grid:  rgba(255,255,255,0.05);
   --t-card-inner:#010101;
+  --t-accent:       #00e876;
+  --t-accent-hover: #00b85e;
+  --t-accent-text:  #000000;
   color-scheme: dark;
 }
 
@@ -493,9 +525,9 @@ html[data-theme="arctic-light"] {
   --t-text1:  #0f172a;
   --t-text2:  #1e293b;
   --t-text3:  #334155;
-  --t-text4:  #64748b;
-  --t-text5:  #94a3b8;
-  --t-text6:  #cbd5e1;
+  --t-text4:  #475569;
+  --t-text5:  #64748b;
+  --t-text6:  #475569;
   --t-border1:#e2e8f0;
   --t-border2:#cbd5e1;
   --t-border3:#94a3b8;
@@ -504,6 +536,9 @@ html[data-theme="arctic-light"] {
   --t-grid-line: rgba(37,99,235,0.06);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#e8f4ff;
+  --t-accent:       #2563eb;
+  --t-accent-hover: #1d4ed8;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -517,9 +552,9 @@ html[data-theme="parchment"] {
   --t-text1:  #2d1b00;
   --t-text2:  #3a2510;
   --t-text3:  #4a3020;
-  --t-text4:  #7a5838;
-  --t-text5:  #9a7855;
-  --t-text6:  #b89870;
+  --t-text4:  #5a3820;
+  --t-text5:  #7a5838;
+  --t-text6:  #5a3820;
   --t-border1:#ddd5c0;
   --t-border2:#c8b898;
   --t-border3:#a89060;
@@ -528,6 +563,9 @@ html[data-theme="parchment"] {
   --t-grid-line: rgba(154,96,64,0.06);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#ece5d5;
+  --t-accent:       #9a6040;
+  --t-accent-hover: #7a4828;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -541,9 +579,9 @@ html[data-theme="lavender-mist"] {
   --t-text1:  #1e1b4b;
   --t-text2:  #2e2a6e;
   --t-text3:  #3730a3;
-  --t-text4:  #4338ca;
-  --t-text5:  #6366f1;
-  --t-text6:  #818cf8;
+  --t-text4:  #3730a3;
+  --t-text5:  #4338ca;
+  --t-text6:  #3730a3;
   --t-border1:#ddd6fe;
   --t-border2:#c4b5fd;
   --t-border3:#a78bfa;
@@ -552,6 +590,9 @@ html[data-theme="lavender-mist"] {
   --t-grid-line: rgba(99,102,241,0.07);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#ede9fe;
+  --t-accent:       #6366f1;
+  --t-accent-hover: #4f46e5;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -565,9 +606,9 @@ html[data-theme="warm-sand"] {
   --t-text1:  #1c1008;
   --t-text2:  #2d1c0a;
   --t-text3:  #3d2810;
-  --t-text4:  #6a4020;
-  --t-text5:  #9a6840;
-  --t-text6:  #c09060;
+  --t-text4:  #4a3018;
+  --t-text5:  #6a4020;
+  --t-text6:  #4a3018;
   --t-border1:#eedcc0;
   --t-border2:#e0c8a0;
   --t-border3:#c8a870;
@@ -576,6 +617,9 @@ html[data-theme="warm-sand"] {
   --t-grid-line: rgba(192,128,96,0.06);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#f0e8d8;
+  --t-accent:       #c08060;
+  --t-accent-hover: #a06040;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -589,9 +633,9 @@ html[data-theme="ocean-breeze"] {
   --t-text1:  #002b3d;
   --t-text2:  #003d55;
   --t-text3:  #005570;
-  --t-text4:  #006d8f;
-  --t-text5:  #0088b0;
-  --t-text6:  #00a8d8;
+  --t-text4:  #005570;
+  --t-text5:  #006d8f;
+  --t-text6:  #005570;
   --t-border1:#b2ebf2;
   --t-border2:#80deea;
   --t-border3:#4dd0e1;
@@ -600,6 +644,9 @@ html[data-theme="ocean-breeze"] {
   --t-grid-line: rgba(0,160,192,0.06);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#d0f0f8;
+  --t-accent:       #00a0c0;
+  --t-accent-hover: #007898;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -613,9 +660,9 @@ html[data-theme="sage"] {
   --t-text1:  #0f1f0f;
   --t-text2:  #1a321a;
   --t-text3:  #284528;
-  --t-text4:  #3d6040;
-  --t-text5:  #528855;
-  --t-text6:  #70a874;
+  --t-text4:  #284528;
+  --t-text5:  #3d6040;
+  --t-text6:  #284528;
   --t-border1:#cce3cc;
   --t-border2:#b0d4b0;
   --t-border3:#88c088;
@@ -624,6 +671,9 @@ html[data-theme="sage"] {
   --t-grid-line: rgba(82,136,85,0.07);
   --t-svg-grid:  rgba(0,0,0,0.08);
   --t-card-inner:#deedde;
+  --t-accent:       #528855;
+  --t-accent-hover: #3d6840;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -648,6 +698,9 @@ html[data-theme="high-contrast-dark"] {
   --t-grid-line: rgba(255,255,0,0.06);
   --t-svg-grid:  rgba(255,255,255,0.08);
   --t-card-inner:#000000;
+  --t-accent:       #ffff00;
+  --t-accent-hover: #cccc00;
+  --t-accent-text:  #000000;
   color-scheme: dark;
 }
 
@@ -672,6 +725,9 @@ html[data-theme="high-contrast-light"] {
   --t-grid-line: rgba(0,0,204,0.08);
   --t-svg-grid:  rgba(0,0,0,0.12);
   --t-card-inner:#eeeeee;
+  --t-accent:       #0000cc;
+  --t-accent-hover: #0000aa;
+  --t-accent-text:  #ffffff;
   color-scheme: light;
 }
 
@@ -680,6 +736,22 @@ html[data-theme="high-contrast-light"] {
    [data-theme] specificity (0,1,0) + class (0,1,0) = (0,2,0) beats
    plain Tailwind class (0,1,0), so !important is not needed.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── btn-primary → theme accent ─────────────────────────────────────────────── */
+html[data-theme] .btn-primary {
+  background-color: var(--t-accent);
+  color: var(--t-accent-text, #ffffff);
+}
+html[data-theme] .btn-primary:hover:not(:disabled) {
+  background-color: var(--t-accent-hover);
+}
+html[data-theme] .btn-primary:disabled {
+  background-color: var(--t-accent);
+  opacity: 0.45;
+}
+html[data-theme] .btn-primary:focus {
+  --tw-ring-color: var(--t-accent);
+}
 
 /* Backgrounds */
 html[data-theme] .bg-gray-950 { background-color: var(--t-bg1); }
@@ -834,6 +906,7 @@ html[data-theme] .border-gray-700\/40 { border-color: rgba(var(--rb2),var(--gb2)
 /* ── Blue/Indigo family ───────────────────────────────────────────────────── */
 html[data-theme-mode="light"] .bg-blue-950,
 html[data-theme-mode="light"] .bg-blue-950\/60,
+html[data-theme-mode="light"] .bg-blue-950\/50,
 html[data-theme-mode="light"] .bg-blue-950\/40,
 html[data-theme-mode="light"] .bg-blue-950\/30,
 html[data-theme-mode="light"] .bg-blue-950\/20,
@@ -851,7 +924,8 @@ html[data-theme-mode="light"] .border-blue-800\/40,
 html[data-theme-mode="light"] .border-blue-700\/60,
 html[data-theme-mode="light"] .border-blue-700\/50,
 html[data-theme-mode="light"] .border-blue-900\/40,
-html[data-theme-mode="light"] .border-blue-900\/50  { border-color: #93c5fd; }
+html[data-theme-mode="light"] .border-blue-900\/50,
+html[data-theme-mode="light"] .border-blue-900\/80  { border-color: #93c5fd; }
 
 /* ── Red family ───────────────────────────────────────────────────────────── */
 html[data-theme-mode="light"] .bg-red-950,
@@ -860,7 +934,8 @@ html[data-theme-mode="light"] .bg-red-950\/30,
 html[data-theme-mode="light"] .bg-red-950\/25,
 html[data-theme-mode="light"] .bg-red-950\/20,
 html[data-theme-mode="light"] .bg-red-900,
-html[data-theme-mode="light"] .bg-red-900\/70      { background-color: #fee2e2; }
+html[data-theme-mode="light"] .bg-red-900\/70,
+html[data-theme-mode="light"] .bg-red-900\/60      { background-color: #fee2e2; }
 
 html[data-theme-mode="light"] .border-red-900\/50,
 html[data-theme-mode="light"] .border-red-900\/40,
@@ -873,6 +948,7 @@ html[data-theme-mode="light"] .bg-green-950\/25,
 html[data-theme-mode="light"] .bg-green-950\/10,
 html[data-theme-mode="light"] .bg-green-900,
 html[data-theme-mode="light"] .bg-green-900\/70,
+html[data-theme-mode="light"] .bg-green-900\/60,
 html[data-theme-mode="light"] .bg-green-900\/40    { background-color: #dcfce7; }
 
 html[data-theme-mode="light"] .border-green-800\/60,
@@ -887,7 +963,9 @@ html[data-theme-mode="light"] .bg-amber-950\/20,
 html[data-theme-mode="light"] .bg-yellow-950,
 html[data-theme-mode="light"] .bg-yellow-950\/40,
 html[data-theme-mode="light"] .bg-yellow-950\/15,
-html[data-theme-mode="light"] .bg-yellow-900\/70   { background-color: #fef9c3; }
+html[data-theme-mode="light"] .bg-yellow-900,
+html[data-theme-mode="light"] .bg-yellow-900\/70,
+html[data-theme-mode="light"] .bg-yellow-900\/60   { background-color: #fef9c3; }
 
 html[data-theme-mode="light"] .border-yellow-800\/50,
 html[data-theme-mode="light"] .border-amber-800\/50 { border-color: #fde047; }
@@ -899,35 +977,104 @@ html[data-theme-mode="light"] .bg-orange-900\/70   { background-color: #ffedd5; 
 
 /* ── Purple / Violet family ───────────────────────────────────────────────── */
 html[data-theme-mode="light"] .bg-purple-950,
+html[data-theme-mode="light"] .bg-purple-950\/50,
 html[data-theme-mode="light"] .bg-purple-950\/40,
 html[data-theme-mode="light"] .bg-purple-950\/25,
+html[data-theme-mode="light"] .bg-purple-900,
 html[data-theme-mode="light"] .bg-violet-950,
 html[data-theme-mode="light"] .bg-violet-950\/50   { background-color: #f3e8ff; }
 
+html[data-theme-mode="light"] .border-purple-900\/80,
+html[data-theme-mode="light"] .border-purple-900\/50,
+html[data-theme-mode="light"] .border-purple-800\/50,
+html[data-theme-mode="light"] .border-purple-800   { border-color: #d8b4fe; }
+
 /* ── Teal family ──────────────────────────────────────────────────────────── */
 html[data-theme-mode="light"] .bg-teal-950,
-html[data-theme-mode="light"] .bg-teal-950\/30     { background-color: #ccfbf1; }
+html[data-theme-mode="light"] .bg-teal-950\/50,
+html[data-theme-mode="light"] .bg-teal-950\/30,
+html[data-theme-mode="light"] .bg-teal-900         { background-color: #ccfbf1; }
+
+html[data-theme-mode="light"] .border-teal-900\/80,
+html[data-theme-mode="light"] .border-teal-900\/50,
+html[data-theme-mode="light"] .border-teal-800\/50,
+html[data-theme-mode="light"] .border-teal-800     { border-color: #5eead4; }
+
+/* ── Indigo family (StatusBadge uses bg-indigo-900) ─────────────────────── */
+html[data-theme-mode="light"] .bg-indigo-900       { background-color: #e0e7ff; }
+html[data-theme-mode="light"] .border-indigo-800   { border-color: #a5b4fc; }
 
 /* ── Text accent colors — darken for light backgrounds ───────────────────── */
-html[data-theme-mode="light"] .text-blue-400   { color: #2563eb; }
+/* Pastel colors (200/300 range) are invisible on light; map to deep saturated variants */
+html[data-theme-mode="light"] .text-white         { color: var(--t-text1); }
+html[data-theme-mode="light"] .text-blue-200   { color: #1e40af; }
 html[data-theme-mode="light"] .text-blue-300   { color: #1d4ed8; }
-html[data-theme-mode="light"] .text-indigo-400 { color: #4338ca; }
+html[data-theme-mode="light"] .text-blue-400   { color: #2563eb; }
+html[data-theme-mode="light"] .text-indigo-200 { color: #312e81; }
 html[data-theme-mode="light"] .text-indigo-300 { color: #3730a3; }
+html[data-theme-mode="light"] .text-indigo-400 { color: #4338ca; }
+html[data-theme-mode="light"] .text-purple-200 { color: #581c87; }
+html[data-theme-mode="light"] .text-purple-300 { color: #6b21a8; }
 html[data-theme-mode="light"] .text-purple-400 { color: #7e22ce; }
+html[data-theme-mode="light"] .text-violet-300 { color: #5b21b6; }
 html[data-theme-mode="light"] .text-violet-400 { color: #6d28d9; }
-html[data-theme-mode="light"] .text-green-400  { color: #15803d; }
+html[data-theme-mode="light"] .text-green-200  { color: #14532d; }
 html[data-theme-mode="light"] .text-green-300  { color: #166534; }
-html[data-theme-mode="light"] .text-teal-400   { color: #0f766e; }
+html[data-theme-mode="light"] .text-green-400  { color: #15803d; }
+html[data-theme-mode="light"] .text-teal-200   { color: #134e4a; }
 html[data-theme-mode="light"] .text-teal-300   { color: #0d9488; }
-html[data-theme-mode="light"] .text-yellow-400 { color: #a16207; }
+html[data-theme-mode="light"] .text-teal-400   { color: #0f766e; }
+html[data-theme-mode="light"] .text-yellow-200 { color: #713f12; }
 html[data-theme-mode="light"] .text-yellow-300 { color: #854d0e; }
-html[data-theme-mode="light"] .text-amber-400  { color: #b45309; }
+html[data-theme-mode="light"] .text-yellow-400 { color: #a16207; }
+html[data-theme-mode="light"] .text-amber-200  { color: #78350f; }
 html[data-theme-mode="light"] .text-amber-300  { color: #92400e; }
-html[data-theme-mode="light"] .text-orange-400 { color: #c2410c; }
+html[data-theme-mode="light"] .text-amber-400  { color: #b45309; }
+html[data-theme-mode="light"] .text-orange-200 { color: #7c2d12; }
 html[data-theme-mode="light"] .text-orange-300 { color: #9a3412; }
-html[data-theme-mode="light"] .text-red-400    { color: #dc2626; }
+html[data-theme-mode="light"] .text-orange-400 { color: #c2410c; }
+html[data-theme-mode="light"] .text-red-200    { color: #7f1d1d; }
 html[data-theme-mode="light"] .text-red-300    { color: #b91c1c; }
+html[data-theme-mode="light"] .text-red-400    { color: #dc2626; }
+html[data-theme-mode="light"] .text-pink-300   { color: #9d174d; }
 html[data-theme-mode="light"] .text-pink-400   { color: #be185d; }
+html[data-theme-mode="light"] .text-sky-300    { color: #0369a1; }
+html[data-theme-mode="light"] .text-sky-400    { color: #0284c7; }
+html[data-theme-mode="light"] .text-cyan-300   { color: #155e75; }
+html[data-theme-mode="light"] .text-cyan-400   { color: #0e7490; }
+
+/* ── GRADIENT SYSTEM FIX ─────────────────────────────────────────────────────
+   Background-color overrides only affect the `background-color` property.
+   Cards using bg-gradient-to-* set `background-image` via --tw-gradient-from
+   and --tw-gradient-to CSS custom properties — these are NEVER overridden by
+   background-color rules, leaving gradients dark in all light themes.
+
+   Fix: Override the Tailwind gradient custom properties directly.
+   - `to-gray-*`  → maps to the theme background colors via CSS variables
+   - `from-*-9**` → maps to the light-tint equivalent of each color family
+     (using [class*=] attribute wildcard to cover all opacity variants)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Gradient 'to' end-colors → theme backgrounds */
+html[data-theme-mode="light"] .to-gray-950 { --tw-gradient-to: var(--t-bg1) var(--tw-gradient-to-position); }
+html[data-theme-mode="light"] .to-gray-900 { --tw-gradient-to: var(--t-bg2) var(--tw-gradient-to-position); }
+html[data-theme-mode="light"] .to-gray-800 { --tw-gradient-to: var(--t-bg3) var(--tw-gradient-to-position); }
+
+/* Gradient 'from' start-colors → light-tint equivalents (covers all /N opacity variants) */
+html[data-theme-mode="light"] [class*="from-red-9"]    { --tw-gradient-from: rgba(254,226,226,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-yellow-9"] { --tw-gradient-from: rgba(254,249,195,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-amber-9"]  { --tw-gradient-from: rgba(254,243,199,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-orange-9"] { --tw-gradient-from: rgba(255,237,213,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-green-9"]  { --tw-gradient-from: rgba(220,252,231,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-teal-9"]   { --tw-gradient-from: rgba(204,251,241,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-cyan-9"]   { --tw-gradient-from: rgba(207,250,254,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-blue-9"]   { --tw-gradient-from: rgba(219,234,254,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-indigo-9"] { --tw-gradient-from: rgba(224,231,255,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-purple-9"] { --tw-gradient-from: rgba(243,232,255,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-violet-9"] { --tw-gradient-from: rgba(237,233,254,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-pink-9"]   { --tw-gradient-from: rgba(252,231,243,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-sky-9"]    { --tw-gradient-from: rgba(224,242,254,0.85) var(--tw-gradient-from-position); }
+html[data-theme-mode="light"] [class*="from-gray-9"]   { --tw-gradient-from: var(--t-bg2) var(--tw-gradient-from-position); }
 
 /* ── NavLink active state text in light mode ──────────────────────────────── */
 html[data-theme-mode="light"] .text-gray-500.hover\:text-gray-200:hover { color: var(--t-text2); }
@@ -986,3 +1133,58 @@ html[data-theme-mode="light"] {
   --mustfix-bg:           rgba(254,226,226,0.8);
   --mustfix-border:       rgba(252,165,165,0.5);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE — GLOBAL STRUCTURAL OVERRIDES
+   Fixes hardcoded dark backgrounds and patterns used throughout components.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hover glow (dark shadow → soft light shadow) ───────────────────────── */
+html[data-theme-mode="light"] .card-hover-glow:hover {
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.15), 0 4px 16px rgba(0,0,0,0.1), 0 0 24px rgba(37,99,235,0.05);
+}
+
+/* ── Score bar track (bg-gray-800 inside score rings) ───────────────────── */
+html[data-theme-mode="light"] .bg-gray-800.rounded-full {
+  background-color: var(--t-bg4);
+}
+
+/* ── Text accent missing overrides ─────────────────────────────────────── */
+html[data-theme-mode="light"] .text-gray-500 { color: var(--t-text5); }
+html[data-theme-mode="light"] .text-gray-600 { color: var(--t-text6); }
+html[data-theme-mode="light"] .text-gray-700 { color: var(--t-text6); }
+
+/* ── Placeholder text in light mode ─────────────────────────────────────── */
+html[data-theme-mode="light"] input::placeholder,
+html[data-theme-mode="light"] textarea::placeholder { color: var(--t-text5); }
+
+/* ── Table / grid row zebra + border colors ─────────────────────────────── */
+html[data-theme-mode="light"] .divide-gray-700 > * + * { border-color: var(--t-border1); }
+
+/* ── Tag colors for results components ──────────────────────────────────── */
+html[data-theme-mode="light"] .text-amber-500  { color: #b45309; }
+html[data-theme-mode="light"] .text-amber-600  { color: #92400e; }
+html[data-theme-mode="light"] .text-orange-500 { color: #c2410c; }
+html[data-theme-mode="light"] .text-orange-600 { color: #9a3412; }
+html[data-theme-mode="light"] .text-red-500    { color: #dc2626; }
+html[data-theme-mode="light"] .text-red-600    { color: #b91c1c; }
+html[data-theme-mode="light"] .text-green-500  { color: #16a34a; }
+html[data-theme-mode="light"] .text-green-600  { color: #15803d; }
+html[data-theme-mode="light"] .text-teal-500   { color: #0d9488; }
+html[data-theme-mode="light"] .text-purple-500 { color: #7c3aed; }
+html[data-theme-mode="light"] .text-indigo-500 { color: #4338ca; }
+html[data-theme-mode="light"] .text-blue-500   { color: #2563eb; }
+html[data-theme-mode="light"] .text-blue-600   { color: #1d4ed8; }
+
+/* ── Amber/Yellow family — extra border variants ─────────────────────────── */
+html[data-theme-mode="light"] .border-amber-900\/30,
+html[data-theme-mode="light"] .border-amber-900\/20 { border-color: #fde68a; }
+html[data-theme-mode="light"] .border-orange-800\/60 { border-color: #fed7aa; }
+
+/* ── Amber backgrounds ────────────────────────────────────────────────────── */
+html[data-theme-mode="light"] .bg-amber-950\/60,
+html[data-theme-mode="light"] .bg-amber-900\/40,
+html[data-theme-mode="light"] .bg-amber-900\/30  { background-color: #fef3c7; }
+
+/* ── Score ring track stroke on SVG (injected via class workaround) ──────── */
+html[data-theme-mode="light"] .score-ring-track { stroke: var(--t-bg4) !important; }

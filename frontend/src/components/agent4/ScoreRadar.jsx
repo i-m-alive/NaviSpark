@@ -66,7 +66,7 @@ export default function ScoreRadar({ sectionScorecard }) {
               key={level}
               points={makeGrid(level, R)}
               fill="none"
-              stroke="#1f2937"
+              stroke="var(--t-bg4, #1f2937)"
               strokeWidth="1"
             />
           ))}
@@ -80,7 +80,7 @@ export default function ScoreRadar({ sectionScorecard }) {
                 key={i}
                 x1={CX} y1={CY}
                 x2={outer.x} y2={outer.y}
-                stroke="#1f2937" strokeWidth="1"
+                stroke="var(--t-bg4, #1f2937)" strokeWidth="1"
               />
             )
           })}

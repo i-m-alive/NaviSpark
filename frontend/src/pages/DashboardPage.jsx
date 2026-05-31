@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme, LIGHT_THEME_IDS } from '../context/ThemeContext'
 import { listSessions, deleteSession, deleteSessions } from '../api/client'
 import Navbar from '../components/Navbar'
 import ProposalCard from '../components/ProposalCard'
@@ -154,10 +155,10 @@ const STAT_CONFIGS = [
 ]
 
 const STAT_COLOURS = {
-  indigo: { border: 'rgba(99,102,241,0.3)',  borderH: 'rgba(99,102,241,0.6)',  glow: 'rgba(99,102,241,0.1)',  glowH: 'rgba(99,102,241,0.22)', icon: '#818cf8', text: '#a5b4fc', shimmer: 'rgba(165,180,252,0.08)' },
-  purple: { border: 'rgba(168,85,247,0.3)',  borderH: 'rgba(168,85,247,0.6)',  glow: 'rgba(168,85,247,0.1)',  glowH: 'rgba(168,85,247,0.22)', icon: '#c084fc', text: '#d8b4fe', shimmer: 'rgba(216,180,254,0.08)' },
-  green:  { border: 'rgba(34,197,94,0.3)',   borderH: 'rgba(34,197,94,0.6)',   glow: 'rgba(34,197,94,0.1)',   glowH: 'rgba(34,197,94,0.22)',  icon: '#4ade80', text: '#86efac', shimmer: 'rgba(134,239,172,0.08)' },
-  teal:   { border: 'rgba(20,184,166,0.3)',  borderH: 'rgba(20,184,166,0.6)',  glow: 'rgba(20,184,166,0.1)',  glowH: 'rgba(20,184,166,0.22)', icon: '#2dd4bf', text: '#5eead4', shimmer: 'rgba(94,234,212,0.08)'  },
+  indigo: { border: 'rgba(99,102,241,0.3)',  borderH: 'rgba(99,102,241,0.6)',  glow: 'rgba(99,102,241,0.1)',  glowH: 'rgba(99,102,241,0.22)', icon: '#818cf8', text: '#a5b4fc', textLight: '#4338ca', shimmer: 'rgba(165,180,252,0.08)' },
+  purple: { border: 'rgba(168,85,247,0.3)',  borderH: 'rgba(168,85,247,0.6)',  glow: 'rgba(168,85,247,0.1)',  glowH: 'rgba(168,85,247,0.22)', icon: '#c084fc', text: '#d8b4fe', textLight: '#7e22ce', shimmer: 'rgba(216,180,254,0.08)' },
+  green:  { border: 'rgba(34,197,94,0.3)',   borderH: 'rgba(34,197,94,0.6)',   glow: 'rgba(34,197,94,0.1)',   glowH: 'rgba(34,197,94,0.22)',  icon: '#4ade80', text: '#86efac', textLight: '#15803d', shimmer: 'rgba(134,239,172,0.08)' },
+  teal:   { border: 'rgba(20,184,166,0.3)',  borderH: 'rgba(20,184,166,0.6)',  glow: 'rgba(20,184,166,0.1)',  glowH: 'rgba(20,184,166,0.22)', icon: '#2dd4bf', text: '#5eead4', textLight: '#0f766e', shimmer: 'rgba(94,234,212,0.08)'  },
 }
 
 // Pre-computed particle offsets so there's no Math.random() at render
@@ -168,6 +169,8 @@ const PARTICLE_OFFSETS = [
 
 function StatCard({ label, value, sub, icon: Icon, colour, delay, enterAnim, iconAnim, particleColor }) {
   const c = STAT_COLOURS[colour]
+  const { theme } = useTheme()
+  const isLight = LIGHT_THEME_IDS.has(theme)
   const cardRef = useRef(null)
   const [hovered, setHovered] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -300,18 +303,18 @@ function StatCard({ label, value, sub, icon: Icon, colour, delay, enterAnim, ico
 
           {/* Text */}
           <div>
-            <p style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 3 }}>
+            <p style={{ fontSize: 10, color: 'var(--t-text4)', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 3 }}>
               {label}
             </p>
             <p style={{
-              fontSize: 26, fontWeight: 800, lineHeight: 1, color: c.text,
+              fontSize: 26, fontWeight: 800, lineHeight: 1, color: isLight ? c.textLight : c.text,
               animation: hovered ? 'number-hover-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
               display: 'block',
             }}>
               {display}
             </p>
             {sub && (
-              <p style={{ fontSize: 10, color: '#4b5563', marginTop: 5 }}>{sub}</p>
+              <p style={{ fontSize: 10, color: 'var(--t-text5)', marginTop: 5 }}>{sub}</p>
             )}
           </div>
         </div>
@@ -492,14 +495,14 @@ function ScoreTrendChart({ proposals }) {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-300">Score Trend</p>
-            <p className="text-[10px] text-gray-600">Last {completed.length} completed reviews</p>
+            <p className="text-[10px] text-gray-400">Last {completed.length} completed reviews</p>
           </div>
         </div>
         <div className="text-right">
           <p className={`text-sm font-bold ${delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400'}`}>
             {delta > 0 ? `↑ +${delta.toFixed(1)}` : delta < 0 ? `↓ ${delta.toFixed(1)}` : '→ Stable'}
           </p>
-          <p className="text-[10px] text-gray-600">first → latest</p>
+          <p className="text-[10px] text-gray-400">first → latest</p>
         </div>
       </div>
 
@@ -550,8 +553,8 @@ function ScoreTrendChart({ proposals }) {
 
         {/* X-axis labels */}
         <div className="flex justify-between px-1 -mt-1">
-          <p className="text-[9px] text-gray-700">Oldest</p>
-          <p className="text-[9px] text-gray-700">Latest</p>
+          <p className="text-[9px] text-gray-400">Oldest</p>
+          <p className="text-[9px] text-gray-400">Latest</p>
         </div>
       </div>
     </div>
@@ -586,7 +589,7 @@ function CommonIssuesPanel({ proposals }) {
         </div>
         <div>
           <p className="text-xs font-semibold text-amber-400">Recurring Issues</p>
-          <p className="text-[10px] text-gray-600">Patterns across {completed.length} completed reviews</p>
+          <p className="text-[10px] text-gray-400">Patterns across {completed.length} completed reviews</p>
         </div>
       </div>
       <div className="px-5 py-3 space-y-2.5">
@@ -607,7 +610,7 @@ function CommonIssuesPanel({ proposals }) {
         ))}
       </div>
       <div className="px-5 py-2.5 border-t border-amber-900/20">
-        <p className="text-[10px] text-gray-600">Fix these patterns in your proposal templates to raise scores consistently.</p>
+        <p className="text-[10px] text-gray-400">Fix these patterns in your proposal templates to raise scores consistently.</p>
       </div>
     </div>
   )
@@ -682,10 +685,10 @@ function EmptyState({ filtered }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
         <div className="w-14 h-14 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mb-4">
-          <FileSearch size={24} className="text-gray-600" />
+          <FileSearch size={24} className="text-gray-400" />
         </div>
         <p className="text-gray-300 font-medium mb-1">No proposals match your filters</p>
-        <p className="text-gray-600 text-sm">Try adjusting your search or filters.</p>
+        <p className="text-gray-400 text-sm">Try adjusting your search or filters.</p>
       </div>
     )
   }
@@ -714,9 +717,9 @@ function EmptyState({ filtered }) {
               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03), transparent)' }}>
               <Icon size={20} className="text-gray-500" />
             </div>
-            <p className="text-[10px] text-gray-700 font-mono mb-1">{num}</p>
+            <p className="text-[10px] text-gray-400 font-mono mb-1">{num}</p>
             <p className="text-xs font-semibold text-white mb-0.5">{label}</p>
-            <p className="text-[10px] text-gray-600 leading-relaxed">{desc}</p>
+            <p className="text-[10px] text-gray-400 leading-relaxed">{desc}</p>
           </div>
         ))}
       </div>
@@ -868,20 +871,20 @@ export default function DashboardPage() {
               {/* Search + filters */}
               <div className="flex flex-col sm:flex-row gap-2 mb-4 animate-slide-up-delay">
                 <div className="relative flex-1">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="text" placeholder="Search proposals…" value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-gray-900/80 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-700 transition-all"
+                    className="w-full bg-gray-900/80 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-700 transition-all"
                     style={{ backdropFilter: 'blur(8px)' }}
                   />
                   {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors">
+                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors">
                       <X size={13} />
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal size={13} className="text-gray-600 flex-shrink-0" />
+                  <SlidersHorizontal size={13} className="text-gray-400 flex-shrink-0" />
                   <FilterDropdown label="Type" value={typeFilter} options={typeOptions} onChange={setType} />
                   <FilterDropdown label="Sort" value={sortBy} options={SORT_OPTIONS} onChange={setSort} />
                 </div>
@@ -912,13 +915,13 @@ export default function DashboardPage() {
 
               {/* Result count */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-gray-400">
                   {isFiltered ? `${filtered.length} of ${proposals.length} proposals` : `${proposals.length} proposal${proposals.length !== 1 ? 's' : ''}`}
                 </p>
                 <div className="flex items-center gap-3">
                   {proposals.length > 1 && (
                     <button onClick={() => exportCSV(proposals)}
-                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-300 transition-colors">
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200 transition-colors">
                       <FileDown size={11} /> Export all
                     </button>
                   )}

@@ -50,8 +50,8 @@ function ScoreTrendChart({ versions }) {
             return (
               <g key={v}>
                 <line x1={P.left} y1={y} x2={W - P.right} y2={y}
-                  stroke="#1f2937" strokeWidth="1" strokeDasharray={v % 5 === 0 ? '' : '3,3'} />
-                <text x={P.left - 5} y={y + 3} textAnchor="end" fill="#4b5563" fontSize="9" fontFamily="monospace">{v}</text>
+                  stroke="var(--t-bg4, #1f2937)" strokeWidth="1" strokeDasharray={v % 5 === 0 ? '' : '3,3'} />
+                <text x={P.left - 5} y={y + 3} textAnchor="end" fill="var(--t-text5, #4b5563)" fontSize="9" fontFamily="monospace">{v}</text>
               </g>
             )
           })}
@@ -140,9 +140,9 @@ function IssuesBarChart({ versions }) {
             const y = P.top + (1 - v / maxMust) * UH
             return (
               <g key={v}>
-                <line x1={P.left} y1={y} x2={W - P.right} y2={y} stroke="#1f2937" strokeWidth="1" />
+                <line x1={P.left} y1={y} x2={W - P.right} y2={y} stroke="var(--t-bg4, #1f2937)" strokeWidth="1" />
                 {v % Math.max(1, Math.floor(maxMust / 4)) === 0 && (
-                  <text x={P.left - 5} y={y + 3} textAnchor="end" fill="#4b5563" fontSize="9" fontFamily="monospace">{v}</text>
+                  <text x={P.left - 5} y={y + 3} textAnchor="end" fill="var(--t-text5, #4b5563)" fontSize="9" fontFamily="monospace">{v}</text>
                 )}
               </g>
             )
@@ -204,8 +204,8 @@ function ChecklistProgressChart({ versions }) {
             const y = P.top + (1 - pct / 100) * UH
             return (
               <g key={pct}>
-                <line x1={P.left} y1={y} x2={W - P.right} y2={y} stroke="#1f2937" strokeWidth="1" />
-                <text x={P.left - 5} y={y + 3} textAnchor="end" fill="#4b5563" fontSize="9" fontFamily="monospace">{pct}%</text>
+                <line x1={P.left} y1={y} x2={W - P.right} y2={y} stroke="var(--t-bg4, #1f2937)" strokeWidth="1" />
+                <text x={P.left - 5} y={y + 3} textAnchor="end" fill="var(--t-text5, #4b5563)" fontSize="9" fontFamily="monospace">{pct}%</text>
               </g>
             )
           })}

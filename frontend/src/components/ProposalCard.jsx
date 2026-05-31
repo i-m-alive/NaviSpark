@@ -4,6 +4,7 @@ import {
   FileText, ChevronRight,
   Trash2, CheckCircle, AlertCircle, Loader2, Wrench,
 } from 'lucide-react'
+import { useTheme, LIGHT_THEME_IDS } from '../context/ThemeContext'
 
 // ── Relative time ─────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -19,18 +20,19 @@ function timeAgo(dateStr) {
 }
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
-const scoreColor   = s => s >= 7 ? '#34d399' : s >= 5 ? '#fbbf24' : '#f87171'
-const scoreGlow    = s => s >= 7 ? 'rgba(52,211,153,0.35)' : s >= 5 ? 'rgba(251,191,36,0.35)' : 'rgba(248,113,113,0.35)'
-const scoreBg      = s => s >= 7 ? 'rgba(6,78,59,0.3)' : s >= 5 ? 'rgba(78,60,6,0.3)' : 'rgba(78,6,6,0.3)'
-const scoreBorder  = s => s >= 7 ? 'rgba(52,211,153,0.2)' : s >= 5 ? 'rgba(251,191,36,0.2)' : 'rgba(248,113,113,0.2)'
+const scoreColorDark  = s => s >= 7 ? '#34d399' : s >= 5 ? '#fbbf24' : '#f87171'
+const scoreColorLight = s => s >= 7 ? '#15803d' : s >= 5 ? '#a16207' : '#dc2626'
+const scoreGlow       = s => s >= 7 ? 'rgba(52,211,153,0.35)' : s >= 5 ? 'rgba(251,191,36,0.35)' : 'rgba(248,113,113,0.35)'
 
 // ── Score ring SVG ────────────────────────────────────────────────────────────
 function ScoreRing({ score, size = 52 }) {
+  const { theme } = useTheme()
+  const isLight = LIGHT_THEME_IDS.has(theme)
   if (score == null) return null
   const r    = (size / 2) - 5
   const circ = 2 * Math.PI * r
   const offset = circ * (1 - score / 10)
-  const color  = scoreColor(score)
+  const color  = isLight ? scoreColorLight(score) : scoreColorDark(score)
   const glow   = scoreGlow(score)
 
   return (
@@ -56,7 +58,7 @@ function ScoreRing({ score, size = 52 }) {
 }
 
 // ── Status pill ───────────────────────────────────────────────────────────────
-const STATUS_MAP = {
+const STATUS_DARK = {
   uploading:        { label: 'Uploading',   bg: 'rgba(113,63,18,0.3)',  border: 'rgba(161,98,7,0.4)',   text: '#fcd34d', pulse: false },
   ready:            { label: 'Ready',       bg: 'rgba(30,58,138,0.3)',  border: 'rgba(37,99,235,0.4)',  text: '#93c5fd', pulse: false },
   agent1_complete:  { label: 'Step 1 done', bg: 'rgba(49,46,129,0.3)',  border: 'rgba(99,102,241,0.4)', text: '#a5b4fc', pulse: false },
@@ -68,9 +70,29 @@ const STATUS_MAP = {
   complete:         { label: 'Complete',    bg: 'rgba(6,78,59,0.3)',   border: 'rgba(22,163,74,0.4)',  text: '#86efac', pulse: false },
   error:            { label: 'Error',       bg: 'rgba(69,10,10,0.3)',  border: 'rgba(185,28,28,0.4)',  text: '#fca5a5', pulse: false },
 }
+const STATUS_LIGHT = {
+  uploading:        { label: 'Uploading',   bg: 'rgba(254,243,199,0.9)', border: 'rgba(161,98,7,0.4)',   text: '#92400e', pulse: false },
+  ready:            { label: 'Ready',       bg: 'rgba(219,234,254,0.9)', border: 'rgba(37,99,235,0.4)',  text: '#1e40af', pulse: false },
+  agent1_complete:  { label: 'Step 1 done', bg: 'rgba(224,231,255,0.9)', border: 'rgba(99,102,241,0.4)', text: '#3730a3', pulse: false },
+  agent2_complete:  { label: 'Step 2 done', bg: 'rgba(243,232,255,0.9)', border: 'rgba(168,85,247,0.4)', text: '#6b21a8', pulse: false },
+  agent3_complete:  { label: 'Step 3 done', bg: 'rgba(204,251,241,0.9)', border: 'rgba(13,148,136,0.4)', text: '#134e4a', pulse: false },
+  agents_complete:  { label: 'Finalising…', bg: 'rgba(255,237,213,0.9)', border: 'rgba(234,88,12,0.4)',  text: '#9a3412', pulse: true  },
+  pipeline_running: { label: 'Analysing…',  bg: 'rgba(255,237,213,0.9)', border: 'rgba(234,88,12,0.4)',  text: '#9a3412', pulse: true  },
+  pipeline_failed:  { label: 'Failed',      bg: 'rgba(254,226,226,0.9)', border: 'rgba(185,28,28,0.4)',  text: '#7f1d1d', pulse: false },
+  complete:         { label: 'Complete',    bg: 'rgba(220,252,231,0.9)', border: 'rgba(22,163,74,0.4)',  text: '#14532d', pulse: false },
+  error:            { label: 'Error',       bg: 'rgba(254,226,226,0.9)', border: 'rgba(185,28,28,0.4)',  text: '#7f1d1d', pulse: false },
+}
 
 function StatusPill({ status }) {
-  const cfg = STATUS_MAP[status] || { label: status, bg: 'rgba(31,41,55,0.5)', border: 'rgba(75,85,99,0.4)', text: '#9ca3af', pulse: false }
+  const { theme } = useTheme()
+  const map = LIGHT_THEME_IDS.has(theme) ? STATUS_LIGHT : STATUS_DARK
+  const cfg = map[status] || {
+    label: status,
+    bg: LIGHT_THEME_IDS.has(theme) ? 'rgba(241,245,249,0.9)' : 'rgba(31,41,55,0.5)',
+    border: 'rgba(75,85,99,0.4)',
+    text: LIGHT_THEME_IDS.has(theme) ? '#374151' : '#9ca3af',
+    pulse: false,
+  }
   return (
     <span style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.text }}
       className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide">
@@ -81,14 +103,24 @@ function StatusPill({ status }) {
 }
 
 // ── Verdict badge with glow ───────────────────────────────────────────────────
+const VERDICT_DARK = {
+  'READY TO SEND':         { bg: 'rgba(6,78,59,0.4)',  border: 'rgba(34,197,94,0.3)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green'  },
+  'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.4)',  border: 'rgba(234,179,8,0.3)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
+  'NEEDS MAJOR REVISION':  { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red'    },
+  'DO NOT SEND':           { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red'    },
+}
+const VERDICT_LIGHT = {
+  'READY TO SEND':         { bg: 'rgba(220,252,231,0.95)', border: 'rgba(22,163,74,0.5)',  text: '#14532d', icon: <CheckCircle size={10} />, glowClass: '' },
+  'REVISE BEFORE SENDING': { bg: 'rgba(254,249,195,0.95)', border: 'rgba(161,98,7,0.5)',   text: '#713f12', icon: <AlertCircle size={10} />, glowClass: '' },
+  'NEEDS MAJOR REVISION':  { bg: 'rgba(254,226,226,0.95)', border: 'rgba(185,28,28,0.5)',  text: '#7f1d1d', icon: <AlertCircle size={10} />, glowClass: '' },
+  'DO NOT SEND':           { bg: 'rgba(254,226,226,0.95)', border: 'rgba(185,28,28,0.5)',  text: '#7f1d1d', icon: <AlertCircle size={10} />, glowClass: '' },
+}
+
 function VerdictBadge({ verdict }) {
+  const { theme } = useTheme()
+  const isLight = LIGHT_THEME_IDS.has(theme)
   if (!verdict) return null
-  const map = {
-    'READY TO SEND':         { bg: 'rgba(6,78,59,0.4)',  border: 'rgba(34,197,94,0.3)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
-    'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.4)',  border: 'rgba(234,179,8,0.3)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
-    'NEEDS MAJOR REVISION':  { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
-    'DO NOT SEND':           { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
-  }
+  const map = isLight ? VERDICT_LIGHT : VERDICT_DARK
   const cfg = map[verdict]
   if (!cfg) return null
   return (
