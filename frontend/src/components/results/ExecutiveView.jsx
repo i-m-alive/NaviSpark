@@ -143,7 +143,7 @@ function TrafficLight({ dimensionLabel, score, description, animDelay = 0 }) {
 
       <div>
         <p className="text-sm font-bold text-white">{dimensionLabel}</p>
-        <p className="text-[11px] text-gray-500 mt-1 leading-snug max-w-[140px]">{description}</p>
+        <p className="text-[11px] text-gray-300 mt-1 leading-snug max-w-[140px]">{description}</p>
       </div>
 
       <div className={clsx('px-3 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5', cfg.badge)}>
@@ -184,7 +184,7 @@ function VerdictHero({ output }) {
               {humanVerdict(verdict, mustFix)}
             </h2>
             {plain_english_summary && (
-              <p className="text-[13px] text-gray-400 mt-3 leading-relaxed">
+              <p className="text-[13px] text-gray-200 mt-3 leading-relaxed">
                 {plain_english_summary}
               </p>
             )}

@@ -64,7 +64,7 @@ function InfoTooltip({ text }) {
 function ChartHeader({ title, info, children }) {
   return (
     <div className="flex items-center gap-1.5 mb-4">
-      <h3 className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">{title}</h3>
+      <h3 className="text-[11px] font-medium text-gray-300 uppercase tracking-wider">{title}</h3>
       {info && <InfoTooltip text={info} />}
       {children}
     </div>
@@ -93,14 +93,14 @@ function KPICard({ label, score, theme, sublabel, delay = 0, info }) {
       <div className={clsx('absolute top-0 inset-x-0 h-[3px]', t.accent)} />
       <div className="p-4 pt-5">
         <div className="flex items-center gap-1 mb-2">
-          <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">{label}</p>
+          <p className="text-[10px] font-mono text-gray-300 uppercase tracking-widest">{label}</p>
           {info && <InfoTooltip text={info} />}
         </div>
         <div className="flex items-end gap-1 mb-0.5">
           <span className={clsx('text-[40px] font-bold leading-none', t.num)}>{num.toFixed(1)}</span>
-          <span className="text-sm text-gray-600 mb-1.5">/10</span>
+          <span className="text-sm text-gray-400 mb-1.5">/10</span>
         </div>
-        {sublabel && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{sublabel}</p>}
+        {sublabel && <p className="text-[11px] text-gray-300 mt-0.5 truncate">{sublabel}</p>}
         <div className="mt-3 h-1.5 bg-gray-800 rounded-full overflow-hidden">
           <div
             className={clsx('h-full rounded-full', t.bar)}

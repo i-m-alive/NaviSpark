@@ -84,10 +84,10 @@ function StatusPill({ status }) {
 function VerdictBadge({ verdict }) {
   if (!verdict) return null
   const map = {
-    'READY TO SEND':         { bg: 'rgba(6,78,59,0.4)',  border: 'rgba(34,197,94,0.3)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
-    'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.4)',  border: 'rgba(234,179,8,0.3)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
-    'NEEDS MAJOR REVISION':  { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
-    'DO NOT SEND':           { bg: 'rgba(69,10,10,0.4)', border: 'rgba(239,68,68,0.3)',  text: '#f87171', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
+    'READY TO SEND':         { bg: 'rgba(6,78,59,0.65)',  border: 'rgba(34,197,94,0.5)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
+    'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.65)',  border: 'rgba(234,179,8,0.5)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
+    'NEEDS MAJOR REVISION':  { bg: 'rgba(127,29,29,0.65)', border: 'rgba(239,68,68,0.55)', text: '#fca5a5', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
+    'DO NOT SEND':           { bg: 'rgba(127,29,29,0.65)', border: 'rgba(239,68,68,0.55)', text: '#fca5a5', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
   }
   const cfg = map[verdict]
   if (!cfg) return null
@@ -227,7 +227,7 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <StatusPill status={proposal.status} />
-              <span className="text-[10px] text-gray-600">{timeAgo(proposal.created_at)}</span>
+              <span className="text-[10px] text-gray-400">{timeAgo(proposal.created_at)}</span>
             </div>
           </div>
 

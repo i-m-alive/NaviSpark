@@ -148,7 +148,7 @@ function VersionCard({ version, isCurrent, onClick, onDelete, deleting }) {
             <p className={clsx('text-[10px] mt-0.5', verdict.cls)}>{verdict.text}</p>
           )}
 
-          <p className="text-[9px] text-gray-600 mt-0.5">{timeAgo(version.created_at)}</p>
+          <p className="text-[9px] text-gray-400 mt-0.5">{timeAgo(version.created_at)}</p>
         </div>
 
         {!isCurrent && !confirmDelete && (
@@ -248,10 +248,10 @@ export default function DocumentSidebar({
       {/* Header */}
       <div className="px-4 py-4 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <FileText size={13} className="text-gray-500" />
-          <span className="text-[11px] font-mono text-gray-500 uppercase tracking-widest">Documents</span>
+          <FileText size={13} className="text-gray-300" />
+          <span className="text-[11px] font-mono text-gray-300 uppercase tracking-widest">Documents</span>
         </div>
-        <p className="text-[10px] text-gray-700 mt-0.5">{list.length} version{list.length !== 1 ? 's' : ''}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">{list.length} version{list.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Version list */}
