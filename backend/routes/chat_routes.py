@@ -423,7 +423,7 @@ async def send_message(
 
             request_payload = {
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
+                "max_tokens": 16000,
                 "system": system_prompt,
                 "messages": api_messages,
             }

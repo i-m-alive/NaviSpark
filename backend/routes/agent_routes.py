@@ -133,6 +133,53 @@ async def cancel_analysis(
     }
 
 
+@router.post("/sessions/{session_id}/re-analyse")
+async def re_analyse(
+    session_id: str,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Resets a completed (or failed/cancelled) session back to 'ready' and
+    re-fires the full analysis pipeline, overwriting previous agent outputs.
+    """
+    user = await get_current_user(authorization)
+    user_id = user["id"]
+
+    session = get_session(session_id, user_id)
+    status = session.get("status", "")
+
+    if status in ("pipeline_running", "agents_complete"):
+        return {
+            "session_id": session_id,
+            "status": status,
+            "message": "Pipeline already running. Poll GET /sessions/{id} for updates.",
+        }
+
+    if not session.get("storage_path"):
+        raise HTTPException(
+            status_code=400,
+            detail="No file found for this session. Please re-upload the document.",
+        )
+
+    # Clear previous outputs and reset to ready
+    update_session(session_id, user_id, {
+        "status": "ready",
+        "agent1_output": None,
+        "agent2_output": None,
+        "agent3_output": None,
+        "agent4_output": None,
+    })
+
+    background_tasks.add_task(run_full_pipeline, session_id, user_id)
+
+    return {
+        "session_id": session_id,
+        "status": "pipeline_started",
+        "message": "Re-analysis started. Poll GET /sessions/{id} for updates.",
+    }
+
+
 @router.post("/sessions/{session_id}/run-agent1")
 async def run_agent1(
     session_id: str,

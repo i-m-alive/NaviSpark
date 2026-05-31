@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { NotificationProvider, useNotifications } from './context/NotificationContext'
 import ThemePicker from './components/ThemePicker'
+import NotificationPermissionModal from './components/NotificationPermissionModal'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -13,13 +15,16 @@ import UploadPage from './pages/UploadPage'
 import ResultsPage from './pages/ResultsPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 
-// Inner component so it can consume ThemeContext
+// Inner component so it can consume ThemeContext + NotificationContext
 function AppRoutes() {
   const { showPicker } = useTheme()
+  const { showModal: showNotifModal } = useNotifications()
   return (
     <>
       {/* First-login theme picker */}
       {showPicker && <ThemePicker />}
+      {/* First-login notification permission prompt */}
+      {showNotifModal && <NotificationPermissionModal />}
 
       <Routes>
         {/* ── Public auth routes ──────────────────────────────────────── */}
@@ -57,7 +62,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <AppRoutes />
+          <NotificationProvider>
+            <AppRoutes />
+          </NotificationProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -375,7 +375,7 @@ def run(
     result = invoke_agent_text_only(
         system_prompt=system_prompt,
         user_message=user_message,
-        max_tokens=16000,
+        max_tokens=32000,
     )
 
     # Step 4: Validate and clean against actual slide map

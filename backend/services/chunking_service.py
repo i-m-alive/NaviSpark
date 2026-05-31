@@ -11,10 +11,10 @@ For PDF: chunks are standalone PDF bytes sent to Bedrock as document blocks.
 For PPTX/PPT: chunks are slide-text strings sent as plain text (consistent with
   how bedrock_client already handles PPTX files in invoke_agent_with_pdf).
 
-Thresholds (overridable via env vars):
-  CHUNK_THRESHOLD = 30  — documents with more pages/slides are chunked
-  CHUNK_SIZE      = 15  — pages/slides per chunk
-  CHUNK_OVERLAP   = 3   — overlap pages between adjacent chunks
+Thresholds come from config.py (overridable via .env):
+  chunk_threshold = 90   — docs with more pages/slides are chunked
+  chunk_size      = 20   — pages/slides per chunk
+  chunk_overlap   = 3    — overlap pages between adjacent chunks
 """
 
 import io
@@ -25,12 +25,13 @@ import time
 
 from pypdf import PdfReader, PdfWriter
 from pptx import Presentation
+from config import settings
 
 logger = logging.getLogger(__name__)
 
-CHUNK_THRESHOLD: int = int(os.getenv("CHUNK_THRESHOLD", "30"))
-CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "15"))
-CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "3"))
+CHUNK_THRESHOLD: int = settings.chunk_threshold
+CHUNK_SIZE: int      = settings.chunk_size
+CHUNK_OVERLAP: int   = settings.chunk_overlap
 
 
 # ── PDF Splitting ──────────────────────────────────────────────────────────────

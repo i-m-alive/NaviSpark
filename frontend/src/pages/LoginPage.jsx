@@ -63,7 +63,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await login(email, password)
-      loginUser(data.access_token, { id: data.user_id, email: data.email })
+      loginUser(data.access_token, { id: data.user_id, email: data.email }, data.refresh_token)
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)

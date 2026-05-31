@@ -65,11 +65,22 @@ const ACCENT_CLASSES = {
 // ── ActivityItem ──────────────────────────────────────────────────────────────
 
 /**
- * isActiveStep — true only when this is the last event in the list AND it has
- * status="running". Any earlier "running" event is implicitly done (the next
- * step started) so it renders as a checkmark, not a spinner.
+ * Rendering rules:
+ *
+ *   status="completed"          → green checkmark (Bedrock returned, task confirmed done)
+ *   status="error"              → red alert icon
+ *   status="running" + agentDone → green checkmark (agent finished, so all prior
+ *                                   running steps are now confirmed done)
+ *   status="running" + !agentDone + isCurrentStep → bright blue spinner (the step
+ *                                   the Bedrock call is actively processing right now)
+ *   status="running" + !agentDone + !isCurrentStep → dimmed spinner (this skill is
+ *                                   scheduled inside the same Bedrock call — not yet
+ *                                   individually confirmed, just queued)
+ *
+ * This accurately reflects reality: all skills run inside ONE Bedrock call, so
+ * none of them can be individually "completed" until the call returns.
  */
-function ActivityItem({ event, isActiveStep }) {
+function ActivityItem({ event, agentDone, isCurrentStep }) {
   const { activity, status } = event
 
   if (status === 'error') {
@@ -81,20 +92,34 @@ function ActivityItem({ event, isActiveStep }) {
     )
   }
 
-  if (isActiveStep) {
+  // Confirmed done: either explicitly completed, or agent finished (all past running → done)
+  if (status === 'completed' || agentDone) {
     return (
       <div className="flex items-start gap-2 py-0.5">
-        <Loader2 size={12} className="text-blue-400 mt-0.5 flex-shrink-0 animate-spin" />
-        <span className="text-xs text-gray-200 leading-relaxed">{activity}</span>
+        <CheckCircle2 size={12} className="text-green-400 mt-0.5 flex-shrink-0" />
+        <span className="text-xs text-gray-300 leading-relaxed">{activity}</span>
       </div>
     )
   }
 
-  // completed, or a past "running" step that is implicitly done
+  // Running and agent not done yet — show spinner
+  // isCurrentStep (the latest running event) gets a bright spinner
+  // earlier running events get a dimmed spinner to signal "queued in same call"
   return (
     <div className="flex items-start gap-2 py-0.5">
-      <CheckCircle2 size={12} className="text-green-400 mt-0.5 flex-shrink-0" />
-      <span className="text-xs text-gray-300 leading-relaxed">{activity}</span>
+      <Loader2
+        size={12}
+        className={clsx(
+          'mt-0.5 flex-shrink-0 animate-spin',
+          isCurrentStep ? 'text-blue-400' : 'text-gray-600',
+        )}
+      />
+      <span className={clsx(
+        'text-xs leading-relaxed',
+        isCurrentStep ? 'text-gray-200' : 'text-gray-500',
+      )}>
+        {activity}
+      </span>
     </div>
   )
 }
@@ -148,7 +173,8 @@ function AgentCard({ agentId, events, isDone }) {
           <ActivityItem
             key={i}
             event={evt}
-            isActiveStep={i === events.length - 1 && evt.status === 'running'}
+            agentDone={agentDone}
+            isCurrentStep={!agentDone && evt.status === 'running' && i === events.length - 1}
           />
         ))}
       </div>

@@ -35,7 +35,7 @@ export default function AuthCallbackPage() {
           return
         }
 
-        const { access_token, user } = data.session
+        const { access_token, refresh_token, user } = data.session
         const meta = user.user_metadata || {}
 
         loginUser(access_token, {
@@ -44,7 +44,7 @@ export default function AuthCallbackPage() {
           // Google sets full_name + picture; GitHub sets full_name + avatar_url
           name:       meta.full_name  || meta.name       || null,
           avatar_url: meta.avatar_url || meta.picture    || null,
-        })
+        }, refresh_token)
         navigate('/dashboard', { replace: true })
       } catch (err) {
         if (!cancelled) setError('Unexpected error during sign-in. Please try again.')

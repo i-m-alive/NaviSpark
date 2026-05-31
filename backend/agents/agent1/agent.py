@@ -331,8 +331,84 @@ def _apply_score_caps(result: dict) -> dict:
     # Either signal triggers the scope cap
     has_critical_scope = has_critical_scope_flag or p06_gap
 
-    scores = result.get("scores", {})
+    scores = result.get("scores") or {}
     cap_applied = False
+
+    # Ensure all expected sub-score keys exist (LLM sometimes omits them entirely)
+    scores.setdefault("section_completeness", 0.0)
+    scores.setdefault("writing_quality",      0.0)
+    scores.setdefault("scope_clarity",         0.0)
+    scores.setdefault("client_coverage",       0.0)
+
+    # Rule 0 — Placeholder-zero detection and evidence-based recovery
+    # The LLM occasionally fills every score field with the schema template value
+    # (0.0) — this happens whether or not overall is also 0. Detect the case where
+    # ALL scores are zero but analysis evidence exists (section_audit populated,
+    # issues found), then compute approximate scores from that evidence so the
+    # scorecard is meaningful instead of blank.
+    all_scores_zero = (
+        scores.get("section_completeness", 0.0) == 0.0
+        and scores.get("writing_quality",   0.0) == 0.0
+        and scores.get("scope_clarity",     0.0) == 0.0
+        and scores.get("client_coverage",   0.0) == 0.0
+        and scores.get("overall",           0.0) == 0.0
+    )
+    has_analysis_evidence = bool(
+        result.get("section_audit")
+        or result.get("writing_issues")
+        or result.get("scope_clarity_issues")
+    )
+
+    if all_scores_zero and has_analysis_evidence:
+        # ── section_completeness: weighted audit coverage ──────────────────────
+        audit = result.get("section_audit") or []
+        if audit:
+            w_sum = sum(
+                (2.0 if i.get("mandatory") else 1.0) *
+                (1.0 if i.get("status") == "COVERED" else
+                 0.5 if i.get("status") == "PARTIAL" else 0.0)
+                for i in audit
+            )
+            w_total = sum(2.0 if i.get("mandatory") else 1.0 for i in audit)
+            scores["section_completeness"] = round(
+                max(1.0, round(10.0 * w_sum / w_total)) if w_total else 5.0, 1
+            )
+        else:
+            scores["section_completeness"] = 5.0
+
+        # ── writing_quality / scope_clarity: severity-based estimate ──────────
+        def _severity_score(issues):
+            if not issues:
+                return 8.0
+            crit  = sum(1 for i in issues if i.get("severity") == "CRITICAL")
+            major = sum(1 for i in issues if i.get("severity") == "MAJOR")
+            if crit >= 3:   return 2.0
+            if crit >= 2:   return 3.0
+            if crit >= 1:   return 4.0
+            if major >= 4:  return 4.0
+            if major >= 2:  return 5.0
+            if major >= 1:  return 6.0
+            return 7.0
+
+        scores["writing_quality"] = _severity_score(result.get("writing_issues") or [])
+        scores["scope_clarity"]   = _severity_score(result.get("scope_clarity_issues") or [])
+
+        # ── client_coverage: gap count / severity ─────────────────────────────
+        gaps = result.get("client_specific_gaps") or []
+        if not gaps:
+            scores["client_coverage"] = 5.0  # neutral when industry not assessed
+        else:
+            crit_gaps  = sum(1 for g in gaps if g.get("severity") == "CRITICAL")
+            major_gaps = sum(1 for g in gaps if g.get("severity") == "MAJOR")
+            if crit_gaps >= 2 or major_gaps >= 4:
+                scores["client_coverage"] = 3.0
+            elif crit_gaps == 1 or major_gaps >= 2:
+                scores["client_coverage"] = 5.0
+            else:
+                scores["client_coverage"] = 7.0
+
+        scores["_scores_recovered_from_evidence"] = True
+        cap_applied = True
 
     # Rule 1: section_completeness cap
     if mandatory_missing_count >= 3 and scores.get("section_completeness", 0.0) > 4.0:
@@ -362,6 +438,21 @@ def _apply_score_caps(result: dict) -> dict:
         total_critical = mandatory_missing_count + (1 if has_critical_scope else 0)
         recomputed = max(0.0, recomputed - _critical_deduction(total_critical))
         scores["overall"] = round(recomputed, 1)
+
+    # Guarantee overall is always present — LLM occasionally omits it
+    if "overall" not in scores:
+        weights = scores.get("weights", {})
+        w_sc = weights.get("section_completeness", 0.40)
+        w_wq = weights.get("writing_quality",      0.20)
+        w_so = weights.get("scope_clarity",         0.25)
+        w_cc = weights.get("client_coverage",       0.15)
+        scores["overall"] = round(
+            scores.get("section_completeness", 0.0) * w_sc
+            + scores.get("writing_quality",    0.0) * w_wq
+            + scores.get("scope_clarity",      0.0) * w_so
+            + scores.get("client_coverage",    0.0) * w_cc,
+            1,
+        )
 
     # Diagnostic fields so Agent 4 can surface them
     scores["mandatory_missing_count"] = mandatory_missing_count

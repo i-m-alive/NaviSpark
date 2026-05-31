@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNotifications } from '../context/NotificationContext'
 import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import useActivityFeed from '../hooks/useActivityFeed'
 import ActivityFeed from '../components/ActivityFeed'
-import { getSession, getReportUrl, getSourceFileUrl, startAnalysis, getSessionHistory, generateModifiedPpt, getModificationGuide, cancelAnalysis, deleteSession } from '../api/client'
+import { getSession, getReportUrl, getSourceFileUrl, startAnalysis, getSessionHistory, generateModifiedPpt, getModificationGuide, cancelAnalysis, deleteSession, reAnalyse } from '../api/client'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -210,6 +211,7 @@ export default function ResultsPage() {
   const [generatingPpt, setGeneratingPpt] = useState(false)
   const [pptResult, setPptResult] = useState(null)
   const [cancellingAnalysis, setCancellingAnalysis] = useState(false)
+  const [reAnalysing, setReAnalysing] = useState(false)
   const [downloadingSource, setDownloadingSource] = useState(false)
   const [activeView, setActiveView] = useState('executive')
   const [history,     setHistory]     = useState([])          // all versions in the group
@@ -222,6 +224,9 @@ export default function ResultsPage() {
   const downloadBtnRef       = useRef(null)
   const downloadDropdownRef  = useRef(null)
   const pollRef = useRef(null)
+  const wasPollingRef = useRef(false)
+
+  const { sendNotification } = useNotifications()
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -269,6 +274,24 @@ export default function ResultsPage() {
         .catch(() => {})  // non-critical — history panel just won't show
     }
   }, [session?.status, sessionId])
+
+  // Track whether this page visit witnessed active processing
+  useEffect(() => {
+    if (POLLING_STATUSES.has(session?.status)) {
+      wasPollingRef.current = true
+    }
+  }, [session?.status])
+
+  // Fire desktop notification when analysis finishes (only if it was running during this visit)
+  useEffect(() => {
+    if (session?.status === 'complete' && wasPollingRef.current) {
+      wasPollingRef.current = false
+      const title = session.original_filename
+        ? `Analysis complete — ${session.original_filename}`
+        : 'Proposal analysis complete'
+      sendNotification(title, 'Your results are ready. Click to view.')
+    }
+  }, [session?.status])
 
   // Close download menu when clicking outside
   useEffect(() => {
@@ -329,6 +352,18 @@ export default function ResultsPage() {
     } finally {
       await fetchSession()
       setCancellingAnalysis(false)
+    }
+  }
+
+  const handleReAnalyse = async () => {
+    setReAnalysing(true)
+    try {
+      await reAnalyse(sessionId)
+      await fetchSession()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReAnalysing(false)
     }
   }
 
@@ -553,6 +588,22 @@ export default function ResultsPage() {
 
             return (
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Re-analyse button */}
+                <button
+                  onClick={handleReAnalyse}
+                  disabled={reAnalysing}
+                  title="Clear results and re-run the full analysis on this document"
+                  className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {reAnalysing
+                    ? <Loader2 size={13} className="animate-spin" />
+                    : <RefreshCw size={13} />
+                  }
+                  <span className="hidden sm:inline">
+                    {reAnalysing ? 'Starting…' : 'Re-analyse'}
+                  </span>
+                </button>
+
                 {/* Agent 5 — Edit Guide (always visible for complete sessions) */}
                 <button
                   onClick={handleGeneratePpt}

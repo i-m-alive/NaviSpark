@@ -1,12 +1,65 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const TOKEN_KEY   = 'navispark_token'
+const REFRESH_KEY = 'navispark_refresh_token'
+
 function getToken() {
-  return localStorage.getItem('navispark_token')
+  return localStorage.getItem(TOKEN_KEY)
 }
 
 function authHeaders() {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// Shared refresh promise so concurrent 401s only trigger one refresh call.
+let _refreshPromise = null
+
+async function attemptTokenRefresh() {
+  if (_refreshPromise) return _refreshPromise
+
+  _refreshPromise = (async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY)
+    if (!refreshToken) throw new Error('No refresh token')
+
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+
+    if (!res.ok) throw new Error('Refresh failed')
+
+    const data = await res.json()
+    localStorage.setItem(TOKEN_KEY, data.access_token)
+    localStorage.setItem(REFRESH_KEY, data.refresh_token)
+    return data.access_token
+  })().finally(() => { _refreshPromise = null })
+
+  return _refreshPromise
+}
+
+// Drop-in replacement for fetch() on authenticated endpoints.
+// On 401, tries a token refresh once and retries the original request.
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, options)
+  if (res.status !== 401) return res
+
+  try {
+    await attemptTokenRefresh()
+  } catch {
+    // Refresh failed — clear all auth state so the app redirects to login
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_KEY)
+    localStorage.removeItem('navispark_user')
+    return res
+  }
+
+  // Retry with the new token (authHeaders() reads the freshly stored token)
+  return fetch(url, {
+    ...options,
+    headers: { ...options.headers, ...authHeaders() },
+  })
 }
 
 async function handleResponse(res) {
@@ -18,7 +71,8 @@ async function handleResponse(res) {
     } catch {}
 
     if (res.status === 401) {
-      localStorage.removeItem('navispark_token')
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(REFRESH_KEY)
       localStorage.removeItem('navispark_user')
     }
 
@@ -48,7 +102,7 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-  const res = await fetch(`${API_URL}/auth/logout`, {
+  const res = await apiFetch(`${API_URL}/auth/logout`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -56,7 +110,7 @@ export async function logout() {
 }
 
 export async function getMe() {
-  const res = await fetch(`${API_URL}/auth/me`, {
+  const res = await apiFetch(`${API_URL}/auth/me`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
@@ -71,7 +125,7 @@ export async function uploadDocument({ file, clientIndustry, proposalType, clien
   formData.append('proposal_type', proposalType)
   formData.append('client_priorities', JSON.stringify(clientPriorities))
 
-  const res = await fetch(`${API_URL}/upload`, {
+  const res = await apiFetch(`${API_URL}/upload`, {
     method: 'POST',
     headers: { ...authHeaders() },
     body: formData,
@@ -80,28 +134,28 @@ export async function uploadDocument({ file, clientIndustry, proposalType, clien
 }
 
 export async function listSessions() {
-  const res = await fetch(`${API_URL}/sessions`, {
+  const res = await apiFetch(`${API_URL}/sessions`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
 }
 
 export async function getSession(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
 }
 
 export async function getReportUrl(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/report-url`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/report-url`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
 }
 
 export async function getSourceFileUrl(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/source-file-url`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/source-file-url`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
@@ -112,7 +166,7 @@ export async function getSourceFileUrl(sessionId) {
 export async function uploadRevision(parentSessionId, file) {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await fetch(`${API_URL}/sessions/${parentSessionId}/upload-revision`, {
+  const res = await apiFetch(`${API_URL}/sessions/${parentSessionId}/upload-revision`, {
     method: 'POST',
     headers: { ...authHeaders() },
     body: formData,
@@ -121,7 +175,7 @@ export async function uploadRevision(parentSessionId, file) {
 }
 
 export async function getSessionHistory(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/history`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/history`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
@@ -130,7 +184,7 @@ export async function getSessionHistory(sessionId) {
 // ── Pipeline ──────────────────────────────────────────────
 
 export async function startAnalysis(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-analysis`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-analysis`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -138,7 +192,15 @@ export async function startAnalysis(sessionId) {
 }
 
 export async function cancelAnalysis(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/cancel-analysis`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/cancel-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function reAnalyse(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/re-analyse`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -148,7 +210,7 @@ export async function cancelAnalysis(sessionId) {
 // ── Agent Calls ───────────────────────────────────────────
 
 export async function runAgent1(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent1`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-agent1`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -156,7 +218,7 @@ export async function runAgent1(sessionId) {
 }
 
 export async function runAgent2(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent2`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-agent2`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -164,7 +226,7 @@ export async function runAgent2(sessionId) {
 }
 
 export async function runAgent3(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent3`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-agent3`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -172,7 +234,7 @@ export async function runAgent3(sessionId) {
 }
 
 export async function runAgent4(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/run-agent4`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-agent4`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -180,7 +242,7 @@ export async function runAgent4(sessionId) {
 }
 
 export async function generateModifiedPpt(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/generate-modified-ppt`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/generate-modified-ppt`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -188,7 +250,7 @@ export async function generateModifiedPpt(sessionId) {
 }
 
 export async function getModificationGuide(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}/modification-guide`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/modification-guide`, {
     method: 'POST',
     headers: { ...authHeaders() },
   })
@@ -196,7 +258,7 @@ export async function getModificationGuide(sessionId) {
 }
 
 export async function deleteSession(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}`, {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}`, {
     method: 'DELETE',
     headers: { ...authHeaders() },
   })
@@ -204,7 +266,7 @@ export async function deleteSession(sessionId) {
 }
 
 export async function deleteSessions(sessionIds) {
-  const res = await fetch(`${API_URL}/sessions`, {
+  const res = await apiFetch(`${API_URL}/sessions`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ session_ids: sessionIds }),
@@ -215,14 +277,14 @@ export async function deleteSessions(sessionIds) {
 // ── Chat ─────────────────────────────────────────────────────────────────────
 
 export async function getChatHistory(groupId) {
-  const res = await fetch(`${API_URL}/chat/${groupId}`, {
+  const res = await apiFetch(`${API_URL}/chat/${groupId}`, {
     headers: { ...authHeaders() },
   })
   return handleResponse(res)
 }
 
 export async function clearChatHistory(groupId) {
-  const res = await fetch(`${API_URL}/chat/${groupId}`, {
+  const res = await apiFetch(`${API_URL}/chat/${groupId}`, {
     method: 'DELETE',
     headers: { ...authHeaders() },
   })
@@ -235,7 +297,7 @@ export async function clearChatHistory(groupId) {
  * Each SSE line is: data: {"type":"delta","text":"..."} or {"type":"done"} or {"type":"error",...}
  */
 export async function sendChatMessage(groupId, message, signal) {
-  const res = await fetch(`${API_URL}/chat/${groupId}/message`, {
+  const res = await apiFetch(`${API_URL}/chat/${groupId}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ message }),

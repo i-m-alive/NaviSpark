@@ -11,7 +11,13 @@ class Settings(BaseSettings):
     aws_session_token: str = ""   # required for SSO / STS temporary credentials
     aws_profile: str = ""         # alternative: named AWS CLI profile (e.g. "navispark-sso")
     aws_region: str = "us-east-1"
-    bedrock_model_id: str = "anthropic.claude-sonnet-4-20250514-v1:0"
+    bedrock_model_id: str = "us.anthropic.claude-opus-4-5-20251101-v1:0"
+
+    # Chunking thresholds — docs with more pages/slides than chunk_threshold
+    # are split; set high (e.g. 90) to process large docs without chunking.
+    chunk_threshold: int = 90
+    chunk_size: int = 20
+    chunk_overlap: int = 3
 
     frontend_url: str = "http://localhost:5173"
 

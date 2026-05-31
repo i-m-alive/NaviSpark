@@ -327,9 +327,67 @@ def _apply_score_caps(result: dict) -> dict:
       Each CRITICAL issue (counting missing_phases CRITICAL + estimation_issues
       CRITICAL + pricing_issues CRITICAL) reduces the overall by a graduated
       amount, avoiding the sharp cliff-edge of the old hard cap at count=3.
+
+    Rule 5 (NEW) — Sub-score zero floor:
+      A sub-score of 0 means the section is completely absent from the proposal.
+      If the LLM flagged specific issues for that section (meaning it found and
+      read the section), the score cannot logically be 0. Apply per-dimension
+      floors so an inconsistent "found issues but scored 0" response is corrected.
+
+    Rule 6 (NEW) — Overall zero floor:
+      If the overall recomputes to 0 but any issue lists are non-empty, the
+      proposal has content the LLM analysed. Floor the overall at 1.0 to prevent
+      a self-contradictory output from propagating to Agent 4.
     """
-    scores = result.get("scores", {})
-    weights = scores.get("weights", {})
+    # Defaults match the system-prompt baseline and are used whenever the LLM
+    # returns weights that sum to ≈0 (empty dict, all-zero dict, or null).
+    _DEFAULT_WEIGHTS = {
+        "estimation_rigour":    0.30,
+        "phase_coverage":       0.30,
+        "pricing_completeness": 0.20,
+        "commercial_model_fit": 0.10,
+        "arithmetic_accuracy":  0.10,
+    }
+
+    scores = result.get("scores") or {}
+    raw_weights = scores.get("weights") or {}
+
+    # Ensure all expected sub-score keys exist (LLM sometimes omits them entirely)
+    for _k in ("estimation_rigour", "phase_coverage", "pricing_completeness",
+               "commercial_model_fit", "arithmetic_accuracy"):
+        scores.setdefault(_k, 0.0)
+
+    # ── Weight validation: substitute defaults if LLM omitted or zeroed them ──
+    weight_sum = sum(
+        raw_weights.get(k, 0.0) for k in _DEFAULT_WEIGHTS
+    )
+    if weight_sum < 0.5:
+        # Weights are missing or effectively zero — use defaults and flag it
+        weights = _DEFAULT_WEIGHTS.copy()
+        scores["weights"] = weights
+        scores["_weights_substituted"] = True
+    else:
+        weights = raw_weights
+
+    missing_phases    = result.get("missing_phases",    [])
+    estimation_issues = result.get("estimation_issues", [])
+    pricing_issues    = result.get("pricing_issues",    [])
+
+    # ── Rule 5: sub-score zero floor ──────────────────────────────────────────
+    # estimation_rigour: LLM found specific estimation issues → cannot be 0
+    if scores.get("estimation_rigour", 0.0) == 0.0 and estimation_issues:
+        scores["estimation_rigour"] = 1.5
+        scores["_estimation_rigour_floored"] = True
+
+    # phase_coverage: fewer than 10 missing phases means phases were partly present
+    if scores.get("phase_coverage", 0.0) == 0.0 and len(missing_phases) < 10:
+        scores["phase_coverage"] = 1.5
+        scores["_phase_coverage_floored"] = True
+
+    # pricing_completeness: LLM found pricing issues → pricing section exists
+    if scores.get("pricing_completeness", 0.0) == 0.0 and pricing_issues:
+        scores["pricing_completeness"] = 1.5
+        scores["_pricing_completeness_floored"] = True
 
     # ── Rule 1: always recompute overall from weights × scores ─────────────────
     recomputed = (
@@ -341,16 +399,21 @@ def _apply_score_caps(result: dict) -> dict:
     )
 
     # Rule 4 CRITICAL count — evaluate before overwriting overall
-    missing_phases = result.get("missing_phases", [])
-    estimation_issues = result.get("estimation_issues", [])
-    pricing_issues = result.get("pricing_issues", [])
-
     critical_count = (
         sum(1 for p in missing_phases      if p.get("severity") == "CRITICAL")
         + sum(1 for e in estimation_issues if e.get("severity") == "CRITICAL")
         + sum(1 for p in pricing_issues    if p.get("severity") == "CRITICAL")
     )
     recomputed = max(0.0, recomputed - _critical_deduction(critical_count))
+
+    # ── Rule 6: overall zero floor ────────────────────────────────────────────
+    # Even after deductions, 0 is only valid when estimation is completely absent.
+    # If any issue lists are non-empty or fewer than 17 phases are missing, the
+    # proposal has content the LLM analysed — floor to 1.0.
+    has_content = bool(estimation_issues or pricing_issues or len(missing_phases) < 17)
+    if recomputed == 0.0 and has_content:
+        recomputed = 1.0
+        scores["_overall_zero_floor_applied"] = True
 
     scores["overall"] = round(recomputed, 1)
 

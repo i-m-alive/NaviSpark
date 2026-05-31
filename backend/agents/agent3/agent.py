@@ -454,9 +454,14 @@ def _apply_score_caps(result: dict, client_priorities: list[str], client_industr
       Each CRITICAL issue reduces overall by a graduated amount, avoiding the
       sharp cliff-edge of the old hard cap at count=3.
     """
-    scores = result.get("scores", {})
+    scores = result.get("scores") or {}
     weights = scores.get("weights", {})
     cap_applied = False
+
+    # Ensure all expected sub-score keys exist (LLM sometimes omits them entirely)
+    for _k in ("client_fit", "differentiation", "risk_transparency",
+               "credibility", "narrative", "industry_factors"):
+        scores.setdefault(_k, 0.0)
 
     # ── Rule 1: differentiation floor/ceiling ─────────────────────────────────
     diff = result.get("differentiation", {})
@@ -582,6 +587,20 @@ def _apply_score_caps(result: dict, client_priorities: list[str], client_industr
         )
         recomputed = max(0.0, recomputed - _critical_deduction(critical_count))
         scores["overall"] = round(recomputed, 1)
+
+    # Guarantee overall is always present — LLM occasionally omits it
+    if "overall" not in scores:
+        w = scores.get("weights", {})
+        default = 1.0 / 6.0
+        scores["overall"] = round(
+            scores.get("client_fit",          0.0) * w.get("client_fit",          default)
+            + scores.get("differentiation",   0.0) * w.get("differentiation",     default)
+            + scores.get("risk_transparency", 0.0) * w.get("risk_transparency",   default)
+            + scores.get("credibility",       0.0) * w.get("credibility",         default)
+            + scores.get("narrative",         0.0) * w.get("narrative",           default)
+            + scores.get("industry_factors",  0.0) * w.get("industry_factors",    default),
+            1,
+        )
 
     # Diagnostic fields for Agent 4
     scores["differentiator_count"] = n_diff

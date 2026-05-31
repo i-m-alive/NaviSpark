@@ -367,7 +367,17 @@ def run(
 
     _e("Specialist reviews received", "completed")
 
-    # ── Task 4.1: Weighted score ──────────────────────────────────────────────
+    # ── Task 4.5: Unified checklist grid (runs FIRST — feeds into scoring) ────
+    _e("Merging unified checklist (57 items)")
+    checklist_coverage = task_4_5_checklist_merge.run(
+        agent1_output=agent1_output,
+        agent2_output=agent2_output,
+        agent3_output=agent3_output,
+    )
+    covered = sum(1 for i in checklist_coverage if i["status"] == "COVERED")
+    _e(f"Checklist merged — {covered}/{len(checklist_coverage)} items covered", "completed")
+
+    # ── Task 4.1: Weighted score (checklist anchors 50 % of each agent score) ─
     _e("Computing weighted scores across all agents")
     score_result = task_4_1_weighted_score.run(
         agent1_output=agent1_output,
@@ -375,6 +385,7 @@ def run(
         agent3_output=agent3_output,
         proposal_type=proposal_type,
         client_priorities=client_priorities,
+        checklist_coverage=checklist_coverage,
     )
     verdict_pre = score_result.get("verdict", "?")
     _e(f"Weighted scores computed — provisional verdict: {verdict_pre}", "completed")
@@ -387,16 +398,6 @@ def run(
         agent3_output=agent3_output,
     )
     _e(f"Double-flagged issues identified: {len(double_flagged)}", "completed")
-
-    # ── Task 4.5: Unified checklist grid ─────────────────────────────────────
-    _e("Merging unified checklist (57 items)")
-    checklist_coverage = task_4_5_checklist_merge.run(
-        agent1_output=agent1_output,
-        agent2_output=agent2_output,
-        agent3_output=agent3_output,
-    )
-    covered = sum(1 for i in checklist_coverage if i["status"] == "COVERED")
-    _e(f"Checklist merged — {covered}/{len(checklist_coverage)} items covered", "completed")
 
     # ── Package pre-computed data for the prompt ──────────────────────────────
     pre_computed = {

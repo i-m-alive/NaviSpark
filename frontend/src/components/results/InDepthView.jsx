@@ -110,10 +110,15 @@ function IssueCard({ children, severity }) {
 
 // ── Agent 1 Panel ──────────────────────────────────────────────────────────────
 
-function Agent1Panel({ output }) {
+function Agent1Panel({ output, blendedScore }) {
   if (!output) return <p className="text-sm text-gray-500 py-10 text-center">Agent 1 output not available.</p>
 
-  const sc          = output.scores || {}
+  // Use agent4's blended overall (checklist + LLM) for the Overall row — it's
+  // the authoritative value and is immune to LLM placeholder-zero failures.
+  const sc = {
+    ...(output.scores || {}),
+    ...(blendedScore != null ? { overall: blendedScore } : {}),
+  }
   const audit       = output.section_audit || []
   const writing     = output.writing_issues || []
   const scope       = output.scope_clarity_issues || []
@@ -304,10 +309,13 @@ function Agent1Panel({ output }) {
 
 // ── Agent 2 Panel ──────────────────────────────────────────────────────────────
 
-function Agent2Panel({ output }) {
+function Agent2Panel({ output, blendedScore }) {
   if (!output) return <p className="text-sm text-gray-500 py-10 text-center">Agent 2 output not available.</p>
 
-  const sc           = output.scores || {}
+  const sc = {
+    ...(output.scores || {}),
+    ...(blendedScore != null ? { overall: blendedScore } : {}),
+  }
   const cma          = output.commercial_model_assessment
   const missingPhases = output.missing_phases || []
   const estIssues    = output.estimation_issues || []
@@ -491,10 +499,13 @@ function Agent2Panel({ output }) {
 
 // ── Agent 3 Panel ──────────────────────────────────────────────────────────────
 
-function Agent3Panel({ output }) {
+function Agent3Panel({ output, blendedScore }) {
   if (!output) return <p className="text-sm text-gray-500 py-10 text-center">Agent 3 output not available.</p>
 
-  const sc          = output.scores || {}
+  const sc = {
+    ...(output.scores || {}),
+    ...(blendedScore != null ? { overall: blendedScore } : {}),
+  }
   const diff        = output.differentiation
   const narr        = output.narrative_assessment
   const clientFit   = output.client_fit_issues || []
@@ -771,17 +782,24 @@ function ScoreTraceability({ output, a1, a2, a3 }) {
   const sc = output.section_scorecard
 
   const dims = [
+    // Agent 1 dimensions
     { key: 'section_completeness', label: 'Section Completeness', a1k: 'section_completeness' },
     { key: 'writing_quality',      label: 'Writing Quality',      a1k: 'writing_quality' },
     { key: 'scope_clarity',        label: 'Scope Clarity',        a1k: 'scope_clarity' },
+    { key: 'client_coverage',      label: 'Client Coverage',      a1k: 'client_coverage' },
+    // Agent 2 dimensions
     { key: 'estimation_rigour',    label: 'Estimation Rigour',    a2k: 'estimation_rigour' },
     { key: 'phase_coverage',       label: 'Phase Coverage',       a2k: 'phase_coverage' },
     { key: 'pricing_completeness', label: 'Pricing Completeness', a2k: 'pricing_completeness' },
+    { key: 'commercial_model_fit', label: 'Commercial Model Fit', a2k: 'commercial_model_fit' },
+    { key: 'arithmetic_accuracy',  label: 'Arithmetic Accuracy',  a2k: 'arithmetic_accuracy' },
+    // Agent 3 dimensions
     { key: 'client_fit',           label: 'Client Fit',           a3k: 'client_fit' },
     { key: 'differentiation',      label: 'Differentiation',      a3k: 'differentiation' },
     { key: 'risk_transparency',    label: 'Risk Transparency',    a3k: 'risk_transparency' },
     { key: 'credibility',          label: 'Credibility',          a3k: 'credibility' },
     { key: 'narrative',            label: 'Narrative',            a3k: 'narrative' },
+    { key: 'industry_factors',     label: 'Industry Factors',     a3k: 'industry_factors' },
   ]
 
   return (
@@ -900,9 +918,9 @@ export default function InDepthView({ output, session }) {
 
         {/* Content — key forces remount on tab change for fresh animations */}
         <div className="p-5" key={tab}>
-          {tab === 'a1' && <Agent1Panel output={a1} />}
-          {tab === 'a2' && <Agent2Panel output={a2} />}
-          {tab === 'a3' && <Agent3Panel output={a3} />}
+          {tab === 'a1' && <Agent1Panel output={a1} blendedScore={output?.agent1_score} />}
+          {tab === 'a2' && <Agent2Panel output={a2} blendedScore={output?.agent2_score} />}
+          {tab === 'a3' && <Agent3Panel output={a3} blendedScore={output?.agent3_score} />}
           {tab === 'a4' && <Agent4Panel output={output} />}
         </div>
       </div>

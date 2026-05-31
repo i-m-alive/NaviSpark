@@ -2,9 +2,77 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../api/client'
-import { LogOut, Home, Upload, BookOpen, Menu, X } from 'lucide-react'
+import { LogOut, Home, Upload, BookOpen, Menu, X, Bell, BellOff } from 'lucide-react'
 import NaviSparkLogo from './NaviSparkLogo'
 import { ThemeSwitcher } from './ThemePicker'
+import { useNotifications } from '../context/NotificationContext'
+
+// ── Notification bell toggle ─────────────────────────────────────────────────
+function NotificationToggle({ mobile = false }) {
+  const { supported, enabled, permission, toggleEnabled, setShowModal } = useNotifications()
+  const [tooltip, setTooltip] = useState(false)
+
+  if (!supported) return null
+
+  const handleClick = async () => {
+    if (permission === 'denied') {
+      setTooltip(true)
+      setTimeout(() => setTooltip(false), 3500)
+      return
+    }
+    if (permission === 'default' && !enabled) {
+      setShowModal(true)
+      return
+    }
+    await toggleEnabled()
+  }
+
+  if (mobile) {
+    return (
+      <button
+        onClick={handleClick}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 w-full ${
+          enabled
+            ? 'text-indigo-300 bg-indigo-950/30 border border-indigo-900/40'
+            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60 border border-transparent'
+        }`}
+      >
+        {enabled ? <Bell size={16} className="text-indigo-400" /> : <BellOff size={16} />}
+        {enabled ? 'Notifications on' : 'Notifications off'}
+        {tooltip && (
+          <span className="ml-auto text-xs text-yellow-400">Allow in browser settings</span>
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        title={
+          permission === 'denied'
+            ? 'Notifications blocked — allow in browser settings'
+            : enabled
+            ? 'Notifications on — click to disable'
+            : 'Notifications off — click to enable'
+        }
+        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 border ${
+          enabled
+            ? 'text-indigo-400 bg-indigo-950/40 border-indigo-900/50 hover:bg-indigo-950/60'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/60 border-transparent hover:border-gray-700'
+        }`}
+      >
+        {enabled ? <Bell size={15} /> : <BellOff size={15} />}
+      </button>
+      {tooltip && (
+        <div className="absolute top-full mt-2 right-0 z-50 whitespace-nowrap px-2.5 py-1.5 rounded-lg text-xs text-yellow-300 bg-gray-900 border border-yellow-900/50 shadow-lg">
+          Allow notifications in your browser settings
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── Spark SVG mark only (for the animated logo in nav) ───────────────────────
 function SparkMark({ size = 26 }) {
@@ -186,9 +254,10 @@ export default function Navbar() {
               <NavLink to="/how-it-works" icon={BookOpen} label="How It Works" active={at('/how-it-works')} />
             </div>
 
-            {/* ── Right: theme switcher + user info + sign out — DESKTOP ────────── */}
+            {/* ── Right: theme switcher + notification bell + user info + sign out — DESKTOP ────────── */}
             <div className="hidden md:flex items-center gap-2">
               <ThemeSwitcher />
+              <NotificationToggle />
 
               {user?.email && (
                 <div className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-900/60 border border-gray-800">
@@ -268,6 +337,9 @@ export default function Navbar() {
 
               {/* Divider */}
               <div className="h-px bg-gray-800 my-2" />
+
+              {/* Notification toggle */}
+              <NotificationToggle mobile />
 
               {/* User info */}
               {user?.email && (

@@ -13,13 +13,21 @@ logger = logging.getLogger(__name__)
 
 # boto3 client config — adaptive retry mode handles short throttle windows;
 # our own _invoke_bedrock_with_retry handles sustained token-bucket exhaustion.
+#
+# Timeout rationale for Opus + 80-page PDFs:
+#   connect_timeout : TCP handshake to AWS endpoint — 60 s is generous.
+#   read_timeout    : Max time to wait between response bytes.
+#                     Opus at ~100 tok/s × 16,000 output tokens = ~160 s just for
+#                     generation, plus model warm-up and input processing on large
+#                     documents can add another 60-120 s.
+#                     600 s (10 min) gives a 3× safety margin for worst-case runs.
 _BEDROCK_CONFIG = Config(
     retries={
         "max_attempts": 6,
         "mode": "adaptive",
     },
-    read_timeout=120,
-    connect_timeout=30,
+    read_timeout=600,
+    connect_timeout=60,
 )
 
 # Delays (seconds) for our outer retry layer, on top of boto3's built-in retries.
@@ -101,10 +109,55 @@ def _invoke_bedrock_with_retry(client, request_body: dict):
 
 
 def _clean_json_response(raw_text: str) -> str:
+    """
+    Extracts the first complete JSON object from the model response.
+
+    Handles three common Opus / large-doc failure modes:
+      1. Markdown code fences wrapping the JSON (```json ... ```)
+      2. Preamble text before the opening brace ("Here is the JSON: {...}")
+      3. Trailing text / commentary after the closing brace ({...} Note: ...)
+
+    Strategy: strip fences first, then walk the string character-by-character
+    tracking brace depth to find the exact span of the outermost JSON object.
+    This is O(n) and handles arbitrarily nested structures.
+    """
+    # Step 1: strip markdown code fences
     text = raw_text.strip()
     text = re.sub(r'^```(?:json)?\s*', '', text)
     text = re.sub(r'\s*```$', '', text)
-    return text.strip()
+    text = text.strip()
+
+    # Step 2: find the first '{' — everything before it is preamble
+    start = text.find('{')
+    if start == -1:
+        return text  # no JSON object found; let caller handle the parse error
+
+    # Step 3: walk forward tracking brace depth, skipping string contents
+    depth = 0
+    in_string = False
+    escape_next = False
+
+    for i, ch in enumerate(text[start:], start):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]   # exact JSON object, nothing extra
+
+    # Brace depth never reached 0 — return from start to end (truncated JSON)
+    return text[start:]
 
 
 def _extract_pptx_text(pptx_bytes: bytes) -> str:
@@ -124,7 +177,7 @@ def _extract_pptx_text(pptx_bytes: bytes) -> str:
 
 def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: bytes, file_type: str = "pdf") -> dict:
     """
-    Calls Claude Sonnet 4 on Bedrock with a document.
+    Calls the configured Claude model on Bedrock with a document.
     - PDF: sent as a native base64 document block.
     - PPTX/PPT: text extracted slide-by-slide and prepended to the user message.
     """
@@ -157,7 +210,7 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
 
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 8000,
+        "max_tokens": 16000,
         "temperature": 0,
         "system": system_prompt,
         "messages": [
@@ -176,6 +229,12 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
     try:
         response_body = json.loads(response["body"].read())
         raw_text = response_body["content"][0]["text"]
+        usage = response_body.get("usage", {})
+        logger.info(
+            "[BEDROCK] tokens — input: %s  output: %s  (model context limit: 200,000)",
+            usage.get("input_tokens", "?"),
+            usage.get("output_tokens", "?"),
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read Bedrock response: {str(e)}")
 
@@ -189,8 +248,8 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
         )
 
 
-def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: int = 8000) -> dict:
-    """Calls Claude Sonnet 4 on Bedrock with text input only (no PDF). Used by Agent 4 and Agent 5."""
+def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: int = 16000) -> dict:
+    """Calls the configured Claude model on Bedrock with text input only (no PDF). Used by Agent 4 and Agent 5."""
     client = get_bedrock_client()
 
     request_body = {
@@ -271,7 +330,7 @@ def summarize_chunk_pdf(
 
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 4000,
+        "max_tokens": 16000,
         "temperature": 0,
         "system": _CHUNK_SYSTEM_PROMPT,
         "messages": [
@@ -359,7 +418,7 @@ def summarize_chunk_pptx_text(
 
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 4000,
+        "max_tokens": 16000,
         "temperature": 0,
         "system": _CHUNK_SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": user_message}],
@@ -403,7 +462,7 @@ def invoke_agent_with_context_json(
     system_prompt: str,
     user_message: str,
     context_json: str,
-    max_tokens: int = 8000,
+    max_tokens: int = 16000,
 ) -> dict:
     """
     Calls an agent on Bedrock using pre-processed document context instead of a raw file.

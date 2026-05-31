@@ -14,9 +14,17 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     access_token: str
+    refresh_token: str
     user_id: str
     email: str
     message: str = "Login successful"
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
 
 class UserResponse(BaseModel):
     user_id: str

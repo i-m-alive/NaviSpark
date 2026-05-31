@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
-from models import RegisterRequest, LoginRequest, LoginResponse, UserResponse
+from models import RegisterRequest, LoginRequest, LoginResponse, UserResponse, RefreshRequest, RefreshResponse
 from database import get_supabase
 from auth import get_current_user
 
@@ -52,6 +52,7 @@ async def login(body: LoginRequest):
 
         return LoginResponse(
             access_token=response.session.access_token,
+            refresh_token=response.session.refresh_token,
             user_id=response.user.id,
             email=response.user.email,
         )
@@ -62,6 +63,24 @@ async def login(body: LoginRequest):
         if "invalid" in error_msg or "credentials" in error_msg or "password" in error_msg:
             raise HTTPException(status_code=401, detail="Invalid email or password.")
         raise HTTPException(status_code=401, detail=f"Login failed: {str(e)}")
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_token(body: RefreshRequest):
+    """Exchanges a valid refresh token for a new access + refresh token pair."""
+    supabase = get_supabase()
+    try:
+        response = supabase.auth.refresh_session(body.refresh_token)
+        if not response.session:
+            raise HTTPException(status_code=401, detail="Invalid or expired refresh token.")
+        return RefreshResponse(
+            access_token=response.session.access_token,
+            refresh_token=response.session.refresh_token,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
 
 
 @router.get("/me", response_model=UserResponse)

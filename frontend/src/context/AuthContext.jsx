@@ -9,6 +9,9 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('navispark_token'))
   const [loading, setLoading] = useState(true)
 
+  const TOKEN_KEY   = 'navispark_token'
+  const REFRESH_KEY = 'navispark_refresh_token'
+
   // On mount: validate stored token and restore session including name/avatar.
   useEffect(() => {
     if (token) {
@@ -20,7 +23,8 @@ export function AuthProvider({ children }) {
           avatar_url: data.avatar_url || null,
         }))
         .catch(() => {
-          localStorage.removeItem('navispark_token')
+          localStorage.removeItem(TOKEN_KEY)
+          localStorage.removeItem(REFRESH_KEY)
           setToken(null)
           setUser(null)
         })
@@ -32,8 +36,9 @@ export function AuthProvider({ children }) {
 
   // ── Email / password login ─────────────────────────────────────────────────
   // userData shape: { id, email, name?, avatar_url? }
-  const loginUser = (accessToken, userData) => {
-    localStorage.setItem('navispark_token', accessToken)
+  const loginUser = (accessToken, userData, refreshToken = null) => {
+    localStorage.setItem(TOKEN_KEY, accessToken)
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken)
     setToken(accessToken)
     setUser(userData)
   }
@@ -51,7 +56,8 @@ export function AuthProvider({ children }) {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logoutUser = async () => {
-    localStorage.removeItem('navispark_token')
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem('navispark_user')
     setToken(null)
     setUser(null)
