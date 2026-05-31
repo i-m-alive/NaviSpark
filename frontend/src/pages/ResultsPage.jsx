@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import useActivityFeed from '../hooks/useActivityFeed'
+import ActivityFeed from '../components/ActivityFeed'
 import { getSession, getReportUrl, getSourceFileUrl, startAnalysis, getSessionHistory, generateModifiedPpt, getModificationGuide, cancelAnalysis, deleteSession } from '../api/client'
 import Navbar from '../components/Navbar'
 import StatusBadge from '../components/StatusBadge'
@@ -132,20 +134,9 @@ function Agent4Results({ output, onDownloadJson, onDownloadMarkdown }) {
 
 // ── Pipeline Progress Screen ──────────────────────────────────────────────────
 
-const AGENT_CARDS = [
-  { num: 1, label: 'Completeness & Clarity', colour: 'indigo' },
-  { num: 2, label: 'Estimation & Commercial Integrity', colour: 'purple' },
-  { num: 3, label: 'Competitive Strength', colour: 'teal' },
-]
-
-const COLOUR_MAP = {
-  indigo: { border: 'border-indigo-800', text: 'text-indigo-400', bg: 'bg-indigo-950' },
-  purple: { border: 'border-purple-800', text: 'text-purple-400', bg: 'bg-purple-950' },
-  teal:   { border: 'border-teal-800',   text: 'text-teal-400',   bg: 'bg-teal-950' },
-}
-
-function PipelineProgressScreen({ status, onStop, stopping }) {
-  const specialistsDone = status === 'agents_complete' || status === 'complete'
+function PipelineProgressScreen({ status, onStop, stopping, sessionId }) {
+  const isRunning = POLLING_STATUSES.has(status)
+  const { agentActivities, isConnected, isDone, error } = useActivityFeed(sessionId, isRunning)
 
   return (
     <div className="space-y-4">
@@ -165,38 +156,15 @@ function PipelineProgressScreen({ status, onStop, stopping }) {
         </button>
       </div>
 
-      {/* Three parallel agent cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {AGENT_CARDS.map(({ num, label, colour }) => {
-          const c = COLOUR_MAP[colour]
-          return (
-            <div
-              key={num}
-              className={`bg-gray-900 border ${specialistsDone ? 'border-green-800' : c.border} rounded-xl p-4 transition-all duration-500`}
-              style={{ animation: `stat-enter 0.5s cubic-bezier(0.16,1,0.3,1) ${(num - 1) * 80}ms both` }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-1.5 ${specialistsDone ? 'bg-green-950' : c.bg} rounded-lg`}>
-                  {specialistsDone ? (
-                    <CheckCircle2 size={14} className="text-green-400" />
-                  ) : (
-                    <Loader2 size={14} className={`${c.text} animate-spin`} />
-                  )}
-                </div>
-                <p className={`text-xs font-semibold ${specialistsDone ? 'text-green-400' : c.text}`}>
-                  Agent {num}
-                </p>
-              </div>
-              <p className="text-xs text-gray-400">{label}</p>
-              <p className="text-xs text-gray-600 mt-1">
-                {specialistsDone ? 'Complete' : 'Analysing…'}
-              </p>
-            </div>
-          )
-        })}
-      </div>
+      {/* Live activity feed */}
+      <ActivityFeed
+        agentActivities={agentActivities}
+        isConnected={isConnected}
+        isDone={isDone}
+        error={error}
+      />
 
-      {/* Agent 4 status */}
+      {/* Dummy anchor so we can remove the old Agent 4 block below */}
       <div className={`bg-gray-900 border ${status === 'agents_complete' ? 'border-orange-800' : 'border-gray-800'} rounded-xl p-4 transition-all duration-500`}>
         <div className="flex items-center gap-3">
           <div className={`p-2 ${status === 'agents_complete' ? 'bg-orange-950' : 'bg-gray-800'} rounded-lg`}>
@@ -338,6 +306,11 @@ export default function ResultsPage() {
   }
 
   const handleGeneratePpt = async () => {
+    const fileType = session?.file_type || 'pdf'
+    if (fileType === 'pdf') {
+      alert('Edit Guide requires a PowerPoint upload.\n\nPlease re-upload your proposal as a .pptx file to use Agent 5.')
+      return
+    }
     setGeneratingPpt(true)
     setPptResult(null)
     try {
@@ -354,10 +327,12 @@ export default function ResultsPage() {
     setCancellingAnalysis(true)
     try {
       await cancelAnalysis(sessionId)
-      await fetchSession()
-    } catch (err) {
-      alert('Could not cancel analysis: ' + err.message)
+    } catch {
+      // Swallow — most likely a race condition where the pipeline already
+      // finished before this request landed. fetchSession() below will
+      // surface the actual current state.
     } finally {
+      await fetchSession()
       setCancellingAnalysis(false)
     }
   }
@@ -583,24 +558,26 @@ export default function ResultsPage() {
 
             return (
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Generate Modified PPT — only for PPTX uploads */}
-                {session.file_type && session.file_type !== 'pdf' && (
-                  <button
-                    onClick={handleGeneratePpt}
-                    disabled={generatingPpt}
-                    title="Agent 5: Generate a copy-paste edit guide for your PPT"
-                    className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 text-purple-200 hover:text-white hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)' }}
-                  >
-                    {generatingPpt
-                      ? <Loader2 size={13} className="animate-spin" />
-                      : <Wand2 size={13} />
-                    }
-                    <span className="hidden sm:inline">
-                      {generatingPpt ? 'Analysing…' : 'Edit Guide'}
-                    </span>
-                  </button>
-                )}
+                {/* Agent 5 — Edit Guide (always visible for complete sessions) */}
+                <button
+                  onClick={handleGeneratePpt}
+                  disabled={generatingPpt}
+                  title={
+                    session.file_type === 'pdf'
+                      ? 'Edit Guide requires a PowerPoint upload (.pptx)'
+                      : 'Agent 5: Generate a copy-paste edit guide for your PPT'
+                  }
+                  className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-purple-700/60 text-purple-200 hover:text-white hover:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  style={{ background: generatingPpt ? 'rgba(88,28,135,0.3)' : 'linear-gradient(135deg,#581c87,#3b0764)' }}
+                >
+                  {generatingPpt
+                    ? <Loader2 size={13} className="animate-spin" />
+                    : <Wand2 size={13} />
+                  }
+                  <span className="hidden sm:inline">
+                    {generatingPpt ? 'Analysing…' : 'Edit Guide'}
+                  </span>
+                </button>
 
                 {/* AI Chat toggle */}
                 <ChatToggleButton
@@ -759,6 +736,7 @@ export default function ResultsPage() {
               status={session.status}
               onStop={handleCancelAnalysis}
               stopping={cancellingAnalysis}
+              sessionId={sessionId}
             />
           )}
 

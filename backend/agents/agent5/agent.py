@@ -330,6 +330,7 @@ def run(
     client_industry: list,
     proposal_type: str,
     client_priorities: list,
+    emit=None,
 ) -> dict:
     """
     Runs Agent 5 on a PPTX proposal.
@@ -340,15 +341,23 @@ def run(
     4. Validates returned modification instructions against slide map.
     5. Returns cleaned modification dict ready for pptx_modifier.apply_modifications().
     """
+    _e = emit if emit else (lambda a, s="running": None)
+
     # Step 1: Extract slide content
+    _e("PPTX received — extracting slide map")
     slide_map = extract_slide_map(pptx_bytes)
     if not slide_map:
         raise HTTPException(
             status_code=400,
             detail="Could not extract any text content from the uploaded PowerPoint file.",
         )
+    _e(f"Slide map extracted — {len(slide_map)} slides identified", "completed")
 
     # Step 2: Build prompts
+    _e("Loading all agent findings (completeness, commercial, competitive, chief review)")
+    _e("Mapping findings to specific slides & shapes")
+    _e("Planning text fixes via 7 modification skills")
+    _e("Prioritizing must-fix changes")
     system_prompt = compose_system_prompt()
     user_message = build_user_message(
         slide_map=slide_map,
@@ -362,6 +371,7 @@ def run(
     )
 
     # Step 3: Call Bedrock (text-only — slide map replaces document block)
+    _e("Generating modification instructions")
     result = invoke_agent_text_only(
         system_prompt=system_prompt,
         user_message=user_message,
@@ -369,4 +379,9 @@ def run(
     )
 
     # Step 4: Validate and clean against actual slide map
-    return _validate_and_clean(result, slide_map)
+    _e("Validating modifications against actual slide structure")
+    final = _validate_and_clean(result, slide_map)
+    total = final.get("modification_summary", {}).get("total_modifications", "?")
+    must = final.get("modification_summary", {}).get("must_fix_count", "?")
+    _e(f"Modification plan ready — {total} changes ({must} must-fix)", "completed")
+    return final

@@ -65,6 +65,9 @@ Step 3: Supabase Auth Settings
 =============================================================
 """
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -72,11 +75,21 @@ from routes.auth_routes import router as auth_router
 from routes.session_routes import router as session_router
 from routes.agent_routes import router as agent_router
 from routes.chat_routes import router as chat_router
+from routes.ws_routes import router as ws_router
+from services import event_emitter
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    event_emitter.set_event_loop(asyncio.get_running_loop())
+    yield
+
 
 app = FastAPI(
     title="NAVISPARK PS03 API",
     description="AI-powered proposal review system",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -98,6 +111,7 @@ app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(agent_router)
 app.include_router(chat_router)
+app.include_router(ws_router)
 
 
 @app.get("/health")

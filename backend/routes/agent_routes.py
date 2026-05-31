@@ -14,6 +14,8 @@ from services.pipeline_service import run_full_pipeline
 from services.pptx_modifier import apply_modifications
 from services.pptx_extractor import extract_slide_map
 from services.file_service import count_file_pages
+from services.chunking_service import prepare_document_context
+from services import event_emitter
 
 router = APIRouter(tags=["agents"])
 
@@ -105,12 +107,20 @@ async def cancel_analysis(
     session = get_session(session_id, user_id)
     current_status = session.get("status", "")
 
+    # Already cancelled — idempotent
+    if current_status == "cancelled":
+        return {"session_id": session_id, "status": "cancelled", "message": "Already cancelled."}
+
+    # Already finished — race condition: pipeline completed before request arrived
+    if current_status in ("complete", "pipeline_failed"):
+        return {"session_id": session_id, "status": current_status, "message": "Pipeline already finished."}
+
     if current_status not in ("pipeline_running", "agents_complete"):
         raise HTTPException(
             status_code=400,
             detail=(
                 f"Cannot cancel: session status is '{current_status}'. "
-                "Cancellation is only possible while the pipeline is running."
+                "Upload a document and start analysis first."
             ),
         )
 
@@ -177,6 +187,14 @@ async def run_agent1(
     proposal_type = session.get("proposal_type") or ""
     client_priorities = session.get("client_priorities") or []
 
+    # Chunking gate — large documents are pre-summarised before the agent call
+    page_count = session.get("page_count") or count_file_pages(pdf_bytes, file_type)
+    pre_processed_context = prepare_document_context(
+        pdf_bytes, file_type, page_count,
+        client_industry, proposal_type, client_priorities,
+        session_id[:8],
+    )
+
     # Run Agent 1 — all skill orchestration is inside agents/agent1/agent.py
     try:
         agent1_result = run_agent1_analysis(
@@ -185,6 +203,7 @@ async def run_agent1(
             client_industry=client_industry,
             proposal_type=proposal_type,
             client_priorities=client_priorities,
+            pre_processed_context=pre_processed_context,
         )
     except HTTPException:
         raise
@@ -259,6 +278,14 @@ async def run_agent2(
     proposal_type = session.get("proposal_type") or ""
     client_priorities = session.get("client_priorities") or []
 
+    # Chunking gate — large documents are pre-summarised before the agent call
+    page_count = session.get("page_count") or count_file_pages(pdf_bytes, file_type)
+    pre_processed_context = prepare_document_context(
+        pdf_bytes, file_type, page_count,
+        client_industry, proposal_type, client_priorities,
+        session_id[:8],
+    )
+
     # Run Agent 2 — all skill orchestration is inside agents/agent2/agent.py
     try:
         agent2_result = run_agent2_analysis(
@@ -267,6 +294,7 @@ async def run_agent2(
             client_industry=client_industry,
             proposal_type=proposal_type,
             client_priorities=client_priorities,
+            pre_processed_context=pre_processed_context,
         )
     except HTTPException:
         raise
@@ -341,6 +369,14 @@ async def run_agent3(
     proposal_type = session.get("proposal_type") or ""
     client_priorities = session.get("client_priorities") or []
 
+    # Chunking gate — large documents are pre-summarised before the agent call
+    page_count = session.get("page_count") or count_file_pages(pdf_bytes, file_type)
+    pre_processed_context = prepare_document_context(
+        pdf_bytes, file_type, page_count,
+        client_industry, proposal_type, client_priorities,
+        session_id[:8],
+    )
+
     # Run Agent 3 — all skill orchestration is inside agents/agent3/agent.py
     try:
         agent3_result = run_agent3_analysis(
@@ -349,6 +385,7 @@ async def run_agent3(
             client_industry=client_industry,
             proposal_type=proposal_type,
             client_priorities=client_priorities,
+            pre_processed_context=pre_processed_context,
         )
     except HTTPException:
         raise
@@ -576,6 +613,7 @@ async def generate_modified_ppt(
     slide_map = extract_slide_map(pptx_bytes)
 
     # ── Run Agent 5 ───────────────────────────────────────────────────────────
+    event_emitter.ensure_session(session_id)
     try:
         agent5_result = run_agent5_analysis(
             pptx_bytes=pptx_bytes,
@@ -586,6 +624,7 @@ async def generate_modified_ppt(
             client_industry=client_industry,
             proposal_type=proposal_type,
             client_priorities=client_priorities,
+            emit=event_emitter.make_emitter(session_id, "agent5"),
         )
     except HTTPException:
         raise
@@ -759,6 +798,7 @@ async def get_modification_guide(
     slide_titles = {s["slide_index"]: s["slide_title"] for s in slide_map}
 
     # ── Run Agent 5 ───────────────────────────────────────────────────────────
+    event_emitter.ensure_session(session_id)
     try:
         agent5_result = run_agent5_analysis(
             pptx_bytes        = pptx_bytes,
@@ -769,6 +809,7 @@ async def get_modification_guide(
             client_industry   = client_industry,
             proposal_type     = proposal_type,
             client_priorities = client_priorities,
+            emit=event_emitter.make_emitter(session_id, "agent5"),
         )
     except HTTPException:
         raise

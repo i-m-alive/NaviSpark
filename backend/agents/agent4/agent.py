@@ -334,6 +334,7 @@ def run(
     client_industry: list,
     proposal_type: str,
     client_priorities: list,
+    emit=None,
 ) -> dict:
     """
     Runs Agent 4 aggregation.
@@ -352,6 +353,7 @@ def run(
         client_industry:    List of industries from session context.
         proposal_type:      Proposal type string from session context.
         client_priorities:  List of client priorities from session context.
+        emit:               Optional callable emit(activity, status) for the live feed.
 
     Returns:
         Complete Agent 4 output dict.
@@ -361,8 +363,12 @@ def run(
         HTTPException(502): Bedrock API failure.
         HTTPException(500): JSON parse failure.
     """
+    _e = emit if emit else (lambda a, s="running": None)
+
+    _e("Specialist reviews received", "completed")
 
     # ── Task 4.1: Weighted score ──────────────────────────────────────────────
+    _e("Computing weighted scores across all agents")
     score_result = task_4_1_weighted_score.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
@@ -370,20 +376,27 @@ def run(
         proposal_type=proposal_type,
         client_priorities=client_priorities,
     )
+    verdict_pre = score_result.get("verdict", "?")
+    _e(f"Weighted scores computed — provisional verdict: {verdict_pre}", "completed")
 
     # ── Task 4.3: Double-flag detection ───────────────────────────────────────
+    _e("Detecting issues flagged by multiple agents")
     double_flagged = task_4_3_double_flag.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
         agent3_output=agent3_output,
     )
+    _e(f"Double-flagged issues identified: {len(double_flagged)}", "completed")
 
     # ── Task 4.5: Unified checklist grid ─────────────────────────────────────
+    _e("Merging unified checklist (57 items)")
     checklist_coverage = task_4_5_checklist_merge.run(
         agent1_output=agent1_output,
         agent2_output=agent2_output,
         agent3_output=agent3_output,
     )
+    covered = sum(1 for i in checklist_coverage if i["status"] == "COVERED")
+    _e(f"Checklist merged — {covered}/{len(checklist_coverage)} items covered", "completed")
 
     # ── Package pre-computed data for the prompt ──────────────────────────────
     pre_computed = {
@@ -399,7 +412,7 @@ def run(
         "section_scorecard": score_result["section_scorecard"],
         "double_flagged_count": len(double_flagged),
         "checklist_summary": {
-            "covered": sum(1 for i in checklist_coverage if i["status"] == "COVERED"),
+            "covered": covered,
             "partial": sum(1 for i in checklist_coverage if i["status"] == "PARTIAL"),
             "missing": sum(1 for i in checklist_coverage if i["status"] == "MISSING"),
             "total": len(checklist_coverage),
@@ -407,6 +420,7 @@ def run(
     }
 
     # ── Single Bedrock call (Tasks 4.2, 4.4, 4.6) ────────────────────────────
+    _e("Synthesizing final review narrative")
     system_prompt = compose_system_prompt()
     user_message = build_user_message(
         agent1_output=agent1_output,
@@ -454,4 +468,7 @@ def run(
         "top_3_strengths": llm_result.get("top_3_strengths", []),
     }
 
+    final_score = final.get("overall_score", "?")
+    final_verdict = final.get("verdict", "?")
+    _e(f"Chief review complete — score: {final_score}/10, verdict: {final_verdict}", "completed")
     return final

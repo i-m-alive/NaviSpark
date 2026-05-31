@@ -6,7 +6,7 @@ Two skills are dynamically calibrated:
   - Skill 3.6 by CLIENT_INDUSTRY
 """
 
-from bedrock_client import invoke_agent_with_pdf
+from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json
 from agents.agent3.skills import (
     skill_3_1_client_fit,
     skill_3_2_differentiation,
@@ -238,8 +238,18 @@ DYNAMIC WEIGHT DETERMINATION:
             + (industry_factors × weights.industry_factors)
   Round overall to 1 decimal place.
 
-HARD RULE: A proposal with 3 or more CRITICAL issues CANNOT score above 5.5 overall.
-A proposal with no CRITICAL issues and only MINOR issues can score 8.0+."""
+CRITICAL PENALTY: The more CRITICAL issues a proposal has, the lower the overall score must be.
+The system applies a graduated penalty automatically after you respond — do not manually hard-cap
+your score. Simply reflect severity honestly: a proposal with many CRITICAL issues should score
+meaningfully lower than one with only MINOR issues. A proposal with no CRITICAL issues and only
+MINOR issues can score 8.0+.
+
+SCORING PRECISION — use only these permitted values for each dimension score:
+  Primary anchors: 0.0, 2.0, 4.0, 6.0, 8.0, 10.0
+  Midpoints (between two anchors): 1.0, 3.0, 5.0, 7.0, 9.0
+  Do NOT use arbitrary decimals such as 5.3, 6.7, 7.8, 4.2.
+  Choose whichever anchor or midpoint best fits the evidence. This constraint ensures
+  consistent, reproducible scores across repeated analysis of the same document."""
 
 # ── Output JSON Schema ────────────────────────────────────────────────────────
 
@@ -402,6 +412,19 @@ Return ONLY the JSON object as specified in your instructions. No other text."""
 
 # ── Score Cap (deterministic post-processing) ────────────────────────────────
 
+# Graduated deduction per CRITICAL issue count.
+# Replaces the old hard cliff-edge (min 5.5 at count ≥ 3) with a smooth ramp
+# so that one extra LLM-generated CRITICAL finding causes at most a 0.3–0.4
+# point change rather than a sudden 1–2 point drop.
+_CRITICAL_DEDUCTION_TABLE = {0: 0.0, 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.4, 5: 1.8}
+
+
+def _critical_deduction(n: int) -> float:
+    if n <= 0:
+        return 0.0
+    return _CRITICAL_DEDUCTION_TABLE.get(n, 1.8 + (n - 5) * 0.4)
+
+
 def _apply_score_caps(result: dict, client_priorities: list[str], client_industry: list[str]) -> dict:
     """
     Deterministic guard applied AFTER the LLM returns scores.
@@ -426,9 +449,10 @@ def _apply_score_caps(result: dict, client_priorities: list[str], client_industr
       client_fit_issues, the LLM silently skipped it. Cap client_fit at 7.0.
       A score of 8.0+ requires all priorities addressed with minor gaps only.
 
-    Rule 5 — Overall recompute + CRITICAL hard cap:
+    Rule 5 — Overall recompute + graduated CRITICAL penalty:
       Recompute overall using the LLM's own weights whenever any rule fires.
-      3+ CRITICAL issues across all issue arrays → overall cannot exceed 5.5.
+      Each CRITICAL issue reduces overall by a graduated amount, avoiding the
+      sharp cliff-edge of the old hard cap at count=3.
     """
     scores = result.get("scores", {})
     weights = scores.get("weights", {})
@@ -556,8 +580,7 @@ def _apply_score_caps(result: dict, client_priorities: list[str], client_industr
             )
             if issue.get("severity") == "CRITICAL"
         )
-        if critical_count >= 3:
-            recomputed = min(recomputed, 5.5)
+        recomputed = max(0.0, recomputed - _critical_deduction(critical_count))
         scores["overall"] = round(recomputed, 1)
 
     # Diagnostic fields for Agent 4
@@ -577,34 +600,62 @@ def run(
     proposal_type: str,
     client_priorities: list[str],
     file_type: str = "pdf",
+    pre_processed_context: str = None,
+    emit=None,
 ) -> dict:
     """
-    Runs Agent 3 analysis on a proposal PDF or PowerPoint.
+    Runs Agent 3 analysis on a proposal.
 
-    Composes the full system prompt from all 6 skill modules,
-    makes ONE Bedrock call, and returns the parsed result dict.
+    For documents within the page threshold (<=30 pages), pdf_bytes is sent
+    directly to Bedrock as a document block (existing behaviour).
+
+    For large documents (>30 pages), the chunking pipeline pre-processes the
+    file into a unified context JSON and passes it here as pre_processed_context.
+    In that case pdf_bytes is ignored and the context JSON is sent as text.
 
     Args:
-        pdf_bytes:          Raw bytes of the proposal file (PDF or PPTX/PPT).
-        client_industry:    List of selected industries (e.g. ["Healthcare / Pharma"]).
-        proposal_type:      Type of proposal (e.g. "Fixed Price").
-        client_priorities:  List of client priorities (e.g. ["Cost Certainty", "Speed to Market"]).
-        file_type:          File type: 'pdf', 'pptx', or 'ppt'.
+        pdf_bytes:              Raw bytes of the proposal file (PDF or PPTX/PPT).
+        client_industry:        List of selected industries.
+        proposal_type:          Type of proposal (e.g. "Fixed Price").
+        client_priorities:      List of client priorities.
+        file_type:              'pdf', 'pptx', or 'ppt'.
+        pre_processed_context:  Merged chunk-summary JSON string from chunking_service.
+                                When set, overrides the raw-file path.
+        emit:                   Optional callable emit(activity, status) for the live feed.
 
     Returns:
         Parsed dict matching the Agent 3 output JSON schema.
-
-    Raises:
-        HTTPException(502): Bedrock API failure.
-        HTTPException(500): JSON parse failure.
     """
+    _e = emit if emit else (lambda a, s="running": None)
+
+    _e("Document received", "completed")
+    doc_label = "pre-processed context" if pre_processed_context else file_type.upper()
+    _e(f"Loaded {doc_label} for competitive analysis")
+    _e("Analyzing client fit & alignment")
+    _e("Identifying differentiators & unique value")
+    _e("Evaluating risk transparency")
+    _e("Checking credibility signals & track record")
+    _e("Assessing narrative strength")
+    _e("Reviewing industry win factors")
+
     system_prompt = compose_system_prompt(client_industry, proposal_type, client_priorities)
     user_message = build_user_message(client_industry, proposal_type, client_priorities)
 
-    result = invoke_agent_with_pdf(
-        system_prompt=system_prompt,
-        user_message=user_message,
-        pdf_bytes=pdf_bytes,
-        file_type=file_type,
-    )
-    return _apply_score_caps(result, client_priorities, client_industry)
+    if pre_processed_context:
+        result = invoke_agent_with_context_json(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            context_json=pre_processed_context,
+        )
+    else:
+        result = invoke_agent_with_pdf(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            pdf_bytes=pdf_bytes,
+            file_type=file_type,
+        )
+
+    final = _apply_score_caps(result, client_priorities, client_industry)
+    score = final.get("scores", {}).get("overall", "?")
+    _e(f"Competitive analysis done — score: {score}/10", "completed")
+    return final
