@@ -743,11 +743,12 @@ export default function DashboardPage() {
   const [sortBy, setSort]         = useState('newest')
 
   useEffect(() => {
+    if (!user) return
     listSessions()
       .then(data => setProposals(data.sessions || []))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   const typeOptions = useMemo(() => {
     const counts = {}

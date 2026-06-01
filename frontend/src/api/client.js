@@ -48,11 +48,17 @@ async function apiFetch(url, options = {}) {
   try {
     await attemptTokenRefresh()
   } catch {
-    // Refresh failed — clear storage and notify AuthContext to redirect to login
+    // Refresh failed — clear storage, notify AuthContext, and force a hard redirect.
+    // Using window.location.replace is more reliable than relying on React state
+    // update ordering, which can leave stale components mounted mid-redirect.
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem('navispark_user')
     window.dispatchEvent(new CustomEvent('auth:session-expired'))
+    const { pathname } = window.location
+    if (!pathname.startsWith('/login') && !pathname.startsWith('/register') && !pathname.startsWith('/auth')) {
+      window.location.replace('/login')
+    }
     return res
   }
 
