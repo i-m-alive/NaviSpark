@@ -34,6 +34,20 @@ export function AuthProvider({ children }) {
     }
   }, [token])
 
+  // When any API call detects an expired session (refresh token rejected),
+  // clear state immediately so ProtectedRoute redirects to /login.
+  useEffect(() => {
+    const handleExpired = () => {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(REFRESH_KEY)
+      setToken(null)
+      setUser(null)
+      setLoading(false)
+    }
+    window.addEventListener('auth:session-expired', handleExpired)
+    return () => window.removeEventListener('auth:session-expired', handleExpired)
+  }, [])
+
   // ── Email / password login ─────────────────────────────────────────────────
   // userData shape: { id, email, name?, avatar_url? }
   const loginUser = (accessToken, userData, refreshToken = null) => {

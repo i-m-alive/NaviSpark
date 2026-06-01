@@ -48,10 +48,11 @@ async function apiFetch(url, options = {}) {
   try {
     await attemptTokenRefresh()
   } catch {
-    // Refresh failed — clear all auth state so the app redirects to login
+    // Refresh failed — clear storage and notify AuthContext to redirect to login
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem('navispark_user')
+    window.dispatchEvent(new CustomEvent('auth:session-expired'))
     return res
   }
 
