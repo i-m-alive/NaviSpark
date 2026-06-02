@@ -3,7 +3,7 @@ Agent 1 — Completeness & Clarity Reviewer
 Orchestrates all 6 skills into a single Bedrock call.
 """
 
-from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json
+from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json, reset_token_accumulator, get_accumulated_tokens
 from agents.agent1.skills import (
     skill_1_1_section_audit,
     skill_1_2_writing_quality,
@@ -498,6 +498,8 @@ def run(
     """
     _e = emit if emit else (lambda a, s="running": None)
 
+    reset_token_accumulator()
+
     _e("Document received", "completed")
     doc_label = "pre-processed context" if pre_processed_context else file_type.upper()
     _e(f"Loaded {doc_label} for completeness review")
@@ -526,6 +528,7 @@ def run(
         )
 
     final = _apply_score_caps(result)
+    token_usage = get_accumulated_tokens()
     score = final.get("scores", {}).get("overall", "?")
     _e(f"Completeness review done — score: {score}/10", "completed")
-    return final
+    return final, token_usage

@@ -31,6 +31,7 @@ from storage import download_file_from_storage, save_agent_output_to_storage
 from services.session_service import get_session, update_session
 from services.chunking_service import prepare_document_context
 from services.file_service import count_file_pages
+from services.token_service import save_token_usage
 from services import event_emitter
 
 logger = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
         _pipe("Launching parallel specialist review", "completed")
         agents_start = time.monotonic()
 
-        r1, r2, r3 = await asyncio.gather(
+        _raw_results = await asyncio.gather(
             _in_thread(partial(
                 _run_agent1,
                 pdf_bytes=file_bytes,
@@ -168,6 +169,15 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             )),
             return_exceptions=True,
         )
+
+        # Agents now return (result_dict, token_usage) tuples; unpack safely
+        r1_raw, r2_raw, r3_raw = _raw_results
+        r1 = r1_raw[0] if isinstance(r1_raw, tuple) else r1_raw
+        tu1 = r1_raw[1] if isinstance(r1_raw, tuple) else None
+        r2 = r2_raw[0] if isinstance(r2_raw, tuple) else r2_raw
+        tu2 = r2_raw[1] if isinstance(r2_raw, tuple) else None
+        r3 = r3_raw[0] if isinstance(r3_raw, tuple) else r3_raw
+        tu3 = r3_raw[1] if isinstance(r3_raw, tuple) else None
 
         agents_elapsed = time.monotonic() - agents_start
 
@@ -233,6 +243,12 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             "status": "agents_complete",
         })
         logger.info("[PIPELINE] [%s] [+%s] Outputs saved — status: agents_complete", sid, _elapsed())
+
+        # ── Save token usage for agents 1/2/3 ────────────────────────────────
+        for _agent_name, _tu in [("agent1", tu1), ("agent2", tu2), ("agent3", tu3)]:
+            if _tu:
+                save_token_usage(session_id, _agent_name, _tu["input_tokens"], _tu["output_tokens"])
+
         _pipe("All specialist reviews complete", "completed")
 
         # ── Cancellation checkpoint 2 ─────────────────────────────────────────
@@ -246,7 +262,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
                     sid, _elapsed())
         a4_start = time.monotonic()
 
-        r4 = await _in_thread(partial(
+        r4_raw = await _in_thread(partial(
             _run_agent4,
             agent1_output=r1,
             agent2_output=r2,
@@ -257,11 +273,19 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
             emit=event_emitter.make_emitter(session_id, "agent4"),
         ))
 
+        # Unpack agent 4 tuple
+        r4 = r4_raw[0] if isinstance(r4_raw, tuple) else r4_raw
+        tu4 = r4_raw[1] if isinstance(r4_raw, tuple) else None
+
         verdict = r4.get("verdict", "n/a") if isinstance(r4, dict) else "n/a"
         score = r4.get("weighted_overall_score", "n/a") if isinstance(r4, dict) else "n/a"
         logger.info("[PIPELINE] [%s] [+%s] Agent 4 DONE (%.1fs) — final score: %s | verdict: %s",
                     sid, _elapsed(),
                     time.monotonic() - a4_start, score, verdict)
+
+        # ── Save token usage for agent 4 ──────────────────────────────────────
+        if tu4:
+            save_token_usage(session_id, "agent4", tu4["input_tokens"], tu4["output_tokens"])
 
         # ── Step 5: Save Agent 4 output ───────────────────────────────────────
         _pipe("Saving final report to storage")

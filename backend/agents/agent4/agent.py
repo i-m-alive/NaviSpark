@@ -9,7 +9,7 @@ Merges everything into the final Agent 4 JSON.
 
 import json
 
-from bedrock_client import invoke_agent_text_only
+from bedrock_client import invoke_agent_text_only, reset_token_accumulator, get_accumulated_tokens
 from agents.agent4.tasks import task_4_1_weighted_score, task_4_3_double_flag, task_4_5_checklist_merge
 from agents.agent4.resources.consistency_rules import CONSISTENCY_RULES
 
@@ -365,6 +365,8 @@ def run(
     """
     _e = emit if emit else (lambda a, s="running": None)
 
+    reset_token_accumulator()
+
     _e("Specialist reviews received", "completed")
 
     # ── Task 4.5: Unified checklist grid (runs FIRST — feeds into scoring) ────
@@ -469,7 +471,8 @@ def run(
         "top_3_strengths": llm_result.get("top_3_strengths", []),
     }
 
+    token_usage = get_accumulated_tokens()
     final_score = final.get("overall_score", "?")
     final_verdict = final.get("verdict", "?")
     _e(f"Chief review complete — score: {final_score}/10, verdict: {final_verdict}", "completed")
-    return final
+    return final, token_usage

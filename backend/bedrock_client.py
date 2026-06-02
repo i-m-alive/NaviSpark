@@ -1,6 +1,7 @@
 import io
 import time
 import logging
+import threading
 import boto3
 import json
 import base64
@@ -10,6 +11,29 @@ from fastapi import HTTPException
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+# ── Per-thread token accumulator ─────────────────────────────────────────────
+# Each agent's run() resets this at entry and reads it at exit, so parallel
+# agents running in separate thread-pool threads never contaminate each other.
+_token_accumulator = threading.local()
+
+
+def reset_token_accumulator() -> None:
+    """Reset the per-thread token counters to zero. Call at the start of each agent run."""
+    _token_accumulator.input_tokens = 0
+    _token_accumulator.output_tokens = 0
+
+
+def get_accumulated_tokens() -> dict:
+    """Return the tokens accumulated since the last reset on this thread."""
+    inp = getattr(_token_accumulator, "input_tokens", 0)
+    out = getattr(_token_accumulator, "output_tokens", 0)
+    return {"input_tokens": inp, "output_tokens": out, "total_tokens": inp + out}
+
+
+def _accumulate_tokens(usage: dict) -> None:
+    _token_accumulator.input_tokens = getattr(_token_accumulator, "input_tokens", 0) + usage.get("input_tokens", 0)
+    _token_accumulator.output_tokens = getattr(_token_accumulator, "output_tokens", 0) + usage.get("output_tokens", 0)
 
 # boto3 client config — adaptive retry mode handles short throttle windows;
 # our own _invoke_bedrock_with_retry handles sustained token-bucket exhaustion.
@@ -230,6 +254,7 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
         response_body = json.loads(response["body"].read())
         raw_text = response_body["content"][0]["text"]
         usage = response_body.get("usage", {})
+        _accumulate_tokens(usage)
         logger.info(
             "[BEDROCK] tokens — input: %s  output: %s  (model context limit: 200,000)",
             usage.get("input_tokens", "?"),
@@ -268,6 +293,13 @@ def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: in
     try:
         response_body = json.loads(response["body"].read())
         raw_text = response_body["content"][0]["text"]
+        usage = response_body.get("usage", {})
+        _accumulate_tokens(usage)
+        logger.info(
+            "[BEDROCK] tokens — input: %s  output: %s  (model context limit: 200,000)",
+            usage.get("input_tokens", "?"),
+            usage.get("output_tokens", "?"),
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read Bedrock response: {str(e)}")
 
