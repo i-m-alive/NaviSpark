@@ -676,7 +676,7 @@ export default function ResultsPage() {
                       style={{ top: downloadMenuPos.top, right: downloadMenuPos.right, width: Math.min(208, window.innerWidth - 16), zIndex: 9999, animation: 'slide-up-fade 0.18s cubic-bezier(0.16,1,0.3,1) both' }}>
                       <div className="px-3 py-2 border-b border-gray-800">
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Download Format</p>
-                        <p className="text-[10px] text-gray-600 mt-0.5">{meta.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{meta.label}</p>
                       </div>
                       {meta.formats.map(fmt => {
                         const info    = FORMAT_LABELS[fmt] || {}
@@ -698,7 +698,7 @@ export default function ResultsPage() {
                             <span className="text-base leading-none w-5 text-center">{info.icon}</span>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-xs">{info.label}</div>
-                              <div className="text-[10px] text-gray-600">{info.hint}</div>
+                              <div className="text-[10px] text-gray-400">{info.hint}</div>
                             </div>
                             {isCurr && <span className="text-[9px] text-blue-500 font-mono">default</span>}
                           </button>

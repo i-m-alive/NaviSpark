@@ -157,11 +157,11 @@ function GaugeChart({ score }) {
       >
         {/* Background track */}
         <path d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`}
-          fill="none" stroke="#1f2937" strokeWidth={sw} strokeLinecap="round" />
+          fill="none" stroke="var(--ring-track)" strokeWidth={sw} strokeLinecap="round" />
         {/* Zone colors */}
-        <path d={zoneArc(0, 5)}  fill="none" stroke="#450a0a" strokeWidth={sw} strokeOpacity="0.85" />
-        <path d={zoneArc(5, 7)}  fill="none" stroke="#451a03" strokeWidth={sw} strokeOpacity="0.85" />
-        <path d={zoneArc(7, 10)} fill="none" stroke="#052e16" strokeWidth={sw} strokeOpacity="0.85" />
+        <path d={zoneArc(0, 5)}  fill="none" stroke="var(--gauge-zone-red)"   strokeWidth={sw} strokeOpacity="0.85" />
+        <path d={zoneArc(5, 7)}  fill="none" stroke="var(--gauge-zone-amber)" strokeWidth={sw} strokeOpacity="0.85" />
+        <path d={zoneArc(7, 10)} fill="none" stroke="var(--gauge-zone-green)" strokeWidth={sw} strokeOpacity="0.85" />
         {/* Animated score fill */}
         <path
           d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`}
@@ -195,7 +195,7 @@ function GaugeChart({ score }) {
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={hex} strokeWidth="2.5" strokeLinecap="round"
           style={{ filter: `drop-shadow(0 0 4px ${hex})` }} />
         <circle cx={cx} cy={cy} r="7" fill={hex} style={{ filter: `drop-shadow(0 0 6px ${hex}88)` }} />
-        <circle cx={cx} cy={cy} r="3.5" fill="#0a0f1a" />
+        <circle cx={cx} cy={cy} r="3.5" fill="var(--gauge-center-fill)" />
         {/* Score label */}
         <text x={cx} y={cy - R * 0.42} textAnchor="middle" fill={hex}
           fontSize="22" fontFamily="monospace, ui-monospace" fontWeight="700">{s.toFixed(1)}</text>
@@ -227,7 +227,7 @@ function SingleRing({ score, label, sub, color, delay = 0 }) {
     <div className="flex flex-col items-center gap-2.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth={sw} />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--ring-track)" strokeWidth={sw} />
           <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={sw}
             strokeLinecap="round"
             strokeDasharray={circ}
@@ -240,12 +240,12 @@ function SingleRing({ score, label, sub, color, delay = 0 }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono font-bold leading-none" style={{ fontSize: 18, color }}>{score?.toFixed(1)}</span>
-          <span className="text-gray-600 mt-0.5" style={{ fontSize: 9 }}>/10</span>
+          <span className="text-gray-500 mt-0.5" style={{ fontSize: 9 }}>/10</span>
         </div>
       </div>
       <div className="text-center">
         <p className="text-xs text-gray-300 font-medium leading-tight">{label}</p>
-        <p className="text-[10px] text-gray-600 mt-0.5">{sub}</p>
+        <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>
       </div>
     </div>
   )
@@ -318,7 +318,7 @@ function ChecklistDonut({ checklistCoverage }) {
         <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
           <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
             {/* Background ring */}
-            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth={sw} />
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--ring-track)" strokeWidth={sw} />
             {/* Segments */}
             {arcs.map(arc => (
               <circle key={arc.label} cx={cx} cy={cy} r={r} fill="none"
@@ -609,7 +609,7 @@ function PriorityKanban({ priorityActions }) {
               </div>
               <div className="p-2 space-y-1.5 max-h-56 overflow-y-auto">
                 {items.length === 0
-                  ? <p className="text-[11px] text-gray-600 italic px-1.5 py-2">None</p>
+                  ? <p className="text-[11px] text-gray-500 italic px-1.5 py-2">None</p>
                   : items.map((item, i) => (
                     <div key={i} className="bg-gray-800/70 rounded-lg p-2.5 flex items-start gap-2">
                       <div className={clsx('w-1.5 h-1.5 rounded-full mt-[5px] flex-shrink-0', col.dot)} />
@@ -683,7 +683,7 @@ function ConsistencyCompact({ issues }) {
                 <div className={clsx('w-1.5 h-1.5 rounded-full mt-[5px] flex-shrink-0', dot[issue.severity] || 'bg-gray-600')} />
                 <div>
                   <p className="text-xs text-gray-300 leading-snug">{issue.finding}</p>
-                  <span className="text-[9px] font-mono text-gray-600">{issue.severity}</span>
+                  <span className="text-[9px] font-mono text-gray-500">{issue.severity}</span>
                 </div>
               </div>
             ))}
