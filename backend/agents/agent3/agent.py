@@ -6,7 +6,7 @@ Two skills are dynamically calibrated:
   - Skill 3.6 by CLIENT_INDUSTRY
 """
 
-from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json
+from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json, reset_token_accumulator, get_accumulated_tokens
 from agents.agent3.skills import (
     skill_3_1_client_fit,
     skill_3_2_differentiation,
@@ -647,6 +647,8 @@ def run(
     """
     _e = emit if emit else (lambda a, s="running": None)
 
+    reset_token_accumulator()
+
     _e("Document received", "completed")
     doc_label = "pre-processed context" if pre_processed_context else file_type.upper()
     _e(f"Loaded {doc_label} for competitive analysis")
@@ -675,6 +677,7 @@ def run(
         )
 
     final = _apply_score_caps(result, client_priorities, client_industry)
+    token_usage = get_accumulated_tokens()
     score = final.get("scores", {}).get("overall", "?")
     _e(f"Competitive analysis done — score: {score}/10", "completed")
-    return final
+    return final, token_usage

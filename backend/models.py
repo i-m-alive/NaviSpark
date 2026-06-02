@@ -62,3 +62,19 @@ class UploadResponse(BaseModel):
 
 class ReportUrlResponse(BaseModel):
     download_url: str
+
+class TokenUsageRecord(BaseModel):
+    id: str
+    session_id: str
+    agent_name: str
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    created_at: datetime
+
+class SessionTokenUsage(BaseModel):
+    session_id: str
+    agents: List[TokenUsageRecord]
+    total_input_tokens: int
+    total_output_tokens: int
+    total_tokens: int

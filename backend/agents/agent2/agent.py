@@ -3,7 +3,7 @@ Agent 2 — Estimation & Commercial Integrity Reviewer
 Orchestrates all 7 skills into a single Bedrock call.
 """
 
-from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json
+from bedrock_client import invoke_agent_with_pdf, invoke_agent_with_context_json, reset_token_accumulator, get_accumulated_tokens
 from agents.agent2.skills import (
     skill_2_1_estimation_rigour,
     skill_2_2_phase_coverage,
@@ -649,6 +649,8 @@ def run(
     """
     _e = emit if emit else (lambda a, s="running": None)
 
+    reset_token_accumulator()
+
     _e("Document received", "completed")
     doc_label = "pre-processed context" if pre_processed_context else file_type.upper()
     _e(f"Loaded {doc_label} for commercial review")
@@ -677,6 +679,7 @@ def run(
         )
 
     final = _apply_score_caps(result)
+    token_usage = get_accumulated_tokens()
     score = final.get("scores", {}).get("overall", "?")
     _e(f"Commercial & estimation review done — score: {score}/10", "completed")
-    return final
+    return final, token_usage

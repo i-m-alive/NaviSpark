@@ -733,10 +733,14 @@ html[data-theme] .card {
   background-color: var(--t-bg2);
   border-color: var(--t-border1);
 }
+html[data-theme] .btn-primary {
+  --tw-ring-offset-color: var(--t-bg1);
+}
 html[data-theme] .btn-secondary {
   background-color: var(--t-bg3);
   border-color: var(--t-border2);
   color: var(--t-text3);
+  --tw-ring-offset-color: var(--t-bg1);
 }
 html[data-theme] .btn-secondary:hover {
   background-color: var(--t-bg4);
@@ -835,6 +839,7 @@ html[data-theme] .border-gray-700\/40 { border-color: rgba(var(--rb2),var(--gb2)
 html[data-theme-mode="light"] .bg-blue-950,
 html[data-theme-mode="light"] .bg-blue-950\/60,
 html[data-theme-mode="light"] .bg-blue-950\/40,
+html[data-theme-mode="light"] .bg-blue-950\/35,
 html[data-theme-mode="light"] .bg-blue-950\/30,
 html[data-theme-mode="light"] .bg-blue-950\/20,
 html[data-theme-mode="light"] .bg-blue-900,
@@ -913,7 +918,9 @@ html[data-theme-mode="light"] .text-blue-400   { color: #2563eb; }
 html[data-theme-mode="light"] .text-blue-300   { color: #1d4ed8; }
 html[data-theme-mode="light"] .text-indigo-400 { color: #4338ca; }
 html[data-theme-mode="light"] .text-indigo-300 { color: #3730a3; }
+html[data-theme-mode="light"] .text-indigo-200 { color: #4338ca; }
 html[data-theme-mode="light"] .text-purple-400 { color: #7e22ce; }
+html[data-theme-mode="light"] .text-purple-300 { color: #6b21a8; }
 html[data-theme-mode="light"] .text-violet-400 { color: #6d28d9; }
 html[data-theme-mode="light"] .text-green-400  { color: #15803d; }
 html[data-theme-mode="light"] .text-green-300  { color: #166534; }
@@ -929,8 +936,31 @@ html[data-theme-mode="light"] .text-red-400    { color: #dc2626; }
 html[data-theme-mode="light"] .text-red-300    { color: #b91c1c; }
 html[data-theme-mode="light"] .text-pink-400   { color: #be185d; }
 
+/* ── Muted text classes — bump up contrast on light backgrounds ───────────── */
+html[data-theme-mode="light"] .text-gray-600 { color: var(--t-text4); }
+html[data-theme-mode="light"] .text-gray-700 { color: var(--t-text4); }
+
 /* ── NavLink active state text in light mode ──────────────────────────────── */
 html[data-theme-mode="light"] .text-gray-500.hover\:text-gray-200:hover { color: var(--t-text2); }
+
+/* ── Gradient endpoint (to-gray-900) override for light mode ─────────────── */
+html[data-theme-mode="light"] .to-gray-900 { --tw-gradient-to: var(--t-bg2); }
+html[data-theme-mode="light"] .to-gray-800 { --tw-gradient-to: var(--t-bg3); }
+
+/* ── Gradient from-* class overrides for light mode ─────────────────────── */
+/* KPI cards */
+html[data-theme-mode="light"] .from-indigo-950\/70 { --tw-gradient-from: rgba(224,231,255,0.7); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(224,231,255,0)); }
+html[data-theme-mode="light"] .from-indigo-950\/40 { --tw-gradient-from: rgba(224,231,255,0.4); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(224,231,255,0)); }
+html[data-theme-mode="light"] .from-purple-950\/40 { --tw-gradient-from: rgba(243,232,255,0.6); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(243,232,255,0)); }
+html[data-theme-mode="light"] .from-teal-950\/40   { --tw-gradient-from: rgba(204,251,241,0.6); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(204,251,241,0)); }
+html[data-theme-mode="light"] .from-teal-950\/30   { --tw-gradient-from: rgba(204,251,241,0.4); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(204,251,241,0)); }
+/* Executive view traffic lights & verdict hero */
+html[data-theme-mode="light"] .from-green-950\/50  { --tw-gradient-from: rgba(220,252,231,0.7); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(220,252,231,0)); }
+html[data-theme-mode="light"] .from-green-950\/60  { --tw-gradient-from: rgba(220,252,231,0.8); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(220,252,231,0)); }
+html[data-theme-mode="light"] .from-yellow-950\/30 { --tw-gradient-from: rgba(254,243,199,0.6); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(254,243,199,0)); }
+html[data-theme-mode="light"] .from-yellow-950\/40 { --tw-gradient-from: rgba(254,243,199,0.7); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(254,243,199,0)); }
+html[data-theme-mode="light"] .from-red-950\/30    { --tw-gradient-from: rgba(254,226,226,0.6); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(254,226,226,0)); }
+html[data-theme-mode="light"] .from-red-950\/55    { --tw-gradient-from: rgba(254,226,226,0.8); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(254,226,226,0)); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PROPOSAL CARD CSS VARIABLES
@@ -960,6 +990,63 @@ html[data-theme-mode="light"] .text-gray-500.hover\:text-gray-200:hover { color:
   --card-link-hover:      #93c5fd;
   --mustfix-bg:           rgba(127,29,29,0.4);
   --mustfix-border:       rgba(239,68,68,0.4);
+
+  /* ── Status pill colors ── */
+  --pill-uploading-bg:     rgba(113,63,18,0.3);
+  --pill-uploading-border: rgba(161,98,7,0.4);
+  --pill-uploading-text:   #fcd34d;
+  --pill-ready-bg:         rgba(30,58,138,0.3);
+  --pill-ready-border:     rgba(37,99,235,0.4);
+  --pill-ready-text:       #93c5fd;
+  --pill-step1-bg:         rgba(49,46,129,0.3);
+  --pill-step1-border:     rgba(99,102,241,0.4);
+  --pill-step1-text:       #a5b4fc;
+  --pill-step2-bg:         rgba(59,7,100,0.3);
+  --pill-step2-border:     rgba(168,85,247,0.4);
+  --pill-step2-text:       #d8b4fe;
+  --pill-step3-bg:         rgba(4,47,46,0.3);
+  --pill-step3-border:     rgba(13,148,136,0.4);
+  --pill-step3-text:       #5eead4;
+  --pill-finalise-bg:      rgba(124,45,18,0.3);
+  --pill-finalise-border:  rgba(234,88,12,0.4);
+  --pill-finalise-text:    #fb923c;
+  --pill-failed-bg:        rgba(69,10,10,0.3);
+  --pill-failed-border:    rgba(185,28,28,0.4);
+  --pill-failed-text:      #fca5a5;
+  --pill-complete-bg:      rgba(6,78,59,0.3);
+  --pill-complete-border:  rgba(22,163,74,0.4);
+  --pill-complete-text:    #86efac;
+  --pill-error-bg:         rgba(69,10,10,0.3);
+  --pill-error-border:     rgba(185,28,28,0.4);
+  --pill-error-text:       #fca5a5;
+
+  /* ── Verdict badge colors ── */
+  --verdict-ready-bg:      rgba(6,78,59,0.65);
+  --verdict-ready-border:  rgba(34,197,94,0.5);
+  --verdict-ready-text:    #4ade80;
+  --verdict-revise-bg:     rgba(78,60,6,0.65);
+  --verdict-revise-border: rgba(234,179,8,0.5);
+  --verdict-revise-text:   #fbbf24;
+  --verdict-fail-bg:       rgba(127,29,29,0.65);
+  --verdict-fail-border:   rgba(239,68,68,0.55);
+  --verdict-fail-text:     #fca5a5;
+
+  /* ── SVG chart track & zone colors ── */
+  --ring-track:            #1f2937;
+  --gauge-zone-red:        #450a0a;
+  --gauge-zone-amber:      #451a03;
+  --gauge-zone-green:      #052e16;
+  --gauge-center-fill:     #0a0f1a;
+
+  /* ── Dashboard stat card colors ── */
+  --stat-indigo-text:      #a5b4fc;
+  --stat-indigo-icon:      #818cf8;
+  --stat-purple-text:      #d8b4fe;
+  --stat-purple-icon:      #c084fc;
+  --stat-green-text:       #86efac;
+  --stat-green-icon:       #4ade80;
+  --stat-teal-text:        #5eead4;
+  --stat-teal-icon:        #2dd4bf;
 }
 
 html[data-theme-mode="light"] {
@@ -985,4 +1072,61 @@ html[data-theme-mode="light"] {
   --card-link-hover:      #1d4ed8;
   --mustfix-bg:           rgba(254,202,202,0.9);
   --mustfix-border:       rgba(239,68,68,0.45);
+
+  /* ── Status pill colors (light) ── */
+  --pill-uploading-bg:     rgba(254,243,199,0.9);
+  --pill-uploading-border: rgba(217,119,6,0.5);
+  --pill-uploading-text:   #92400e;
+  --pill-ready-bg:         rgba(219,234,254,0.9);
+  --pill-ready-border:     rgba(37,99,235,0.5);
+  --pill-ready-text:       #1e40af;
+  --pill-step1-bg:         rgba(238,242,255,0.9);
+  --pill-step1-border:     rgba(99,102,241,0.5);
+  --pill-step1-text:       #3730a3;
+  --pill-step2-bg:         rgba(243,232,255,0.9);
+  --pill-step2-border:     rgba(168,85,247,0.5);
+  --pill-step2-text:       #6b21a8;
+  --pill-step3-bg:         rgba(204,251,241,0.9);
+  --pill-step3-border:     rgba(13,148,136,0.5);
+  --pill-step3-text:       #0f766e;
+  --pill-finalise-bg:      rgba(255,237,213,0.9);
+  --pill-finalise-border:  rgba(234,88,12,0.5);
+  --pill-finalise-text:    #9a3412;
+  --pill-failed-bg:        rgba(254,226,226,0.9);
+  --pill-failed-border:    rgba(185,28,28,0.5);
+  --pill-failed-text:      #991b1b;
+  --pill-complete-bg:      rgba(220,252,231,0.9);
+  --pill-complete-border:  rgba(22,163,74,0.5);
+  --pill-complete-text:    #166534;
+  --pill-error-bg:         rgba(254,226,226,0.9);
+  --pill-error-border:     rgba(185,28,28,0.5);
+  --pill-error-text:       #991b1b;
+
+  /* ── Verdict badge colors (light) ── */
+  --verdict-ready-bg:      rgba(220,252,231,0.9);
+  --verdict-ready-border:  rgba(34,197,94,0.5);
+  --verdict-ready-text:    #166534;
+  --verdict-revise-bg:     rgba(254,243,199,0.9);
+  --verdict-revise-border: rgba(234,179,8,0.5);
+  --verdict-revise-text:   #92400e;
+  --verdict-fail-bg:       rgba(254,226,226,0.9);
+  --verdict-fail-border:   rgba(239,68,68,0.5);
+  --verdict-fail-text:     #991b1b;
+
+  /* ── SVG chart track & zone colors (light) ── */
+  --ring-track:            #e2e8f0;
+  --gauge-zone-red:        #fecaca;
+  --gauge-zone-amber:      #fde68a;
+  --gauge-zone-green:      #bbf7d0;
+  --gauge-center-fill:     #f8fafc;
+
+  /* ── Dashboard stat card colors (light) ── */
+  --stat-indigo-text:      #3730a3;
+  --stat-indigo-icon:      #4338ca;
+  --stat-purple-text:      #6b21a8;
+  --stat-purple-icon:      #7e22ce;
+  --stat-green-text:       #166534;
+  --stat-green-icon:       #15803d;
+  --stat-teal-text:        #0f766e;
+  --stat-teal-icon:        #0d9488;
 }

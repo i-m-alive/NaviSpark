@@ -67,7 +67,7 @@ function ScoreRing({ score, size = 110, animDelay = 0 }) {
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg viewBox="0 0 88 88" className="w-full h-full -rotate-90">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke="var(--ring-track)" strokeWidth="8" />
         <circle
           cx="44" cy="44" r={r}
           fill="none"
@@ -267,7 +267,7 @@ function ReadinessGauge({ score }) {
         />
       </div>
 
-      <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+      <div className="flex justify-between text-[10px] text-gray-500 mt-1">
         <span>0</span>
         <span>Do Not Send (5.0)</span>
         <span>Ready to Go (7.0)</span>

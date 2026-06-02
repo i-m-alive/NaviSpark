@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Form
 from typing import Optional
-from models import UploadResponse, ReportUrlResponse
+from models import UploadResponse, ReportUrlResponse, SessionTokenUsage
 from auth import get_current_user
 from storage import upload_file_to_storage, get_signed_url
 from services.file_service import validate_and_detect, count_file_pages, CONTENT_TYPES, FILE_EXTENSIONS
@@ -254,6 +254,33 @@ async def get_source_file_url(
         "filename": session.get("original_filename", "document"),
         "file_type": session.get("file_type", "pdf"),
     }
+
+
+@router.get("/sessions/{session_id}/token-usage", response_model=SessionTokenUsage)
+async def get_session_token_usage(
+    session_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Returns the token usage breakdown for a proposal analysis session.
+    Includes per-agent counts (agent1–4) and session totals.
+    """
+    user = await get_current_user(authorization)
+    get_session(session_id, user["id"])  # Verify session ownership
+
+    from services.token_service import get_token_usage
+    records = get_token_usage(session_id)
+
+    total_input = sum(r["input_tokens"] for r in records)
+    total_output = sum(r["output_tokens"] for r in records)
+
+    return SessionTokenUsage(
+        session_id=session_id,
+        agents=records,
+        total_input_tokens=total_input,
+        total_output_tokens=total_output,
+        total_tokens=total_input + total_output,
+    )
 
 
 @router.get("/sessions/{session_id}/report-url", response_model=ReportUrlResponse)

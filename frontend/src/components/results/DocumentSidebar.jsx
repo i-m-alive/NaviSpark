@@ -46,7 +46,7 @@ function MiniRing({ score, size = 40 }) {
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#1f2937" strokeWidth={size * 0.13} />
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--ring-track)" strokeWidth={size * 0.13} />
         {score != null && (
           <circle cx={cx} cy={cx} r={r} fill="none"
             stroke={color} strokeWidth={size * 0.13} strokeLinecap="round"

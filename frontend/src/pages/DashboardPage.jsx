@@ -154,10 +154,10 @@ const STAT_CONFIGS = [
 ]
 
 const STAT_COLOURS = {
-  indigo: { border: 'rgba(99,102,241,0.3)',  borderH: 'rgba(99,102,241,0.6)',  glow: 'rgba(99,102,241,0.1)',  glowH: 'rgba(99,102,241,0.22)', icon: '#818cf8', text: '#a5b4fc', shimmer: 'rgba(165,180,252,0.08)' },
-  purple: { border: 'rgba(168,85,247,0.3)',  borderH: 'rgba(168,85,247,0.6)',  glow: 'rgba(168,85,247,0.1)',  glowH: 'rgba(168,85,247,0.22)', icon: '#c084fc', text: '#d8b4fe', shimmer: 'rgba(216,180,254,0.08)' },
-  green:  { border: 'rgba(34,197,94,0.3)',   borderH: 'rgba(34,197,94,0.6)',   glow: 'rgba(34,197,94,0.1)',   glowH: 'rgba(34,197,94,0.22)',  icon: '#4ade80', text: '#86efac', shimmer: 'rgba(134,239,172,0.08)' },
-  teal:   { border: 'rgba(20,184,166,0.3)',  borderH: 'rgba(20,184,166,0.6)',  glow: 'rgba(20,184,166,0.1)',  glowH: 'rgba(20,184,166,0.22)', icon: '#2dd4bf', text: '#5eead4', shimmer: 'rgba(94,234,212,0.08)'  },
+  indigo: { border: 'rgba(99,102,241,0.3)',  borderH: 'rgba(99,102,241,0.6)',  glow: 'rgba(99,102,241,0.1)',  glowH: 'rgba(99,102,241,0.22)', icon: 'var(--stat-indigo-icon)', text: 'var(--stat-indigo-text)', shimmer: 'rgba(165,180,252,0.08)' },
+  purple: { border: 'rgba(168,85,247,0.3)',  borderH: 'rgba(168,85,247,0.6)',  glow: 'rgba(168,85,247,0.1)',  glowH: 'rgba(168,85,247,0.22)', icon: 'var(--stat-purple-icon)', text: 'var(--stat-purple-text)', shimmer: 'rgba(216,180,254,0.08)' },
+  green:  { border: 'rgba(34,197,94,0.3)',   borderH: 'rgba(34,197,94,0.6)',   glow: 'rgba(34,197,94,0.1)',   glowH: 'rgba(34,197,94,0.22)',  icon: 'var(--stat-green-icon)',  text: 'var(--stat-green-text)',  shimmer: 'rgba(134,239,172,0.08)' },
+  teal:   { border: 'rgba(20,184,166,0.3)',  borderH: 'rgba(20,184,166,0.6)',  glow: 'rgba(20,184,166,0.1)',  glowH: 'rgba(20,184,166,0.22)', icon: 'var(--stat-teal-icon)',   text: 'var(--stat-teal-text)',   shimmer: 'rgba(94,234,212,0.08)'  },
 }
 
 // Pre-computed particle offsets so there's no Math.random() at render
@@ -300,7 +300,7 @@ function StatCard({ label, value, sub, icon: Icon, colour, delay, enterAnim, ico
 
           {/* Text */}
           <div>
-            <p style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 3 }}>
+            <p style={{ fontSize: 10, color: 'var(--t-text4)', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 3 }}>
               {label}
             </p>
             <p style={{
@@ -311,7 +311,7 @@ function StatCard({ label, value, sub, icon: Icon, colour, delay, enterAnim, ico
               {display}
             </p>
             {sub && (
-              <p style={{ fontSize: 10, color: '#4b5563', marginTop: 5 }}>{sub}</p>
+              <p style={{ fontSize: 10, color: 'var(--t-text5)', marginTop: 5 }}>{sub}</p>
             )}
           </div>
         </div>
@@ -492,14 +492,14 @@ function ScoreTrendChart({ proposals }) {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-300">Score Trend</p>
-            <p className="text-[10px] text-gray-600">Last {completed.length} completed reviews</p>
+            <p className="text-[10px] text-gray-500">Last {completed.length} completed reviews</p>
           </div>
         </div>
         <div className="text-right">
           <p className={`text-sm font-bold ${delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400'}`}>
             {delta > 0 ? `↑ +${delta.toFixed(1)}` : delta < 0 ? `↓ ${delta.toFixed(1)}` : '→ Stable'}
           </p>
-          <p className="text-[10px] text-gray-600">first → latest</p>
+          <p className="text-[10px] text-gray-500">first → latest</p>
         </div>
       </div>
 

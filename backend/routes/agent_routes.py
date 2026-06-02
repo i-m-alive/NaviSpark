@@ -15,6 +15,7 @@ from services.pptx_modifier import apply_modifications
 from services.pptx_extractor import extract_slide_map
 from services.file_service import count_file_pages
 from services.chunking_service import prepare_document_context
+from services.token_service import save_token_usage
 from services import event_emitter
 
 router = APIRouter(tags=["agents"])
@@ -244,7 +245,7 @@ async def run_agent1(
 
     # Run Agent 1 — all skill orchestration is inside agents/agent1/agent.py
     try:
-        agent1_result = run_agent1_analysis(
+        _result1 = run_agent1_analysis(
             pdf_bytes=pdf_bytes,
             file_type=file_type,
             client_industry=client_industry,
@@ -256,6 +257,10 @@ async def run_agent1(
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Unexpected error during analysis: {str(e)}")
+
+    agent1_result, token_usage1 = _result1 if isinstance(_result1, tuple) else (_result1, None)
+    if token_usage1:
+        save_token_usage(session_id, "agent1", token_usage1["input_tokens"], token_usage1["output_tokens"])
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -335,7 +340,7 @@ async def run_agent2(
 
     # Run Agent 2 — all skill orchestration is inside agents/agent2/agent.py
     try:
-        agent2_result = run_agent2_analysis(
+        _result2 = run_agent2_analysis(
             pdf_bytes=pdf_bytes,
             file_type=file_type,
             client_industry=client_industry,
@@ -347,6 +352,10 @@ async def run_agent2(
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Unexpected error during analysis: {str(e)}")
+
+    agent2_result, token_usage2 = _result2 if isinstance(_result2, tuple) else (_result2, None)
+    if token_usage2:
+        save_token_usage(session_id, "agent2", token_usage2["input_tokens"], token_usage2["output_tokens"])
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -426,7 +435,7 @@ async def run_agent3(
 
     # Run Agent 3 — all skill orchestration is inside agents/agent3/agent.py
     try:
-        agent3_result = run_agent3_analysis(
+        _result3 = run_agent3_analysis(
             pdf_bytes=pdf_bytes,
             file_type=file_type,
             client_industry=client_industry,
@@ -438,6 +447,10 @@ async def run_agent3(
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Unexpected error during analysis: {str(e)}")
+
+    agent3_result, token_usage3 = _result3 if isinstance(_result3, tuple) else (_result3, None)
+    if token_usage3:
+        save_token_usage(session_id, "agent3", token_usage3["input_tokens"], token_usage3["output_tokens"])
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -515,7 +528,7 @@ async def run_agent4(
 
     # ── Run Agent 4 ───────────────────────────────────────────────────────────
     try:
-        agent4_result = run_agent4_analysis(
+        _result4 = run_agent4_analysis(
             agent1_output=agent1_output,
             agent2_output=agent2_output,
             agent3_output=agent3_output,
@@ -530,6 +543,10 @@ async def run_agent4(
             status_code=502,
             detail=f"Unexpected error during Agent 4 aggregation: {str(e)}",
         )
+
+    agent4_result, token_usage4 = _result4 if isinstance(_result4, tuple) else (_result4, None)
+    if token_usage4:
+        save_token_usage(session_id, "agent4", token_usage4["input_tokens"], token_usage4["output_tokens"])
 
     # ── Store result and mark session complete ────────────────────────────────
     update_session(session_id, user_id, {

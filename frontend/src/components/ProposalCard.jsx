@@ -57,16 +57,16 @@ function ScoreRing({ score, size = 52 }) {
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 const STATUS_MAP = {
-  uploading:        { label: 'Uploading',   bg: 'rgba(113,63,18,0.3)',  border: 'rgba(161,98,7,0.4)',   text: '#fcd34d', pulse: false },
-  ready:            { label: 'Ready',       bg: 'rgba(30,58,138,0.3)',  border: 'rgba(37,99,235,0.4)',  text: '#93c5fd', pulse: false },
-  agent1_complete:  { label: 'Step 1 done', bg: 'rgba(49,46,129,0.3)',  border: 'rgba(99,102,241,0.4)', text: '#a5b4fc', pulse: false },
-  agent2_complete:  { label: 'Step 2 done', bg: 'rgba(59,7,100,0.3)',   border: 'rgba(168,85,247,0.4)', text: '#d8b4fe', pulse: false },
-  agent3_complete:  { label: 'Step 3 done', bg: 'rgba(4,47,46,0.3)',    border: 'rgba(13,148,136,0.4)', text: '#5eead4', pulse: false },
-  agents_complete:  { label: 'Finalising…', bg: 'rgba(124,45,18,0.3)', border: 'rgba(234,88,12,0.4)',  text: '#fb923c', pulse: true  },
-  pipeline_running: { label: 'Analysing…',  bg: 'rgba(124,45,18,0.3)', border: 'rgba(234,88,12,0.4)',  text: '#fb923c', pulse: true  },
-  pipeline_failed:  { label: 'Failed',      bg: 'rgba(69,10,10,0.3)',  border: 'rgba(185,28,28,0.4)',  text: '#fca5a5', pulse: false },
-  complete:         { label: 'Complete',    bg: 'rgba(6,78,59,0.3)',   border: 'rgba(22,163,74,0.4)',  text: '#86efac', pulse: false },
-  error:            { label: 'Error',       bg: 'rgba(69,10,10,0.3)',  border: 'rgba(185,28,28,0.4)',  text: '#fca5a5', pulse: false },
+  uploading:        { label: 'Uploading',   bg: 'var(--pill-uploading-bg)',  border: 'var(--pill-uploading-border)',  text: 'var(--pill-uploading-text)',  pulse: false },
+  ready:            { label: 'Ready',       bg: 'var(--pill-ready-bg)',      border: 'var(--pill-ready-border)',      text: 'var(--pill-ready-text)',      pulse: false },
+  agent1_complete:  { label: 'Step 1 done', bg: 'var(--pill-step1-bg)',      border: 'var(--pill-step1-border)',      text: 'var(--pill-step1-text)',      pulse: false },
+  agent2_complete:  { label: 'Step 2 done', bg: 'var(--pill-step2-bg)',      border: 'var(--pill-step2-border)',      text: 'var(--pill-step2-text)',      pulse: false },
+  agent3_complete:  { label: 'Step 3 done', bg: 'var(--pill-step3-bg)',      border: 'var(--pill-step3-border)',      text: 'var(--pill-step3-text)',      pulse: false },
+  agents_complete:  { label: 'Finalising…', bg: 'var(--pill-finalise-bg)',   border: 'var(--pill-finalise-border)',   text: 'var(--pill-finalise-text)',   pulse: true  },
+  pipeline_running: { label: 'Analysing…',  bg: 'var(--pill-finalise-bg)',   border: 'var(--pill-finalise-border)',   text: 'var(--pill-finalise-text)',   pulse: true  },
+  pipeline_failed:  { label: 'Failed',      bg: 'var(--pill-failed-bg)',     border: 'var(--pill-failed-border)',     text: 'var(--pill-failed-text)',     pulse: false },
+  complete:         { label: 'Complete',    bg: 'var(--pill-complete-bg)',   border: 'var(--pill-complete-border)',   text: 'var(--pill-complete-text)',   pulse: false },
+  error:            { label: 'Error',       bg: 'var(--pill-error-bg)',      border: 'var(--pill-error-border)',      text: 'var(--pill-error-text)',      pulse: false },
 }
 
 function StatusPill({ status }) {
@@ -84,10 +84,10 @@ function StatusPill({ status }) {
 function VerdictBadge({ verdict }) {
   if (!verdict) return null
   const map = {
-    'READY TO SEND':         { bg: 'rgba(6,78,59,0.65)',  border: 'rgba(34,197,94,0.5)',  text: '#4ade80', icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
-    'REVISE BEFORE SENDING': { bg: 'rgba(78,60,6,0.65)',  border: 'rgba(234,179,8,0.5)',  text: '#fbbf24', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
-    'NEEDS MAJOR REVISION':  { bg: 'rgba(127,29,29,0.65)', border: 'rgba(239,68,68,0.55)', text: '#fca5a5', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
-    'DO NOT SEND':           { bg: 'rgba(127,29,29,0.65)', border: 'rgba(239,68,68,0.55)', text: '#fca5a5', icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
+    'READY TO SEND':         { bg: 'var(--verdict-ready-bg)',  border: 'var(--verdict-ready-border)',  text: 'var(--verdict-ready-text)',  icon: <CheckCircle size={10} />, glowClass: 'glow-green' },
+    'REVISE BEFORE SENDING': { bg: 'var(--verdict-revise-bg)', border: 'var(--verdict-revise-border)', text: 'var(--verdict-revise-text)', icon: <AlertCircle size={10} />, glowClass: 'glow-yellow' },
+    'NEEDS MAJOR REVISION':  { bg: 'var(--verdict-fail-bg)',   border: 'var(--verdict-fail-border)',   text: 'var(--verdict-fail-text)',   icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
+    'DO NOT SEND':           { bg: 'var(--verdict-fail-bg)',   border: 'var(--verdict-fail-border)',   text: 'var(--verdict-fail-text)',   icon: <AlertCircle size={10} />, glowClass: 'glow-red' },
   }
   const cfg = map[verdict]
   if (!cfg) return null
