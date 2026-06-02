@@ -5,6 +5,7 @@ import { NotificationProvider, useNotifications } from './context/NotificationCo
 import ThemePicker from './components/ThemePicker'
 import NotificationPermissionModal from './components/NotificationPermissionModal'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/admin/AdminRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -14,6 +15,11 @@ import DashboardPage from './pages/DashboardPage'
 import UploadPage from './pages/UploadPage'
 import ResultsPage from './pages/ResultsPage'
 import HowItWorksPage from './pages/HowItWorksPage'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminSessionsPage from './pages/admin/AdminSessionsPage'
+import AdminTokenUsagePage from './pages/admin/AdminTokenUsagePage'
+import AdminActivityPage from './pages/admin/AdminActivityPage'
 
 // Inner component so it can consume ThemeContext + NotificationContext
 function AppRoutes() {
@@ -48,6 +54,23 @@ function AppRoutes() {
         } />
         <Route path="/how-it-works" element={
           <ProtectedRoute><HowItWorksPage /></ProtectedRoute>
+        } />
+
+        {/* ── Admin routes ────────────────────────────────────────── */}
+        <Route path="/admin" element={
+          <AdminRoute><AdminDashboard /></AdminRoute>
+        } />
+        <Route path="/admin/users" element={
+          <AdminRoute><AdminUsersPage /></AdminRoute>
+        } />
+        <Route path="/admin/sessions" element={
+          <AdminRoute><AdminSessionsPage /></AdminRoute>
+        } />
+        <Route path="/admin/token-usage" element={
+          <AdminRoute><AdminTokenUsagePage /></AdminRoute>
+        } />
+        <Route path="/admin/activity" element={
+          <AdminRoute><AdminActivityPage /></AdminRoute>
         } />
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

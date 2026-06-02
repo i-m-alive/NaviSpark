@@ -247,7 +247,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
         # ── Save token usage for agents 1/2/3 ────────────────────────────────
         for _agent_name, _tu in [("agent1", tu1), ("agent2", tu2), ("agent3", tu3)]:
             if _tu:
-                save_token_usage(session_id, _agent_name, _tu["input_tokens"], _tu["output_tokens"])
+                save_token_usage(session_id, _agent_name, _tu["input_tokens"], _tu["output_tokens"], user_id=user_id)
 
         _pipe("All specialist reviews complete", "completed")
 
@@ -285,7 +285,7 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
 
         # ── Save token usage for agent 4 ──────────────────────────────────────
         if tu4:
-            save_token_usage(session_id, "agent4", tu4["input_tokens"], tu4["output_tokens"])
+            save_token_usage(session_id, "agent4", tu4["input_tokens"], tu4["output_tokens"], user_id=user_id)
 
         # ── Step 5: Save Agent 4 output ───────────────────────────────────────
         _pipe("Saving final report to storage")

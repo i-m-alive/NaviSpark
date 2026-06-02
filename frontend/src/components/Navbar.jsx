@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../api/client'
-import { LogOut, Home, Upload, BookOpen, Menu, X, Bell, BellOff } from 'lucide-react'
+import { LogOut, Home, Upload, BookOpen, Menu, X, Bell, BellOff, Shield } from 'lucide-react'
 import NaviSparkLogo from './NaviSparkLogo'
 import { ThemeSwitcher } from './ThemePicker'
 import { useNotifications } from '../context/NotificationContext'
@@ -164,7 +164,7 @@ function UserAvatar({ name, email, avatarUrl }) {
 
 // ── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { user, logoutUser } = useAuth()
+  const { user, logoutUser, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -252,6 +252,9 @@ export default function Navbar() {
               <NavLink to="/dashboard"    icon={Home}     label="Home"         active={at('/dashboard')} />
               <NavLink to="/upload"       icon={Upload}   label="New Review"   active={at('/upload')} />
               <NavLink to="/how-it-works" icon={BookOpen} label="How It Works" active={at('/how-it-works')} />
+              {isAdmin && (
+                <NavLink to="/admin" icon={Shield} label="Admin" active={location.pathname.startsWith('/admin')} />
+              )}
             </div>
 
             {/* ── Right: theme switcher + notification bell + user info + sign out — DESKTOP ────────── */}
@@ -334,6 +337,10 @@ export default function Navbar() {
               <MobileNavLink to="/dashboard"    icon={Home}     label="Home"         active={at('/dashboard')}    onClick={() => setMobileOpen(false)} />
               <MobileNavLink to="/upload"       icon={Upload}   label="New Review"   active={at('/upload')}       onClick={() => setMobileOpen(false)} />
               <MobileNavLink to="/how-it-works" icon={BookOpen} label="How It Works" active={at('/how-it-works')} onClick={() => setMobileOpen(false)} />
+              {isAdmin && (
+                <MobileNavLink to="/admin" icon={Shield} label="Admin Panel"
+                  active={location.pathname.startsWith('/admin')} onClick={() => setMobileOpen(false)} />
+              )}
 
               {/* Divider */}
               <div className="h-px bg-gray-800 my-2" />

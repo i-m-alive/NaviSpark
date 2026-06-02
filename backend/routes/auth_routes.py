@@ -85,13 +85,20 @@ async def refresh_token(body: RefreshRequest):
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(authorization: Optional[str] = Header(None)):
-    """Returns the currently logged-in user's info."""
+    """Returns the currently logged-in user's info, including admin status."""
     user = await get_current_user(authorization)
+    db = get_supabase()
+    try:
+        admin_res = db.table("admins").select("user_id").eq("user_id", user["id"]).execute()
+        is_admin = bool(admin_res.data)
+    except Exception:
+        is_admin = False
     return UserResponse(
         user_id=user["id"],
         email=user["email"],
         full_name=user.get("full_name"),
         avatar_url=user.get("avatar_url"),
+        is_admin=is_admin,
     )
 
 

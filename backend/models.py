@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    is_admin: bool = False
 
 # Session models
 class SessionSummary(BaseModel):
