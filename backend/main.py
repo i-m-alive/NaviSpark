@@ -76,6 +76,7 @@ from routes.session_routes import router as session_router
 from routes.agent_routes import router as agent_router
 from routes.chat_routes import router as chat_router
 from routes.ws_routes import router as ws_router
+from routes.admin_routes import router as admin_router
 from services import event_emitter
 
 
@@ -105,6 +106,7 @@ app.include_router(session_router)
 app.include_router(agent_router)
 app.include_router(chat_router)
 app.include_router(ws_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

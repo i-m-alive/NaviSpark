@@ -16,6 +16,7 @@ def save_token_usage(
     agent_name: str,
     input_tokens: int,
     output_tokens: int,
+    user_id: str = None,
 ) -> None:
     """
     Persists a single agent's token counts to the token_usage table.
@@ -23,13 +24,16 @@ def save_token_usage(
     """
     try:
         db = get_supabase()
-        db.table("token_usage").insert({
+        row = {
             "session_id": session_id,
             "agent_name": agent_name,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": input_tokens + output_tokens,
-        }).execute()
+        }
+        if user_id:
+            row["user_id"] = user_id
+        db.table("token_usage").insert(row).execute()
         logger.info(
             "[TOKENS] saved — session: %s  agent: %-8s  in: %6d  out: %6d  total: %7d",
             session_id[:8], agent_name, input_tokens, output_tokens, input_tokens + output_tokens,

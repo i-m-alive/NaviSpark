@@ -260,7 +260,7 @@ async def run_agent1(
 
     agent1_result, token_usage1 = _result1 if isinstance(_result1, tuple) else (_result1, None)
     if token_usage1:
-        save_token_usage(session_id, "agent1", token_usage1["input_tokens"], token_usage1["output_tokens"])
+        save_token_usage(session_id, "agent1", token_usage1["input_tokens"], token_usage1["output_tokens"], user_id=user_id)
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -355,7 +355,7 @@ async def run_agent2(
 
     agent2_result, token_usage2 = _result2 if isinstance(_result2, tuple) else (_result2, None)
     if token_usage2:
-        save_token_usage(session_id, "agent2", token_usage2["input_tokens"], token_usage2["output_tokens"])
+        save_token_usage(session_id, "agent2", token_usage2["input_tokens"], token_usage2["output_tokens"], user_id=user_id)
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -450,7 +450,7 @@ async def run_agent3(
 
     agent3_result, token_usage3 = _result3 if isinstance(_result3, tuple) else (_result3, None)
     if token_usage3:
-        save_token_usage(session_id, "agent3", token_usage3["input_tokens"], token_usage3["output_tokens"])
+        save_token_usage(session_id, "agent3", token_usage3["input_tokens"], token_usage3["output_tokens"], user_id=user_id)
 
     # Store result and update status
     update_session(session_id, user_id, {
@@ -546,7 +546,7 @@ async def run_agent4(
 
     agent4_result, token_usage4 = _result4 if isinstance(_result4, tuple) else (_result4, None)
     if token_usage4:
-        save_token_usage(session_id, "agent4", token_usage4["input_tokens"], token_usage4["output_tokens"])
+        save_token_usage(session_id, "agent4", token_usage4["input_tokens"], token_usage4["output_tokens"], user_id=user_id)
 
     # ── Store result and mark session complete ────────────────────────────────
     update_session(session_id, user_id, {
