@@ -14,6 +14,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import UploadPage from './pages/UploadPage'
 import ResultsPage from './pages/ResultsPage'
+import CustomUploadPage from './pages/CustomUploadPage'
+import CustomResultsPage from './pages/CustomResultsPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
@@ -51,6 +53,12 @@ function AppRoutes() {
         } />
         <Route path="/results/:sessionId" element={
           <ProtectedRoute><ResultsPage /></ProtectedRoute>
+        } />
+        <Route path="/custom-upload" element={
+          <ProtectedRoute><CustomUploadPage /></ProtectedRoute>
+        } />
+        <Route path="/custom-results/:sessionId" element={
+          <ProtectedRoute><CustomResultsPage /></ProtectedRoute>
         } />
         <Route path="/how-it-works" element={
           <ProtectedRoute><HowItWorksPage /></ProtectedRoute>

@@ -721,9 +721,14 @@ function EmptyState({ filtered }) {
         ))}
       </div>
 
-      <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow">
-        <Plus size={15} /> Start your first review
-      </Link>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow">
+          <Plus size={15} /> Standard Review
+        </Link>
+        <Link to="/custom-upload" className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl border border-teal-700/60 text-teal-300 hover:text-white hover:border-teal-500 hover:bg-teal-950/40 transition-all font-medium">
+          <CheckSquare size={15} /> Custom Checklist Review
+        </Link>
+      </div>
     </div>
   )
 }
@@ -826,9 +831,16 @@ export default function DashboardPage() {
                   : `${proposals.length} proposal${proposals.length !== 1 ? 's' : ''} · ${user?.email}`}
               </p>
             </div>
-            <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow flex-shrink-0">
-              <Plus size={15} /> New Review
-            </Link>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link to="/upload" className="btn-primary flex items-center gap-2 text-sm animate-pulse-glow">
+                <Plus size={15} /> New Review
+              </Link>
+              <Link to="/custom-upload" title="Custom Checklist Review — upload your own evaluation criteria"
+                className="flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-xl border border-teal-700/60 text-teal-300 hover:text-white hover:border-teal-500 hover:bg-teal-950/40 transition-all font-medium">
+                <CheckSquare size={14} />
+                <span className="hidden sm:inline">Custom</span>
+              </Link>
+            </div>
           </div>
 
           {/* ── Error ─────────────────────────────────────────────────── */}

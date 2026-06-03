@@ -281,6 +281,61 @@ export async function deleteSessions(sessionIds) {
   return handleResponse(res)
 }
 
+// ── Custom Checklist Pipeline ─────────────────────────────────────────────────
+
+export async function customUpload({ proposalFile, checklistFile }) {
+  const formData = new FormData()
+  formData.append('proposal', proposalFile)
+  formData.append('checklist', checklistFile)
+
+  const res = await apiFetch(`${API_URL}/custom-upload`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  })
+  return handleResponse(res)
+}
+
+export async function getPreflightStatus(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/preflight-status`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function patchNc1Context(sessionId, overrides) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/nc1-context`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(overrides),
+  })
+  return handleResponse(res)
+}
+
+export async function runCustomAnalysis(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-custom-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function cancelCustomAnalysis(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/cancel-custom-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
+export async function reRunCustom(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/re-run-custom`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
 // ── Chat ─────────────────────────────────────────────────────────────────────
 
 export async function getChatHistory(groupId) {
