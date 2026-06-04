@@ -278,9 +278,11 @@ export default function ProposalCard({ proposal, selected, onToggleSelect, onDel
         <div className="flex items-center gap-2 pt-2.5 border-t" style={{ borderColor: 'var(--card-divider)' }}
           onClick={e => e.stopPropagation()}>
 
-          {/* View Details — highlighted pill button */}
+          {/* View Details — route to custom results page for custom reviews */}
           <Link
-            to={`/results/${proposal.id}`}
+            to={proposal.review_mode === 'custom'
+              ? `/custom-results/${proposal.id}`
+              : `/results/${proposal.id}`}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200
               text-blue-400 bg-blue-950/0 border border-transparent
               group-hover:bg-blue-950/60 group-hover:border-blue-700/60 group-hover:text-blue-300

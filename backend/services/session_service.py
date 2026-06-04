@@ -88,7 +88,7 @@ def get_sessions_by_group(group_id: str, user_id: str) -> List[dict]:
         .select(
             "id, created_at, status, original_filename, file_type, page_count, "
             "version_number, proposal_group_id, parent_session_id, "
-            "agent4_output, report_storage_path"
+            "agent4_output, report_storage_path, review_mode"
         )
         .eq("proposal_group_id", group_id)
         .eq("user_id", user_id)
@@ -133,7 +133,7 @@ def get_user_sessions(user_id: str) -> List[dict]:
         .select(
             "id, created_at, updated_at, status, original_filename, file_type, "
             "page_count, client_industry, proposal_type, client_priorities, agent4_output, "
-            "version_number, proposal_group_id, parent_session_id"
+            "version_number, proposal_group_id, parent_session_id, review_mode"
         )
         .eq("user_id", user_id)
         .order("created_at", desc=True)

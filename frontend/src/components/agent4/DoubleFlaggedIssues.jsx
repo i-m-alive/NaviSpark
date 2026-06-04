@@ -1,7 +1,13 @@
 const AGENT_BADGE = {
+  // Standard pipeline agents
   'Agent 1': 'bg-indigo-950 text-indigo-400 border-indigo-800',
   'Agent 2': 'bg-purple-950 text-purple-400 border-purple-800',
   'Agent 3': 'bg-teal-950 text-teal-400 border-teal-800',
+  // Custom pipeline agents
+  'NC3':  'bg-sky-950 text-sky-400 border-sky-800',
+  'NCR1': 'bg-indigo-950 text-indigo-400 border-indigo-800',
+  'NCR2': 'bg-purple-950 text-purple-400 border-purple-800',
+  'NCR3': 'bg-teal-950 text-teal-400 border-teal-800',
 }
 
 export default function DoubleFlaggedIssues({ issues }) {

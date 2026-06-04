@@ -66,7 +66,36 @@ Step 3: Supabase Auth Settings
 """
 
 import asyncio
+import sys
 from contextlib import asynccontextmanager
+
+# ── Startup dependency check ───────────────────────────────────────────────────
+# Validates that all required packages for the Custom Checklist Pipeline (NC2)
+# are importable in THIS Python process.  If any are missing the server will
+# exit immediately with a clear message instead of failing silently in a thread.
+_REQUIRED_PACKAGES = {
+    "openpyxl":    "pip install openpyxl==3.1.5",
+    "pdfplumber":  "pip install pdfplumber==0.11.9",
+    "docx":        "pip install python-docx==1.2.0",
+    "pptx":        "pip install python-pptx",
+    "pypdf":       "pip install pypdf",
+}
+_missing = []
+for _pkg, _cmd in _REQUIRED_PACKAGES.items():
+    try:
+        __import__(_pkg)
+    except ImportError:
+        _missing.append(f"  {_pkg}  →  {_cmd}")
+if _missing:
+    print("\n" + "─" * 60)
+    print("STARTUP ERROR: Missing required packages.")
+    print("Run the following in your venv and restart:\n")
+    for m in _missing:
+        print(m)
+    print("\nMake sure you start the server with the venv Python:")
+    print("  .\\venv\\Scripts\\uvicorn main:app --reload")
+    print("─" * 60 + "\n")
+    sys.exit(1)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,6 +106,7 @@ from routes.agent_routes import router as agent_router
 from routes.chat_routes import router as chat_router
 from routes.ws_routes import router as ws_router
 from routes.admin_routes import router as admin_router
+from routes.custom_routes import router as custom_router
 from services import event_emitter
 
 
@@ -107,6 +137,7 @@ app.include_router(agent_router)
 app.include_router(chat_router)
 app.include_router(ws_router)
 app.include_router(admin_router)
+app.include_router(custom_router)
 
 
 @app.get("/health")

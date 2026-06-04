@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { uploadRevision, startAnalysis } from '../../api/client'
+import { uploadRevision, startAnalysis, startCustomAnalysis } from '../../api/client'
 import { clsx } from 'clsx'
 import { Upload, FileText, X, ChevronUp, ChevronDown, Loader2, Sparkles, RefreshCw } from 'lucide-react'
 
-export default function UploadRevisionPanel({ sessionId, versionNumber, parentFilename }) {
+export default function UploadRevisionPanel({ sessionId, versionNumber, parentFilename, reviewMode = 'standard' }) {
   const navigate         = useNavigate()
   const fileInputRef     = useRef(null)
 
@@ -37,8 +37,15 @@ export default function UploadRevisionPanel({ sessionId, versionNumber, parentFi
       setUploadedVer(data.version_number)
       setUploading(false)
       setStarting(true)
-      await startAnalysis(data.session_id)
-      navigate(`/results/${data.session_id}`)
+
+      const isCustom = reviewMode === 'custom' || data.review_mode === 'custom'
+      if (isCustom) {
+        await startCustomAnalysis(data.session_id)
+        navigate(`/custom-results/${data.session_id}`)
+      } else {
+        await startAnalysis(data.session_id)
+        navigate(`/results/${data.session_id}`)
+      }
     } catch (err) {
       setError(err.message)
       setUploading(false)
@@ -84,8 +91,10 @@ export default function UploadRevisionPanel({ sessionId, versionNumber, parentFi
                 Submitting V{nextVersion} revision
               </p>
               <p className="text-blue-400/70">
-                All previous context (industry, proposal type, priorities) is inherited.
-                Upload your improved PDF or PPTX and we'll run the full 4-agent analysis again.
+                {reviewMode === 'custom'
+                  ? 'The same checklist and detected context are inherited. Upload your improved PDF or PPTX and we\'ll re-evaluate it against the same custom checklist.'
+                  : 'All previous context (industry, proposal type, priorities) is inherited. Upload your improved PDF or PPTX and we\'ll run the full 4-agent analysis again.'
+                }
               </p>
             </div>
           </div>
