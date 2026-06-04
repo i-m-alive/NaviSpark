@@ -163,9 +163,12 @@ async def re_analyse(
             detail="No file found for this session. Please re-upload the document.",
         )
 
-    # Clear previous outputs and reset to ready
+    # Clear previous outputs and set pipeline_running so the frontend
+    # starts polling immediately (run_full_pipeline also sets this, but
+    # setting it here avoids a race where fetchSession() sees 'ready'
+    # before the background task has a chance to update the status).
     update_session(session_id, user_id, {
-        "status": "ready",
+        "status": "pipeline_running",
         "agent1_output": None,
         "agent2_output": None,
         "agent3_output": None,
@@ -176,7 +179,7 @@ async def re_analyse(
 
     return {
         "session_id": session_id,
-        "status": "pipeline_started",
+        "status": "pipeline_running",
         "message": "Re-analysis started. Poll GET /sessions/{id} for updates.",
     }
 

@@ -261,12 +261,13 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                 "Run the pre-flight step first and ensure the checklist was parsed."
             )
 
-        # Apply any user-edited context overrides stored in the session
-        # (frontend may have PATCH'd the session after user edited the confirm panel)
-        user_overrides = session.get("nc1_user_overrides") or {}
-        if user_overrides:
-            nc1_output.setdefault("auto_detected", {}).update(user_overrides)
-            logger.info("[CUSTOM] [%s] Applied user NC1 overrides: %s", sid, list(user_overrides))
+        # agent1_output already contains the user-confirmed values if the frontend
+        # called POST /confirm-nc1-context before triggering evaluation.
+        # No merging needed here — just read what's stored.
+        is_confirmed = nc1_output.get("user_confirmed", False)
+        if is_confirmed:
+            logger.info("[CUSTOM] [%s] Using user-confirmed NC1 context (confidence=%.0f%%)",
+                        sid, nc1_output.get("confidence", 0) * 100)
 
         nc1_context = nc1_output.get("auto_detected", {})
 

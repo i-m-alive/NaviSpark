@@ -378,37 +378,64 @@ class NC4Agent:
     ) -> dict[str, Any]:
         """Compute checklist coverage statistics across all NC3 results.
 
+        Re-counts from individual findings so that parse-error fallback items
+        (gap = "LLM response could not be parsed") are excluded from the failed
+        count — they represent evaluation infrastructure failures, not genuine
+        proposal gaps, and would otherwise inflate the failure rate.
+
         Args:
             nc3_results: Full NC3 results list.
             nc2_output: NC2 output (for total_items baseline).
 
         Returns:
             Coverage dict with total_items, passed, partial, failed,
-            error_items, pass_rate.
+            error_items, parse_errors, pass_rate.
         """
+        _PARSE_ERR = "llm response could not be parsed"
+
         total_from_nc2 = nc2_output.get("total_items", 0)
-        passed = 0
-        partial = 0
-        failed = 0
+        passed      = 0
+        partial     = 0
+        failed      = 0
+        parse_errors = 0
 
         for result in nc3_results:
             if result.get("status") != "complete":
                 continue
-            passed += result.get("items_passed", 0)
-            partial += result.get("items_partial", 0)
-            failed += result.get("items_failed", 0)
+
+            findings = result.get("findings", [])
+            if findings:
+                # Re-count from individual findings, skipping parse-error fallbacks
+                for f in findings:
+                    gap = (f.get("gap") or "").lower()
+                    if _PARSE_ERR in gap:
+                        parse_errors += 1
+                        continue   # don't count this as a real failure
+                    status = f.get("status", "FAIL")
+                    if status == "PASS":
+                        passed += 1
+                    elif status == "PARTIAL":
+                        partial += 1
+                    else:
+                        failed += 1
+            else:
+                # No findings array — fall back to pre-computed category totals
+                passed  += result.get("items_passed",  0)
+                partial += result.get("items_partial", 0)
+                failed  += result.get("items_failed",  0)
 
         items_evaluated = passed + partial + failed
-        error_items = max(0, total_from_nc2 - items_evaluated)
-        pass_rate = round(passed / items_evaluated, 4) if items_evaluated > 0 else 0.0
+        error_items     = max(0, total_from_nc2 - items_evaluated - parse_errors)
+        pass_rate       = round(passed / items_evaluated, 4) if items_evaluated > 0 else 0.0
 
         return {
-            "total_items": total_from_nc2,
-            "passed": passed,
-            "partial": partial,
-            "failed": failed,
-            "error_items": error_items,
-            "pass_rate": pass_rate,
+            "total_items":   total_from_nc2,
+            "passed":        passed,
+            "partial":       partial,
+            "failed":        failed,
+            "parse_errors":  parse_errors,  # items where LLM response failed to parse
+            "error_items":   error_items,
+            "pass_rate":     pass_rate,
         }
 
 

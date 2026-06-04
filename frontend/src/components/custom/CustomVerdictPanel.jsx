@@ -109,12 +109,13 @@ export default function CustomVerdictPanel({ nc4Output }) {
 
   const { must_fix = [], should_fix = [], next_time = [] } = priority_actions
   const {
-    total_items = 0,
-    passed = 0,
+    passed  = 0,
     partial = 0,
-    failed = 0,
-    pass_rate = 0,
+    failed  = 0,
   } = checklist_coverage
+  // Use evaluated count as denominator (excludes parse errors / unevaluated items)
+  const total_items = passed + partial + failed || 1
+  const pass_rate   = passed / total_items
 
   return (
     <div className="space-y-4">

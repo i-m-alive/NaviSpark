@@ -157,11 +157,15 @@ export default function ContextConfirmPanel({ nc1Summary, onOverridesChange }) {
         </div>
         <div className={clsx(
           'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
-          confidence >= 0.7 ? 'bg-green-950 text-green-300 border-green-800'
+          Object.keys(overrides).length > 0
+            ? 'bg-blue-950 text-blue-300 border-blue-700'
+            : confidence >= 0.7 ? 'bg-green-950 text-green-300 border-green-800'
             : confidence >= 0.4 ? 'bg-yellow-950 text-yellow-300 border-yellow-800'
             : 'bg-red-950 text-red-300 border-red-800'
         )}>
-          Confidence: {confidencePct}%
+          {Object.keys(overrides).length > 0
+            ? `Editing (NC1: ${confidencePct}%)`
+            : `Confidence: ${confidencePct}%`}
         </div>
       </div>
 

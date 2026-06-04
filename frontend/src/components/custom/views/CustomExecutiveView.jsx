@@ -74,7 +74,9 @@ export default function CustomExecutiveView({ output, session }) {
   } = output
 
   const cfg = VERDICT_CFG[verdict] || VERDICT_CFG['NEEDS MAJOR REVISION']
-  const { pass_rate = 0, total_items = 0, passed = 0, failed = 0 } = checklist_coverage
+  const { passed = 0, partial: _partial = 0, failed = 0 } = checklist_coverage
+  const total_items = passed + _partial + failed || 1   // evaluated items only
+  const pass_rate   = passed / total_items
   const nc1 = session?.agent1_output
   const nc2 = session?.agent2_output
   const clientName = nc1?.auto_detected?.client_name

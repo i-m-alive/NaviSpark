@@ -3,6 +3,12 @@ Skill NC1.2 — Context Auto-Detector
 
 Identifies the client industry, proposal type, and client priorities from
 the proposal text using deterministic keyword matching. No LLM calls.
+
+Industry detection uses a SCORING approach: every matched keyword for an
+industry adds one point. Only the top-scoring industries (those with ≥ 2
+keyword hits AND ≥ 33% of the top score) are returned, capped at 3.
+This prevents a single "supply chain" hit from falsely including Retail,
+Manufacturing and Logistics simultaneously.
 """
 
 from __future__ import annotations
@@ -25,11 +31,12 @@ _INDUSTRY_KEYWORDS: dict[str, list[str]] = {
                    "department", "civil service", "g-cloud", "crown commercial", "public body",
                    "hmrc", "dwp", "home office", "nhs trust"],
     "Retail": ["retail", "e-commerce", "ecommerce", "consumer", "omnichannel", "pos",
-               "point of sale", "merchandising", "supply chain", "loyalty programme",
+               "point of sale", "merchandising", "loyalty programme",
                "store operations", "fulfilment"],
     "Manufacturing": ["manufacturing", "factory", "production", "oem", "industrial",
                       "assembly line", "lean manufacturing", "quality control",
-                      "supply chain", "erp", "mes", "scada", "plc"],
+                      "erp", "mes", "scada", "plc", "bill of materials", "work order",
+                      "shop floor", "machining", "fabrication"],
     "Energy": ["energy", "utilities", "oil and gas", "renewable", "solar", "wind",
                "grid", "smart meter", "ofgem", "electricity", "nuclear", "upstream",
                "downstream", "refinery"],
@@ -39,27 +46,25 @@ _INDUSTRY_KEYWORDS: dict[str, list[str]] = {
     "Education": ["education", "school", "university", "college", "student",
                   "curriculum", "edtech", "learning management", "lms", "ofsted",
                   "academy", "higher education", "further education"],
-    "Legal": ["legal", "law firm", "solicitor", "barrister", "compliance",
-              "regulatory", "gdpr", "litigation", "conveyancing", "legal tech",
-              "case management", "court"],
-    "Insurance": ["insurance", "underwriting", "claims", "actuarial", "policy",
-                  "reinsurance", "broker", "lloyd's", "p&c", "life insurance",
+    "Legal": ["law firm", "solicitor", "barrister", "litigation", "conveyancing",
+              "legal tech", "case management", "court", "legal sector"],
+    "Insurance": ["insurance", "underwriting", "claims", "actuarial",
+                  "reinsurance", "lloyd's", "p&c", "life insurance",
                   "health insurance", "premium"],
-    "Real Estate": ["real estate", "property", "landlord", "tenant", "proptech",
-                    "construction", "facilities management", "fm", "building management",
+    "Real Estate": ["real estate", "property management", "landlord", "tenant", "proptech",
+                    "facilities management", "building management",
                     "bms", "reit"],
-    "Logistics": ["logistics", "supply chain", "freight", "shipping", "warehouse",
+    "Logistics": ["logistics", "freight", "shipping", "warehouse",
                   "last mile", "fleet management", "tms", "wms", "customs",
-                  "3pl", "courier", "parcel"],
-    "Technology": ["software", "saas", "platform", "cloud", "aws", "azure", "gcp",
-                   "devops", "microservices", "api", "digital transformation",
-                   "enterprise software", "it services"],
+                  "3pl", "courier", "parcel", "dispatch", "haulage"],
+    "Technology": ["software development", "saas platform", "cloud platform",
+                   "devops", "microservices", "digital transformation",
+                   "enterprise software", "it services", "software vendor"],
     "Defence": ["defence", "defense", "military", "ministry of defence", "mod",
-                "nato", "dstl", "secure", "classified", "mission critical",
-                "command and control", "c2", "armed forces"],
+                "nato", "dstl", "classified", "command and control", "armed forces"],
     "Pharma": ["pharmaceutical", "drug", "fda", "mhra", "clinical trial",
                "gxp", "gmp", "regulatory affairs", "life sciences",
-               "biotech", "r&d", "compound"],
+               "biotech", "r&d lab"],
 }
 
 _PROPOSAL_TYPE_KEYWORDS: dict[str, list[str]] = {
@@ -69,7 +74,7 @@ _PROPOSAL_TYPE_KEYWORDS: dict[str, list[str]] = {
                          "day rate", "daily rate", "hourly rate", "rate card",
                          "time-and-materials"],
     "Managed Services": ["managed services", "managed service", "fully managed",
-                         "as a service", "aaas", "outsourcing", "service wrapper",
+                         "as a service", "outsourcing", "service wrapper",
                          "service management"],
     "Framework Agreement": ["framework agreement", "framework contract", "call-off",
                             "call off", "dps", "dynamic purchasing system",
@@ -89,18 +94,18 @@ _PRIORITY_KEYWORDS: dict[str, list[str]] = {
                         "risk register", "contingency", "risk reduction",
                         "low risk", "proven approach"],
     "Innovation": ["innovation", "innovative", "cutting-edge", "next generation",
-                   "ai", "machine learning", "emerging technology", "digital transformation",
+                   "machine learning", "emerging technology", "digital transformation",
                    "modernisation", "modernization"],
     "Compliance": ["compliance", "gdpr", "regulatory", "iso 27001", "iso27001",
-                   "soc 2", "hipaa", "pci dss", "audit", "governance", "fca",
+                   "soc 2", "hipaa", "pci dss", "audit", "governance",
                    "data protection"],
     "Scalability": ["scalability", "scalable", "elastic", "scale out", "scale up",
-                    "high availability", "ha", "auto-scaling", "growth", "volume"],
-    "Integration": ["integration", "interoperability", "api", "middleware",
+                    "high availability", "auto-scaling", "growth"],
+    "Integration": ["integration", "interoperability", "middleware",
                     "data migration", "legacy system", "connect", "interface",
                     "data exchange", "hl7", "fhir"],
     "Support & Maintenance": ["support", "maintenance", "sla", "helpdesk",
-                               "service desk", "24/7", "incident management",
+                               "service desk", "incident management",
                                "break-fix", "warranty", "hypercare"],
 }
 
@@ -108,105 +113,86 @@ _PRIORITY_KEYWORDS: dict[str, list[str]] = {
 class ContextAutoDetector:
     """Detects client industry, proposal type, and client priorities via keyword matching.
 
-    All matching is case-insensitive. Multiple industries and priorities may be
-    returned. Proposal type returns the first match or "Unknown".
-
-    A ``detection_signals`` list is included in the output so that downstream
-    skills (especially NC1.5 ConfidenceScorer) can assess evidence quality.
+    Industry detection uses keyword scoring (count of matched keywords per
+    industry) so a single shared keyword like 'supply chain' does not falsely
+    include unrelated industries.
     """
 
     def run(self, document_text: str) -> dict[str, Any]:
-        """Detect contextual attributes from proposal text.
-
-        Args:
-            document_text: Raw extracted text of the proposal.
-
-        Returns:
-            A dict with keys:
-              - client_industry (list[str]): matched industries.
-              - proposal_type (str): matched type or "Unknown".
-              - client_priorities (list[str]): matched priorities.
-              - detection_signals (list[dict]): evidence log for confidence scoring.
-        """
         logger.debug("NC1.2 ContextAutoDetector.run() text_len=%d", len(document_text))
 
         lowered = document_text.lower()
         signals: list[dict[str, str]] = []
 
-        client_industry = self._detect_industries(lowered, signals)
-        proposal_type = self._detect_proposal_type(lowered, signals)
+        client_industry  = self._detect_industries(lowered, signals)
+        proposal_type    = self._detect_proposal_type(lowered, signals)
         client_priorities = self._detect_priorities(lowered, signals)
 
-        logger.debug("NC1.2 industries=%s type=%s priorities=%s signals=%d",
-                     client_industry, proposal_type, client_priorities, len(signals))
+        logger.debug(
+            "NC1.2 industries=%s type=%s priorities=%s signals=%d",
+            client_industry, proposal_type, client_priorities, len(signals),
+        )
 
         return {
-            "client_industry": client_industry,
-            "proposal_type": proposal_type,
-            "client_priorities": client_priorities,
-            "detection_signals": signals,
+            "client_industry":    client_industry,
+            "proposal_type":      proposal_type,
+            "client_priorities":  client_priorities,
+            "detection_signals":  signals,
         }
 
     def _detect_industries(self, lowered: str, signals: list[dict[str, str]]) -> list[str]:
-        """Match industry keywords against the lowercased document text.
+        """Score each industry by number of keyword hits; return the top 1-3."""
+        scores: dict[str, int] = {}
 
-        Args:
-            lowered: Lowercased document text.
-            signals: Mutable list to append signal records to.
-
-        Returns:
-            List of matched industry names.
-        """
-        matched: list[str] = []
         for industry, keywords in _INDUSTRY_KEYWORDS.items():
+            hit_count = 0
             for kw in keywords:
                 try:
                     if re.search(re.escape(kw), lowered):
-                        matched.append(industry)
+                        hit_count += 1
                         signals.append({
-                            "field": "client_industry",
+                            "field":   "client_industry",
                             "keyword": kw,
                             "matched": industry,
                         })
-                        break
                 except Exception as exc:
-                    logger.warning("NC1.2 industry regex error for '%s': %s", kw, exc)
-        return matched
+                    logger.warning("NC1.2 industry regex error '%s': %s", kw, exc)
+            if hit_count > 0:
+                scores[industry] = hit_count
+
+        if not scores:
+            return []
+
+        # Sort by score descending
+        ranked = sorted(scores.items(), key=lambda x: -x[1])
+        top_score = ranked[0][1]
+
+        # Include only industries with ≥ 2 hits AND ≥ 33% of top score.
+        # This prevents single-keyword false positives (e.g. "supply chain"
+        # appearing in a manufacturing proposal but not making it look like
+        # a logistics or retail proposal too).
+        min_hits      = max(2, round(top_score * 0.33))
+        filtered      = [ind for ind, count in ranked if count >= min_hits]
+
+        # Hard cap: return at most 3 industries
+        return filtered[:3]
 
     def _detect_proposal_type(self, lowered: str, signals: list[dict[str, str]]) -> str:
-        """Match proposal-type keywords and return the first match.
-
-        Args:
-            lowered: Lowercased document text.
-            signals: Mutable list to append signal records to.
-
-        Returns:
-            Matched proposal type string or "Unknown".
-        """
         for ptype, keywords in _PROPOSAL_TYPE_KEYWORDS.items():
             for kw in keywords:
                 try:
                     if re.search(re.escape(kw), lowered):
                         signals.append({
-                            "field": "proposal_type",
+                            "field":   "proposal_type",
                             "keyword": kw,
                             "matched": ptype,
                         })
                         return ptype
                 except Exception as exc:
-                    logger.warning("NC1.2 proposal_type regex error for '%s': %s", kw, exc)
+                    logger.warning("NC1.2 proposal_type regex error '%s': %s", kw, exc)
         return "Unknown"
 
     def _detect_priorities(self, lowered: str, signals: list[dict[str, str]]) -> list[str]:
-        """Match priority keywords against the lowercased document text.
-
-        Args:
-            lowered: Lowercased document text.
-            signals: Mutable list to append signal records to.
-
-        Returns:
-            List of matched priority names.
-        """
         matched: list[str] = []
         for priority, keywords in _PRIORITY_KEYWORDS.items():
             for kw in keywords:
@@ -214,11 +200,11 @@ class ContextAutoDetector:
                     if re.search(re.escape(kw), lowered):
                         matched.append(priority)
                         signals.append({
-                            "field": "client_priorities",
+                            "field":   "client_priorities",
                             "keyword": kw,
                             "matched": priority,
                         })
                         break
                 except Exception as exc:
-                    logger.warning("NC1.2 priority regex error for '%s': %s", kw, exc)
+                    logger.warning("NC1.2 priority regex error '%s': %s", kw, exc)
         return matched

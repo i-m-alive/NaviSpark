@@ -252,7 +252,12 @@ function nc4ToMarkdown(nc4Output, sessionMeta, nc2Output, nc3Results) {
   lines.push(`## ${verdictEmoji} Verdict: ${verdict}`)
   lines.push('')
   lines.push(`**Overall Score:** ${overall_score.toFixed(1)} / 10`)
-  lines.push(`**Pass Rate:** ${Math.round((checklist_coverage.pass_rate || 0) * 100)}% (${checklist_coverage.passed || 0}/${checklist_coverage.total_items || 0} items)`)
+  const _cPassed   = checklist_coverage.passed  || 0
+  const _cPartial  = checklist_coverage.partial || 0
+  const _cFailed   = checklist_coverage.failed  || 0
+  const _cEval     = _cPassed + _cPartial + _cFailed || 1
+  const _cRate     = Math.round((_cPassed / _cEval) * 100)
+  lines.push(`**Pass Rate:** ${_cRate}% (${_cPassed}/${_cEval} evaluated items)`)
   lines.push('')
 
   if (plain_english_summary) {
@@ -940,7 +945,14 @@ export default function CustomResultsPage() {
                 { label: 'Timeline',      value: nc1Output?.auto_detected?.proposed_timeline },
                 { label: 'Budget',        value: nc1Output?.auto_detected?.budget_range },
                 { label: 'Team Size',     value: nc1Output?.auto_detected?.team_size ? `${nc1Output.auto_detected.team_size} people` : null },
-                { label: 'NC1 Confidence', value: nc1Output?.confidence != null ? `${Math.round(nc1Output.confidence * 100)}%` : null },
+                {
+                  label: nc1Output?.user_confirmed ? 'Context' : 'NC1 Confidence',
+                  value: nc1Output?.user_confirmed
+                    ? `User-confirmed (was ${Math.round((nc1Output.original_confidence || nc1Output.confidence || 0) * 100)}%)`
+                    : nc1Output?.confidence != null
+                    ? `${Math.round(nc1Output.confidence * 100)}%`
+                    : null,
+                },
                 { label: 'Checklist Items', value: nc2Output?.total_items ? `${nc2Output.total_items} items` : null },
                 { label: 'Categories',    value: nc2Output?.categories?.length ? `${nc2Output.categories.length} categories` : null },
                 { label: 'File Type',     value: session.file_type?.toUpperCase() },
