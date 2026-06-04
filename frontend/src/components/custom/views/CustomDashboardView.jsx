@@ -248,17 +248,25 @@ function NCRRingTrio({ ncr1, ncr2, ncr3 }) {
 
 // ── Category Donut (custom pipeline version of ChecklistDonut) ─────────────────
 
-function CategoryDonut({ checklistCoverage }) {
+function CategoryDonut({ nc3Results }) {
   const [animated, setAnimated] = useState(false)
   useEffect(() => { const t = setTimeout(() => setAnimated(true), 300); return () => clearTimeout(t) }, [])
 
-  // checklistCoverage is the raw NC4 object {total_items, passed, partial, failed, pass_rate}
-  const cov = (checklistCoverage && typeof checklistCoverage === 'object' && !Array.isArray(checklistCoverage))
-    ? checklistCoverage : {}
-  const passed  = cov.passed  || 0
-  const partial = cov.partial || 0
-  const failed  = cov.failed  || 0
-  const total   = cov.total_items || (passed + partial + failed) || 1
+  // Compute counts directly from NC3 findings — the authoritative live source.
+  // This guarantees passed+partial+failed always equals the denominator shown.
+  const _PARSE_ERR = 'llm response could not be parsed'
+  let passed = 0, partial = 0, failed = 0
+  ;(nc3Results || []).forEach(cat => {
+    if (cat.status !== 'complete') return
+    ;(cat.findings || []).forEach(f => {
+      const gap = (f.gap || '').toLowerCase()
+      if (gap.includes(_PARSE_ERR)) return   // skip parse-error fallbacks
+      if (f.status === 'PASS')    passed++
+      else if (f.status === 'PARTIAL') partial++
+      else                        failed++
+    })
+  })
+  const total = passed + partial + failed || 1
 
   const size = 130, r = 46, sw = 18, cx = size/2, cy = size/2
   const circ = 2*Math.PI*r
@@ -283,7 +291,7 @@ function CategoryDonut({ checklistCoverage }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       <ChartHeader title="Checklist Overview"
-        info="Donut chart showing overall checklist pass rate. Percentage in the centre is the proportion of items fully passed by the proposal." />
+        info="Shows how many of the evaluated checklist items were passed, partially addressed, or failed. The denominator is the number of items that were actually evaluated (unevaluated items are excluded)." />
       <div className="flex items-center gap-5">
         <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
           <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
@@ -309,7 +317,9 @@ function CategoryDonut({ checklistCoverage }) {
                   <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: seg.color }} />
                   {seg.label}
                 </span>
-                <span className="text-xs font-mono font-bold" style={{ color: seg.lightColor }}>{seg.count}/{total}</span>
+                <span className="text-xs font-mono font-bold" style={{ color: seg.lightColor }}>
+                  {seg.count}/{total}
+                </span>
               </div>
               <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-1000"
@@ -613,10 +623,14 @@ export default function CustomDashboardView({ output, session }) {
     priority_actions,
     double_flagged_issues,
     cross_consistency_issues,
-    checklist_coverage,                            // raw NC4 object {passed, partial, failed, total_items}
+    checklist_coverage,                            // adapted array (FullChecklistGrid compat)
     section_scorecard,                             // NC4.7 dimensions OR category_scores
     category_scores,                               // NC3 per-category scores
   } = output
+
+  // Raw NC4 checklist_coverage dict {passed, partial, failed, total_items, parse_errors}
+  // Passed through the adapter as output._nc4.checklist_coverage
+  const rawCoverage = output?._nc4?.checklist_coverage || {}
 
   const nc3Results = session?.agent3_output || []
 
@@ -640,7 +654,7 @@ export default function CustomDashboardView({ output, session }) {
       {/* ── Row 2: Gauge + Donut + Priority Column ───────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GaugeChart score={overall_score} />
-        <CategoryDonut checklistCoverage={checklist_coverage} />
+        <CategoryDonut nc3Results={nc3Results} />
         <PriorityColumnChart priorityActions={priority_actions} />
       </div>
 

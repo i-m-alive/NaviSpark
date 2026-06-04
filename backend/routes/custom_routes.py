@@ -236,36 +236,62 @@ async def get_preflight_status(
     }
 
 
-# ── PATCH /sessions/{id}/nc1-context ─────────────────────────────────────────
+# ── POST /sessions/{id}/confirm-nc1-context ──────────────────────────────────
 
-@router.patch("/sessions/{session_id}/nc1-context")
-async def patch_nc1_context(
+@router.post("/sessions/{session_id}/confirm-nc1-context")
+async def confirm_nc1_context(
     session_id: str,
     body: dict,
     authorization: Optional[str] = Header(None),
 ):
     """
-    Save user-edited NC1 context fields (industry, proposal_type, priorities, etc.)
-    before the user triggers the full NC3/NC4 evaluation.
+    Merge the user-confirmed/edited NC1 context directly into agent1_output
+    BEFORE the evaluation starts.  No extra DB columns required.
 
-    The custom pipeline will merge these overrides on top of the NC1 auto-detected
-    values when building NC3 prompts.
+    Body: { "client_industry": [...], "proposal_type": "...", "client_name": "...", ... }
 
-    Body: { "client_industry": [...], "proposal_type": "...", ... }
+    Only non-empty values override the auto-detected ones.
+    Sets confidence = 1.0 and user_confirmed = True so the results page
+    shows that the context was manually verified.
     """
     user = await get_current_user(authorization)
     user_id = user["id"]
 
     session = get_session(session_id, user_id)
-    if session.get("review_mode") != "custom":
-        raise HTTPException(status_code=400, detail="Session is not a custom checklist review.")
 
-    # Merge with existing overrides
-    existing_overrides = session.get("nc1_user_overrides") or {}
-    existing_overrides.update(body)
+    nc1_output: dict = session.get("agent1_output") or {}
 
-    update_session(session_id, user_id, {"nc1_user_overrides": existing_overrides})
-    return {"session_id": session_id, "nc1_user_overrides": existing_overrides}
+    # Merge confirmed values into auto_detected — only non-empty values
+    auto = nc1_output.get("auto_detected", {})
+    for key, value in body.items():
+        # Accept any truthy value OR explicit empty-list reset
+        if value is not None and value != "":
+            auto[key] = value
+
+    nc1_output["auto_detected"]        = auto
+    nc1_output["user_confirmed"]        = True
+    nc1_output["original_confidence"]   = nc1_output.get("confidence", 0.0)
+    nc1_output["confidence"]            = 1.0   # user-confirmed = 100% reliable
+
+    update_session(session_id, user_id, {"agent1_output": nc1_output})
+
+    logger.info(
+        "[CONFIRM-NC1] session=%s user_id=%s updated fields=%s",
+        session_id[:8], user_id[:8], list(body.keys()),
+    )
+    return {"session_id": session_id, "status": "confirmed", "fields_updated": list(body.keys())}
+
+
+# ── PATCH /sessions/{id}/nc1-context (legacy — kept for compatibility) ────────
+
+@router.patch("/sessions/{session_id}/nc1-context")
+async def patch_nc1_context_legacy(
+    session_id: str,
+    body: dict,
+    authorization: Optional[str] = Header(None),
+):
+    """Deprecated — redirects to confirm-nc1-context."""
+    return await confirm_nc1_context(session_id, body, authorization)
 
 
 # ── POST /sessions/{id}/run-custom-analysis ───────────────────────────────────

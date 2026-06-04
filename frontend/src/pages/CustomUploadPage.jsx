@@ -8,7 +8,7 @@ import {
 import Navbar from '../components/Navbar'
 import ChecklistPreview from '../components/custom/ChecklistPreview'
 import ContextConfirmPanel from '../components/custom/ContextConfirmPanel'
-import { customUpload, getPreflightStatus, patchNc1Context, runCustomAnalysis, getSession } from '../api/client'
+import { customUpload, getPreflightStatus, confirmNc1Context, runCustomAnalysis, getSession } from '../api/client'
 
 const ACCEPTED_PROPOSALS  = '.pdf,.pptx,.ppt'
 const ACCEPTED_CHECKLISTS = '.xlsx,.xlsm,.csv,.docx,.pdf'
@@ -167,10 +167,30 @@ export default function CustomUploadPage() {
     setError('')
     setStep(4)
     try {
-      // Save any user-edited NC1 overrides
-      if (Object.keys(nc1Overrides).length > 0) {
-        await patchNc1Context(sessionId, nc1Overrides)
+      // Build the FULL effective context: original NC1 values + any user edits.
+      // We always send this (even if no edits) so agent1_output is guaranteed
+      // to have user_confirmed=true and correct values before evaluation starts.
+      const nc1Summary = preflightData?.nc1_summary || {}
+      const effectiveContext = {
+        // NC1 auto-detected originals
+        client_industry:      nc1Summary.client_industry,
+        proposal_type:        nc1Summary.proposal_type,
+        client_priorities:    nc1Summary.client_priorities,
+        client_name:          nc1Summary.client_name,
+        vendor_name:          nc1Summary.vendor_name,
+        project_name:         nc1Summary.project_name,
+        proposed_timeline:    nc1Summary.proposed_timeline,
+        budget_range:         nc1Summary.budget_range,
+        team_size:            nc1Summary.team_size,
+        delivery_methodology: nc1Summary.delivery_methodology,
+        // Override with anything the user edited — these take priority
+        ...nc1Overrides,
       }
+
+      // Save confirmed context directly into agent1_output (no DB migration needed)
+      await confirmNc1Context(sessionId, effectiveContext)
+
+      // Now start the evaluation — agent1_output already has confirmed values
       await runCustomAnalysis(sessionId)
       navigate(`/custom-results/${sessionId}`)
     } catch (err) {

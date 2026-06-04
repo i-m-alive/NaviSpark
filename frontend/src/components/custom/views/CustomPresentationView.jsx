@@ -45,7 +45,9 @@ export default function CustomPresentationView({ output, session }) {
   const nc1 = session?.agent1_output
   const ad  = nc1?.auto_detected || {}
   const { must_fix = [], should_fix = [] } = priority_actions
-  const { total_items = 0, passed = 0, failed = 0, pass_rate = 0 } = checklist_coverage
+  const { passed = 0, partial: _partial = 0, failed = 0 } = checklist_coverage
+  const total_items = passed + _partial + failed || 1   // evaluated items only
+  const pass_rate   = passed / total_items
 
   const verdictAccent = verdict === 'READY TO SEND' ? 'green'
     : verdict === 'DO NOT SEND' ? 'red' : 'orange'

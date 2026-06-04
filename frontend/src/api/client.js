@@ -311,13 +311,22 @@ export async function getPreflightStatus(sessionId) {
   return handleResponse(res)
 }
 
-export async function patchNc1Context(sessionId, overrides) {
-  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/nc1-context`, {
-    method: 'PATCH',
+export async function confirmNc1Context(sessionId, confirmedContext) {
+  /**
+   * Saves user-confirmed NC1 context directly into agent1_output before evaluation.
+   * Replaces the old patchNc1Context approach — no nc1_user_overrides column needed.
+   */
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/confirm-nc1-context`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify(overrides),
+    body: JSON.stringify(confirmedContext),
   })
   return handleResponse(res)
+}
+
+export async function patchNc1Context(sessionId, overrides) {
+  // Legacy — kept for compatibility; new code uses confirmNc1Context
+  return confirmNc1Context(sessionId, overrides)
 }
 
 export async function runCustomAnalysis(sessionId) {
