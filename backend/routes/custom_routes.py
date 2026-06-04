@@ -436,18 +436,36 @@ async def re_run_custom(
             "message": "Pipeline already running.",
         }
 
-    update_session(session_id, user_id, {
-        "status": "uploading",
-        "agent1_output": None,
-        "agent2_output": None,
-        "agent3_output": None,
-        "agent4_output": None,
-        "nc1_user_overrides": None,
-    })
+    # If NC1/NC2 outputs exist, skip preflight and jump straight to NC3+NC4.
+    # If they're missing (e.g., cancelled mid-preflight), fall back to full pipeline.
+    nc2_output = session.get("agent2_output") or {}
+    has_preflight = bool(nc2_output.get("categories"))
 
-    background_tasks.add_task(run_preflight, session_id, user_id)
+    if has_preflight:
+        # Keep NC1+NC2 — document and checklist haven't changed.
+        update_session(session_id, user_id, {
+            "status": "pipeline_running",
+            "agent3_output": None,
+            "agent4_output": None,
+        })
+        background_tasks.add_task(run_custom_pipeline, session_id, user_id)
+        message = "Re-analysis started. NC3+NC4 re-running against existing context."
+    else:
+        # Preflight data is missing — restart from scratch.
+        update_session(session_id, user_id, {
+            "status": "uploading",
+            "agent1_output": None,
+            "agent2_output": None,
+            "agent3_output": None,
+            "agent4_output": None,
+            "nc1_user_overrides": None,
+        })
+        background_tasks.add_task(run_preflight, session_id, user_id)
+        message = "Re-analysis started from preflight (NC1+NC2 data was missing)."
+
+    return_status = "pipeline_running" if has_preflight else "uploading"
     return {
         "session_id": session_id,
-        "status": "uploading",
-        "message": "Custom pipeline re-started. NC1+NC2 pre-flight running in background.",
+        "status": return_status,
+        "message": message,
     }
