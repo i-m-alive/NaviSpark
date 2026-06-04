@@ -9,6 +9,7 @@ from agents.agent3 import run as run_agent3_analysis
 from agents.agent4 import run as run_agent4_analysis
 from agents.agent5 import run as run_agent5_analysis
 from agents.agent5.markdown_formatter import format_to_markdown as _a5_md
+from agents.cache_agent import run as run_cache_agent
 from services.session_service import get_session, update_session, create_session, get_sessions_by_group
 from services.pipeline_service import run_full_pipeline
 from services.pptx_modifier import apply_modifications
@@ -246,6 +247,10 @@ async def run_agent1(
         session_id[:8],
     )
 
+    # Cache Agent — seed Bedrock prompt cache before invoking Agent 1
+    if not pre_processed_context:
+        run_cache_agent(pdf_bytes=pdf_bytes, file_type=file_type, sid=session_id[:8])
+
     # Run Agent 1 — all skill orchestration is inside agents/agent1/agent.py
     try:
         _result1 = run_agent1_analysis(
@@ -341,6 +346,10 @@ async def run_agent2(
         session_id[:8],
     )
 
+    # Cache Agent — seed Bedrock prompt cache before invoking Agent 2
+    if not pre_processed_context:
+        run_cache_agent(pdf_bytes=pdf_bytes, file_type=file_type, sid=session_id[:8])
+
     # Run Agent 2 — all skill orchestration is inside agents/agent2/agent.py
     try:
         _result2 = run_agent2_analysis(
@@ -435,6 +444,10 @@ async def run_agent3(
         client_industry, proposal_type, client_priorities,
         session_id[:8],
     )
+
+    # Cache Agent — seed Bedrock prompt cache before invoking Agent 3
+    if not pre_processed_context:
+        run_cache_agent(pdf_bytes=pdf_bytes, file_type=file_type, sid=session_id[:8])
 
     # Run Agent 3 — all skill orchestration is inside agents/agent3/agent.py
     try:
