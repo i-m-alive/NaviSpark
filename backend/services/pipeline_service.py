@@ -19,6 +19,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
+from agents.cache_agent import run as _run_cache_agent
 from agents.agent1 import run as _run_agent1
 from agents.agent2 import run as _run_agent2
 from agents.agent3 import run as _run_agent3
@@ -128,6 +129,36 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
         else:
             logger.info("[PIPELINE] [%s] [+%s] Document within threshold — passing raw file to agents",
                         sid, _elapsed())
+
+        # ── Cache Agent — seed Bedrock prompt cache BEFORE parallel agents ────
+        # Skipped when chunking already pre-processed the document (chunked JSON
+        # has no raw bytes to cache).
+        #
+        # On first run  → cache_creation_input_tokens > 0 in logs (cache written)
+        # On re-analysis → cache_read_input_tokens    > 0 in logs (cache hit, ~10% cost)
+        if not pre_processed_context:
+            logger.info("─" * 60)
+            logger.info("[PIPELINE] [%s] [+%s] Cache Agent: seeding Bedrock prompt cache...", sid, _elapsed())
+            cache_emit = event_emitter.make_emitter(session_id, "cache_agent")
+            cache_stats = await _in_thread(partial(
+                _run_cache_agent,
+                pdf_bytes=file_bytes,
+                file_type=file_type,
+                sid=sid,
+                emit=cache_emit,
+            ))
+            logger.info(
+                "[PIPELINE] [%s] [+%s] Cache Agent — created: %d  read: %d  active: %s",
+                sid, _elapsed(),
+                cache_stats.get("cache_creation_input_tokens", 0),
+                cache_stats.get("cache_read_input_tokens", 0),
+                cache_stats.get("cache_active", False),
+            )
+        else:
+            logger.info(
+                "[PIPELINE] [%s] [+%s] Cache Agent skipped — using pre-processed chunked context",
+                sid, _elapsed(),
+            )
 
         # ── Step 1: Agents 1, 2, 3 in parallel ───────────────────────────────
         logger.info("─" * 60)
