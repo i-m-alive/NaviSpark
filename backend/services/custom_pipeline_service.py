@@ -31,6 +31,7 @@ from services.session_service import get_session, update_session
 from services.checklist_parser_service import extract_proposal_text, download_checklist_to_tempfile
 from storage import download_file_from_storage, save_agent_output_to_storage
 from services import event_emitter
+from agents.cache_agent import run as _run_cache_agent
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,24 @@ async def run_preflight(session_id: str, user_id: str) -> None:
 
         proposal_text = await _in_thread(partial(extract_proposal_text, file_bytes, file_type))
         logger.info("[PREFLIGHT] [%s] Proposal text: %d chars", sid, len(proposal_text))
+
+        # ── Cache Agent — seed Bedrock prompt cache before NC1 + NC2 ─────────
+        logger.info("[PREFLIGHT] [%s] Cache Agent: seeding Bedrock prompt cache...", sid)
+        cache_emit = event_emitter.make_emitter(session_id, "cache_agent")
+        cache_stats = await _in_thread(partial(
+            _run_cache_agent,
+            pdf_bytes=file_bytes,
+            file_type=file_type,
+            sid=sid,
+            emit=cache_emit,
+        ))
+        logger.info(
+            "[PREFLIGHT] [%s] Cache Agent — created: %d  read: %d  active: %s",
+            sid,
+            cache_stats.get("cache_creation_input_tokens", 0),
+            cache_stats.get("cache_read_input_tokens", 0),
+            cache_stats.get("cache_active", False),
+        )
 
         # ── Download checklist to temp file ───────────────────────────────────
         _pipe("Downloading checklist for parsing")
@@ -279,6 +298,24 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
         file_bytes = await _in_thread(partial(download_file_from_storage, storage_path))
         proposal_text = await _in_thread(partial(extract_proposal_text, file_bytes, file_type))
         logger.info("[CUSTOM] [%s] Proposal text: %d chars", sid, len(proposal_text))
+
+        # ── Cache Agent — seed Bedrock prompt cache before NC3 fan-out ────────
+        logger.info("[CUSTOM] [%s] Cache Agent: seeding Bedrock prompt cache...", sid)
+        cache_emit = event_emitter.make_emitter(session_id, "cache_agent")
+        cache_stats = await _in_thread(partial(
+            _run_cache_agent,
+            pdf_bytes=file_bytes,
+            file_type=file_type,
+            sid=sid,
+            emit=cache_emit,
+        ))
+        logger.info(
+            "[CUSTOM] [%s] Cache Agent — created: %d  read: %d  active: %s",
+            sid,
+            cache_stats.get("cache_creation_input_tokens", 0),
+            cache_stats.get("cache_read_input_tokens", 0),
+            cache_stats.get("cache_active", False),
+        )
 
         # ── Cancellation checkpoint ───────────────────────────────────────────
         if _is_cancelled(session_id, user_id):

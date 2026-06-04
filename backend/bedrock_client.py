@@ -22,18 +22,40 @@ def reset_token_accumulator() -> None:
     """Reset the per-thread token counters to zero. Call at the start of each agent run."""
     _token_accumulator.input_tokens = 0
     _token_accumulator.output_tokens = 0
+    _token_accumulator.cache_creation_input_tokens = 0
+    _token_accumulator.cache_read_input_tokens = 0
 
 
 def get_accumulated_tokens() -> dict:
     """Return the tokens accumulated since the last reset on this thread."""
-    inp = getattr(_token_accumulator, "input_tokens", 0)
-    out = getattr(_token_accumulator, "output_tokens", 0)
-    return {"input_tokens": inp, "output_tokens": out, "total_tokens": inp + out}
+    inp     = getattr(_token_accumulator, "input_tokens", 0)
+    out     = getattr(_token_accumulator, "output_tokens", 0)
+    created = getattr(_token_accumulator, "cache_creation_input_tokens", 0)
+    read    = getattr(_token_accumulator, "cache_read_input_tokens", 0)
+    return {
+        "input_tokens": inp,
+        "output_tokens": out,
+        "total_tokens": inp + out,
+        "cache_creation_input_tokens": created,
+        "cache_read_input_tokens": read,
+    }
 
 
 def _accumulate_tokens(usage: dict) -> None:
-    _token_accumulator.input_tokens = getattr(_token_accumulator, "input_tokens", 0) + usage.get("input_tokens", 0)
-    _token_accumulator.output_tokens = getattr(_token_accumulator, "output_tokens", 0) + usage.get("output_tokens", 0)
+    _token_accumulator.input_tokens = (
+        getattr(_token_accumulator, "input_tokens", 0) + usage.get("input_tokens", 0)
+    )
+    _token_accumulator.output_tokens = (
+        getattr(_token_accumulator, "output_tokens", 0) + usage.get("output_tokens", 0)
+    )
+    _token_accumulator.cache_creation_input_tokens = (
+        getattr(_token_accumulator, "cache_creation_input_tokens", 0)
+        + usage.get("cache_creation_input_tokens", 0)
+    )
+    _token_accumulator.cache_read_input_tokens = (
+        getattr(_token_accumulator, "cache_read_input_tokens", 0)
+        + usage.get("cache_read_input_tokens", 0)
+    )
 
 # boto3 client config — adaptive retry mode handles short throttle windows;
 # our own _invoke_bedrock_with_retry handles sustained token-bucket exhaustion.
@@ -199,21 +221,58 @@ def _extract_pptx_text(pptx_bytes: bytes) -> str:
     return "\n\n".join(slides_text) if slides_text else "(No text content found in presentation)"
 
 
+def _log_bedrock_usage(usage: dict, tag: str = "[BEDROCK]") -> None:
+    """
+    Logs Bedrock token usage with cache metrics when present.
+
+    How to read the output:
+      cache_created > 0  →  Cache WRITTEN this call (costs ~1.25× normal for that portion).
+                            Subsequent calls with same doc prefix will hit the cache cheaply.
+      cache_read    > 0  →  Cache HIT — those tokens cost only ~0.10× normal price.
+      both == 0          →  No caching activity. Either caching is unsupported in this
+                            region/model, or the prompt doesn't meet the minimum token
+                            threshold for caching (~1,024 tokens).
+    """
+    inp     = usage.get("input_tokens", 0)
+    out     = usage.get("output_tokens", 0)
+    created = usage.get("cache_creation_input_tokens", 0)
+    read    = usage.get("cache_read_input_tokens", 0)
+
+    if created > 0 or read > 0:
+        logger.info(
+            "%s tokens — input: %d  output: %d  "
+            "cache_created: %d  cache_read: %d  effective_new_input: %d",
+            tag, inp, out, created, read, inp - read,
+        )
+    else:
+        logger.info(
+            "%s tokens — input: %d  output: %d  (no cache activity)",
+            tag, inp, out,
+        )
+
+
 def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: bytes, file_type: str = "pdf") -> dict:
     """
     Calls the configured Claude model on Bedrock with a document.
-    - PDF: sent as a native base64 document block.
+    - PDF: sent as a native base64 document block (with cache_control=ephemeral).
     - PPTX/PPT: text extracted slide-by-slide and prepended to the user message.
     """
     client = get_bedrock_client()
 
     if file_type in ("pptx", "ppt"):
         slide_content = _extract_pptx_text(pdf_bytes)
+        # Split into two blocks so the document text is cached separately from
+        # the agent-specific task instructions (cache_control marks the breakpoint).
         content = [
             {
                 "type": "text",
-                "text": f"PROPOSAL CONTENT (PowerPoint presentation, {file_type.upper()}):\n\n{slide_content}\n\n{user_message}",
-            }
+                "text": f"PROPOSAL CONTENT (PowerPoint presentation, {file_type.upper()}):\n\n{slide_content}",
+                "cache_control": {"type": "ephemeral"},
+            },
+            {
+                "type": "text",
+                "text": user_message,
+            },
         ]
     else:
         pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
@@ -225,6 +284,7 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
                     "media_type": "application/pdf",
                     "data": pdf_b64,
                 },
+                "cache_control": {"type": "ephemeral"},
             },
             {
                 "type": "text",
@@ -255,11 +315,7 @@ def invoke_agent_with_pdf(system_prompt: str, user_message: str, pdf_bytes: byte
         raw_text = response_body["content"][0]["text"]
         usage = response_body.get("usage", {})
         _accumulate_tokens(usage)
-        logger.info(
-            "[BEDROCK] tokens — input: %s  output: %s  (model context limit: 200,000)",
-            usage.get("input_tokens", "?"),
-            usage.get("output_tokens", "?"),
-        )
+        _log_bedrock_usage(usage)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read Bedrock response: {str(e)}")
 
@@ -295,11 +351,7 @@ def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: in
         raw_text = response_body["content"][0]["text"]
         usage = response_body.get("usage", {})
         _accumulate_tokens(usage)
-        logger.info(
-            "[BEDROCK] tokens — input: %s  output: %s  (model context limit: 200,000)",
-            usage.get("input_tokens", "?"),
-            usage.get("output_tokens", "?"),
-        )
+        _log_bedrock_usage(usage, "[BEDROCK][text-only]")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read Bedrock response: {str(e)}")
 
@@ -311,6 +363,114 @@ def invoke_agent_text_only(system_prompt: str, user_message: str, max_tokens: in
             status_code=500,
             detail=f"Model returned invalid JSON. Error: {str(e)}. Raw (first 500): {raw_text[:500]}"
         )
+
+
+# ── Cache Agent — document pre-warm ───────────────────────────────────────────
+
+_CACHE_AGENT_SYSTEM = (
+    "You are a document pre-processor for the NaviSpark proposal review system. "
+    "Acknowledge receipt of the attached proposal document."
+)
+
+
+def prewarm_document_cache(pdf_bytes: bytes, file_type: str = "pdf", sid: str = "") -> dict:
+    """
+    Sends the proposal document to Bedrock with cache_control=ephemeral so the
+    Bedrock prompt cache is seeded before the specialist agents run.
+
+    Called by the Cache Agent at the top of both pipelines.
+
+    Returns a dict with cache metrics:
+      cache_creation_input_tokens  >0 → cache WRITTEN (first call or TTL expired)
+      cache_read_input_tokens      >0 → cache HIT     (~10% cost vs full re-read)
+      both == 0                       → caching inactive in this region/model
+
+    Non-fatal: any Bedrock error logs a warning and returns zero stats so the
+    pipeline continues without interruption.
+    """
+    client = get_bedrock_client()
+    tag = f"[CACHE_AGENT][{sid}]" if sid else "[CACHE_AGENT]"
+
+    if file_type in ("pptx", "ppt"):
+        slide_content = _extract_pptx_text(pdf_bytes)
+        content = [
+            {
+                "type": "text",
+                "text": f"PROPOSAL CONTENT (PowerPoint presentation, {file_type.upper()}):\n\n{slide_content}",
+                "cache_control": {"type": "ephemeral"},
+            },
+            {"type": "text", "text": "Acknowledge receipt of this proposal document."},
+        ]
+    else:
+        pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+        content = [
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": pdf_b64,
+                },
+                "cache_control": {"type": "ephemeral"},
+            },
+            {"type": "text", "text": "Acknowledge receipt of this proposal document."},
+        ]
+
+    request_body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 10,
+        "temperature": 0,
+        "system": _CACHE_AGENT_SYSTEM,
+        "messages": [{"role": "user", "content": content}],
+    }
+
+    _zero = {"input_tokens": 0, "output_tokens": 0,
+              "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+
+    try:
+        response = _invoke_bedrock_with_retry(client, request_body)
+    except Exception as exc:
+        logger.warning("%s Pre-warm call failed (non-fatal, pipeline continues): %s", tag, exc)
+        return _zero
+
+    try:
+        response_body = json.loads(response["body"].read())
+        usage = response_body.get("usage", {})
+    except Exception as exc:
+        logger.warning("%s Could not parse pre-warm response (non-fatal): %s", tag, exc)
+        return _zero
+
+    created = usage.get("cache_creation_input_tokens", 0)
+    read    = usage.get("cache_read_input_tokens", 0)
+    inp     = usage.get("input_tokens", 0)
+
+    if created > 0:
+        logger.info(
+            "%s ✓ Cache WRITTEN — %d tokens stored "
+            "(re-analysis of this doc within 5 min will read at ~10%% cost)",
+            tag, created,
+        )
+    elif read > 0:
+        logger.info(
+            "%s ✓ Cache HIT — %d tokens read from cache at ~10%% cost  "
+            "(saved ~%d tokens vs full re-read)",
+            tag, read, int(read * 0.9),
+        )
+    else:
+        logger.warning(
+            "%s ✗ No cache activity (input_tokens=%d). "
+            "Prompt caching may not be enabled for model '%s' in region '%s'. "
+            "Check: AWS Bedrock console → your model → 'Prompt caching' column.",
+            tag, inp, settings.bedrock_model_id, settings.aws_region,
+        )
+
+    return {
+        "input_tokens": inp,
+        "output_tokens": usage.get("output_tokens", 0),
+        "cache_creation_input_tokens": created,
+        "cache_read_input_tokens": read,
+        "cache_active": created > 0 or read > 0,
+    }
 
 
 # ── Chunking: per-chunk summarisation ─────────────────────────────────────────
