@@ -77,12 +77,12 @@ function ActionItem({ item, cfg, index }) {
   )
 }
 
-export default function PriorityActionList({ priorityActions }) {
+export default function PriorityActionList({ priorityActions, hideTiers = [] }) {
   const [active, setActive] = useState('must_fix')
 
   if (!priorityActions) return null
 
-  const tiers = ['must_fix', 'should_fix', 'next_time', 'internal']
+  const tiers = ['must_fix', 'should_fix', 'next_time', 'internal'].filter(t => !hideTiers.includes(t))
   const activeItems = priorityActions[active] || []
   const cfg = TIER_CONFIG[active]
 

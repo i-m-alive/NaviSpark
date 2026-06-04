@@ -198,6 +198,14 @@ export async function startAnalysis(sessionId) {
   return handleResponse(res)
 }
 
+export async function startCustomAnalysis(sessionId) {
+  const res = await apiFetch(`${API_URL}/sessions/${sessionId}/run-custom-analysis`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+  })
+  return handleResponse(res)
+}
+
 export async function cancelAnalysis(sessionId) {
   const res = await apiFetch(`${API_URL}/sessions/${sessionId}/cancel-analysis`, {
     method: 'POST',

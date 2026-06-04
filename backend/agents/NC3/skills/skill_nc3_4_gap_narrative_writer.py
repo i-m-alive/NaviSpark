@@ -13,21 +13,40 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Severity thresholds use combined_weight = item_weight × category_weight.
+#
+# Old thresholds (0.30/0.15/0.05) were calibrated for a small number of
+# high-weight items (e.g., 3-5 checklist sections, each worth 0.30-0.40).
+# Custom checklists typically have 8+ categories at equal weight (0.125 each),
+# so every item produced combined_weight ~0.125, classified as "minor", and
+# everything landed in "should_fix" — nothing ever in "must_fix" or "next_time".
+#
+# New thresholds are calibrated to be relative to typical checklist structures:
+#   critical  (≥ 0.20): high-weight category — 4 equal categories or fewer, or
+#                         a category explicitly given >20% weight
+#   major     (≥ 0.08): normal-weight category — 8–12 equal categories covers
+#                         this range (1/8 = 0.125, 1/12 = 0.083); FAIL → must_fix
+#   minor     (≥ 0.02): low-weight category — 15-50 equal categories
+#   advisory  (< 0.02): very low weight; informational only
 _SEVERITY_THRESHOLDS: tuple[tuple[float, str], ...] = (
-    (0.30, "critical"),
-    (0.15, "major"),
-    (0.05, "minor"),
-    (0.0, "advisory"),
+    (0.20, "critical"),
+    (0.08, "major"),
+    (0.02, "minor"),
+    (0.0,  "advisory"),
 )
 
+# PARTIAL minor items move to next_time so the 3-tier split is meaningful:
+#   must_fix   — FAIL in any important category (major/critical)
+#   should_fix — PARTIAL in important category OR FAIL in low-weight category
+#   next_time  — PARTIAL in low-weight category; purely advisory items
 _ACTION_TIERS: dict[tuple[str, str], str] = {
-    ("critical", "FAIL"): "must_fix",
+    ("critical", "FAIL"):    "must_fix",
     ("critical", "PARTIAL"): "must_fix",
-    ("major", "FAIL"): "must_fix",
-    ("major", "PARTIAL"): "should_fix",
-    ("minor", "FAIL"): "should_fix",
-    ("minor", "PARTIAL"): "should_fix",
-    ("advisory", "FAIL"): "next_time",
+    ("major",    "FAIL"):    "must_fix",
+    ("major",    "PARTIAL"): "should_fix",
+    ("minor",    "FAIL"):    "should_fix",
+    ("minor",    "PARTIAL"): "next_time",
+    ("advisory", "FAIL"):    "next_time",
     ("advisory", "PARTIAL"): "next_time",
 }
 

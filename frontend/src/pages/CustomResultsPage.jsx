@@ -36,13 +36,13 @@ import TopStrengths         from '../components/agent4/TopStrengths'
 // Existing multi-view components (work with adapted NC4 data)
 import ExecutiveView    from '../components/results/ExecutiveView'
 import ActionPlanView   from '../components/results/ActionPlanView'
-import CustomDashboardView from '../components/custom/views/CustomDashboardView'
 import PresentationView from '../components/results/PresentationView'
 import ComparisonView   from '../components/results/ComparisonView'
 import UploadRevisionPanel   from '../components/results/UploadRevisionPanel'
 import DocumentSidebar       from '../components/results/DocumentSidebar'
 import ComparisonDashboard   from '../components/results/ComparisonDashboard'
-// NC4-specific views (need NC3 per-category data)
+// NC4-specific views (custom pipeline)
+import CustomDashboardView  from '../components/custom/views/CustomDashboardView'
 import CustomInDepthView    from '../components/custom/views/CustomInDepthView'
 import CustomStoryboardView from '../components/custom/views/CustomStoryboardView'
 // NC4-specific components
@@ -95,12 +95,20 @@ export function adaptNc4ToAgent4(nc4Output, nc3Results, nc2Output, nc1Output) {
   if (!nc4Output) return null
 
   const {
-    category_scores    = {},
-    priority_actions   = {},
+    category_scores      = {},
+    priority_actions     = {},
     consistency_warnings = [],
-    top_3_strengths    = [],
-    overall_score      = 0,
-    verdict            = '',
+    top_3_strengths      = [],
+    overall_score        = 0,
+    verdict              = '',
+    error_categories     = [],
+    verdict_meta         = {},
+    nc2_scoring_type,
+    nc2_weights_source,
+    checklist_coverage:  rawChecklistCoverage = {},
+    specialist_scores    = {},
+    specialist_priority_actions = {},
+    specialist_available = false,
   } = nc4Output
 
   // Filter out fallback parse-error items before building action lists
@@ -136,22 +144,25 @@ export function adaptNc4ToAgent4(nc4Output, nc3Results, nc2Output, nc1Output) {
     .map(s => typeof s === 'string' ? s : (s.highlight || s.description || s.category_name || s.text || s.category || s.strength || ''))
     .filter(Boolean)
 
-  const checklistCoverage = buildChecklistCoverageFromNc3(nc3Results, nc2Output)
-
   // NC4.7 produces section_scorecard with the 15 standard dimensions.
   // If present, use it directly for ScoreRadar. Fallback to category_scores.
   const section_scorecard = (nc4Output.section_scorecard && Object.keys(nc4Output.section_scorecard).length > 0)
     ? nc4Output.section_scorecard
     : category_scores
 
-  // Derive agent scores from scoring_breakdown if available; otherwise null
-  const breakdown = nc4Output.scoring_breakdown || []
-  const avgScore  = breakdown.length
-    ? breakdown.reduce((s, r) => s + (r.normalised_score || r.score || 0), 0) / breakdown.length
+  // Fallback score: average of NC3 category scores (used when a specialist review failed)
+  const breakdown    = nc4Output.scoring_breakdown || []
+  const avgScore     = breakdown.length
+    ? Number((breakdown.reduce((s, r) => s + (r.normalised_score || r.score || 0), 0) / breakdown.length).toFixed(1))
     : null
 
-  // Build per-agent score stubs (NC4 doesn't have per-agent concepts)
-  const agentScoreStub = avgScore !== null ? Number(avgScore.toFixed(1)) : null
+  // agent1/2/3_score map to NCR1/NCR2/NCR3 specialist scores.
+  // ExecutiveView renders these as the three traffic-light cards labelled
+  // "Clarity & Completeness", "Commercial Strength", "Competitive Position".
+  // Fall back to the NC3 category average when a specialist review failed.
+  const agent1_score = specialist_scores.clarity_completeness  ?? avgScore
+  const agent2_score = specialist_scores.commercial_strength   ?? avgScore
+  const agent3_score = specialist_scores.competitive_position  ?? avgScore
 
   return {
     // ── Core scoring ───────────────────────────────────────────────────────────
@@ -162,23 +173,37 @@ export function adaptNc4ToAgent4(nc4Output, nc3Results, nc2Output, nc1Output) {
     // ── Summary ────────────────────────────────────────────────────────────────
     plain_english_summary: nc4Output.plain_english_summary || '',
 
-    // ── Per-agent stubs (NC4 has per-category, not per-agent) ─────────────────
-    agent1_score:    agentScoreStub,
-    agent2_score:    agentScoreStub,
-    agent3_score:    agentScoreStub,
+    // ── Per-category scores (used by dashboard/executive category bars) ────────
+    category_scores,
+
+    // ── Verdict metadata ───────────────────────────────────────────────────────
+    verdict_meta,
+
+    // ── Checklist metadata ─────────────────────────────────────────────────────
+    nc2_scoring_type,
+    nc2_weights_source,
+
+    // ── Error categories (shown in dashboard error section) ────────────────────
+    error_categories,
+
+    // ── NCR1/NCR2/NCR3 scores → Executive traffic-light cards ─────────────────
+    agent1_score,
+    agent2_score,
+    agent3_score,
     weight_adjusted: false,
-    weight_label:    nc4Output.nc2_weights_source
-      ? `Weights: ${nc4Output.nc2_weights_source}`
-      : 'Custom Checklist',
-    weight_reason: nc4Output.nc2_scoring_type
-      ? `Scoring: ${nc4Output.nc2_scoring_type}`
-      : null,
+    weight_label:    nc2_weights_source ? `Weights: ${nc2_weights_source}` : 'Custom Checklist',
+    weight_reason:   nc2_scoring_type   ? `Scoring: ${nc2_scoring_type}`   : null,
 
     // ── Scorecard & radar ──────────────────────────────────────────────────────
     section_scorecard,
 
-    // ── Priority actions ───────────────────────────────────────────────────────
+    // ── Priority actions (checklist-based from NC3) ────────────────────────────
     priority_actions: adaptedActions,
+
+    // ── Specialist priority actions (NCR1/2/3 domain-level actions) ───────────
+    specialist_priority_actions,
+    specialist_available,
+    specialist_scores,
 
     // ── Strengths ──────────────────────────────────────────────────────────────
     top_3_strengths: adaptedStrengths,
@@ -186,17 +211,19 @@ export function adaptNc4ToAgent4(nc4Output, nc3Results, nc2Output, nc1Output) {
     // ── Consistency issues ─────────────────────────────────────────────────────
     cross_consistency_issues: adaptedConsistency,
 
-    // ── Double-flagged (NC4 doesn't have this concept) ─────────────────────────
-    double_flagged_issues: [],
+    // ── Double-flagged: NC3 category FAIL + NCR specialist independently confirmed ──
+    double_flagged_issues: nc4Output.double_flagged_issues || [],
 
-    // ── Checklist coverage in Agent4 format ───────────────────────────────────
-    checklist_coverage: checklistCoverage,
+    // ── Checklist coverage — raw NC4 object {total_items, passed, partial,
+    //    failed, error_items, pass_rate}. Components that need per-item arrays
+    //    receive nc3Results/nc2Output directly via session prop.
+    checklist_coverage: rawChecklistCoverage,
 
     // ── Rewrite suggestions (not in NC4) ──────────────────────────────────────
     rewrite_suggestions: [],
 
     // ── NC4 passthrough fields ─────────────────────────────────────────────────
-    _nc4: nc4Output,          // raw NC4 output for components that need it
+    _nc4: nc4Output,
     _nc3: nc3Results || [],
     _nc2: nc2Output || {},
     _nc1: nc1Output || {},
@@ -383,8 +410,8 @@ function Nc4Results({ adapted, nc4Raw, nc3Results, nc2Output, onDownloadJson, on
       {/* Double Flagged */}
       <DoubleFlaggedIssues issues={adapted.double_flagged_issues} />
 
-      {/* Priority Actions */}
-      <PriorityActionList priorityActions={adapted.priority_actions} />
+      {/* Priority Actions — internal tab hidden (no internal hygiene items in custom pipeline) */}
+      <PriorityActionList priorityActions={adapted.priority_actions} hideTiers={['internal']} />
 
       {/* Score Radar */}
       <ScoreRadar sectionScorecard={adapted.section_scorecard} />
@@ -1093,6 +1120,7 @@ export default function CustomResultsPage() {
                     sessionId={sessionId}
                     versionNumber={session.version_number || history.length || 1}
                     parentFilename={session.original_filename}
+                    reviewMode="custom"
                   />
                 </div>
               </div>

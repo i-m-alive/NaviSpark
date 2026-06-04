@@ -195,17 +195,39 @@ async def upload_revision(
     storage_path = f"uploads/{user_id}/{new_session_id}/document.{ext}"
     upload_file_to_storage(storage_path, file_bytes, content_type=CONTENT_TYPES[detected_type])
 
-    update_session(new_session_id, user_id, {
-        "storage_path": storage_path,
-        "status": "ready",
-    })
+    # For custom pipeline: inherit checklist + NC2 output + confirmed context so
+    # the revision goes straight to NC3+NCR+NC4 without re-parsing the checklist.
+    parent_review_mode = parent.get("review_mode", "standard")
+    if parent_review_mode == "custom":
+        update_session(new_session_id, user_id, {
+            "storage_path":           storage_path,
+            "review_mode":            "custom",
+            "checklist_storage_path": parent.get("checklist_storage_path", ""),
+            # Inherit NC1 context (industry/type/priorities already confirmed by user)
+            "agent1_output":          parent.get("agent1_output"),
+            # Inherit NC2 checklist parse (same checklist file, no need to re-parse)
+            "agent2_output":          parent.get("agent2_output"),
+            # Inherit any context overrides the user applied in the parent session
+            "nc1_user_overrides":     parent.get("nc1_user_overrides"),
+            # Ready immediately — NC1+NC2 inherited, NC3+NCR+NC4 can start right away
+            "status": "ready",
+        })
+    else:
+        update_session(new_session_id, user_id, {
+            "storage_path": storage_path,
+            "status": "ready",
+        })
 
     return {
         "session_id":     new_session_id,
         "version_number": next_version,
         "group_id":       group_id,
         "page_count":     page_count,
-        "message":        f"Revision v{next_version} uploaded. Call /run-analysis to start.",
+        "review_mode":    parent_review_mode,
+        "message":        (
+            f"Revision v{next_version} uploaded. "
+            f"Call /{'run-custom-analysis' if parent_review_mode == 'custom' else 'run-analysis'} to start."
+        ),
     }
 
 

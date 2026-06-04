@@ -216,15 +216,26 @@ async def run_preflight(session_id: str, user_id: str) -> None:
 
 async def run_custom_pipeline(session_id: str, user_id: str) -> None:
     """
-    NC3 fan-out (one per checklist category) + NC4 synthesis.
+    NC3 fan-out (one per checklist category) + NCR1/2/3 specialist reviewers + NC4 synthesis.
     Triggered after the user confirms / edits the NC1/NC2 context.
-    Stores NC3 array in agent3_output, NC4 in agent4_output.
+
+    Stage 2 runs NC3 AND NCR1/NCR2/NCR3 all in parallel:
+      - NC3   : evaluates proposal against each checklist category (custom)
+      - NCR1  : Clarity & Completeness deep review (mirrors Agent 1)
+      - NCR2  : Commercial Strength deep review    (mirrors Agent 2)
+      - NCR3  : Competitive Position deep review   (mirrors Agent 3)
+
+    NC3 failure aborts the pipeline. NCR failures are logged but non-fatal —
+    NC4 still produces its checklist verdict; specialist data is simply absent.
+
+    Stores NC3 array in agent3_output, NC4 in agent4_output,
+    specialist outputs in specialist_output.
     """
     from agents.NC3.agent import run_nc3_fanout
     from agents.NC4.agent import NC4Agent
 
     event_emitter.ensure_session(session_id)
-    _pipe = event_emitter.make_emitter(session_id, "pipeline")
+    _pipe     = event_emitter.make_emitter(session_id, "pipeline")
     _emit_nc3 = event_emitter.make_emitter(session_id, "nc3")
     _emit_nc4 = event_emitter.make_emitter(session_id, "nc4")
     sid = session_id[:8]
@@ -274,17 +285,17 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
             logger.info("[CUSTOM] [%s] Cancelled before NC3.", sid)
             return
 
-        # ── NC3 Fan-out ───────────────────────────────────────────────────────
-        _pipe(f"Launching NC3 evaluator — {len(categories)} categories in parallel")
+        # ── Stage A: NC3 Fan-out ──────────────────────────────────────────────
+        # NC3 runs first on its own — up to 8 concurrent Bedrock calls inside
+        # run_nc3_fanout. Running NCR1/2/3 simultaneously would push concurrent
+        # calls to 11 and trigger Bedrock throttling.
+        _pipe(f"Evaluating {len(categories)} checklist categories in parallel (NC3)")
         logger.info("[CUSTOM] [%s] NC3 fan-out: %d categories", sid, len(categories))
 
         def _run_nc3():
-            _emit_nc3(
-                f"Evaluating {len(categories)} checklist categories in parallel — "
-                "this may take a few minutes"
-            )
+            _emit_nc3(f"NC3 — evaluating {len(categories)} checklist categories")
             results = run_nc3_fanout(nc2_output, proposal_text, nc1_context)
-            done = sum(1 for r in results if r.get("status") == "complete")
+            done   = sum(1 for r in results if r.get("status") == "complete")
             errors = sum(1 for r in results if r.get("status") == "error")
             _emit_nc3(
                 f"NC3 complete — {done}/{len(results)} categories evaluated"
@@ -293,14 +304,112 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
             )
             return results
 
-        nc3_results = await _in_thread(_run_nc3)
+        nc3_raw = await _in_thread(_run_nc3)
+        if isinstance(nc3_raw, BaseException):
+            raise ValueError(f"NC3 evaluation failed: {nc3_raw}") from nc3_raw
+
+        nc3_results: list = nc3_raw
+        nc3_done   = sum(1 for r in nc3_results if r.get("status") == "complete")
+        nc3_errors = sum(1 for r in nc3_results if r.get("status") == "error")
+
+        logger.info("[CUSTOM] [%s] NC3 done in +%s — %d ok, %d errors",
+                    sid, _elapsed(), nc3_done, nc3_errors)
+
+        # Guard: if every NC3 category errored the pipeline has nothing to show.
+        # Fail fast rather than letting NC4 produce an empty "DO NOT SEND" result
+        # that leaves the frontend with a blank page.
+        if nc3_done == 0:
+            raise RuntimeError(
+                f"All {nc3_errors} NC3 categories failed. "
+                "Check AWS credentials and Bedrock access, then re-run."
+            )
 
         if _is_cancelled(session_id, user_id):
             logger.info("[CUSTOM] [%s] Cancelled after NC3.", sid)
             return
 
-        _pipe("All category evaluations complete — synthesising results", "completed")
-        logger.info("[CUSTOM] [%s] NC3 done in +%s", sid, _elapsed())
+        _pipe(
+            f"Checklist evaluation complete ({nc3_done}/{len(nc3_results)} categories). "
+            "Running specialist reviews NCR1/2/3 in parallel...",
+            "completed",
+        )
+
+        # ── Stage B: NCR1/2/3 in parallel (after NC3 finishes) ───────────────
+        # Keeping specialist calls separate from NC3 limits peak concurrent
+        # Bedrock calls to max(NC3_workers, 3) instead of NC3_workers + 3.
+        # NCR failures are non-fatal — checklist verdict still produced.
+        _DIM_MAP = {
+            "ncr1": "clarity_completeness",
+            "ncr2": "commercial_strength",
+            "ncr3": "competitive_position",
+        }
+
+        def _run_ncr1():
+            from agents.NCR1.agent import NCR1Agent
+            _pipe("NCR1 — Clarity & Completeness specialist review running")
+            result = NCR1Agent().run(proposal_text, nc1_context)
+            score  = result.get("score", 0.0)
+            st     = result.get("status", "error")
+            _pipe(
+                f"NCR1 complete — clarity & completeness: {score:.1f}/10"
+                if st == "complete" else f"NCR1 unavailable: {result.get('error_message', '?')}",
+                "completed" if st == "complete" else "error",
+            )
+            return result
+
+        def _run_ncr2():
+            from agents.NCR2.agent import NCR2Agent
+            _pipe("NCR2 — Commercial Strength specialist review running")
+            result = NCR2Agent().run(proposal_text, nc1_context)
+            score  = result.get("score", 0.0)
+            st     = result.get("status", "error")
+            _pipe(
+                f"NCR2 complete — commercial strength: {score:.1f}/10"
+                if st == "complete" else f"NCR2 unavailable: {result.get('error_message', '?')}",
+                "completed" if st == "complete" else "error",
+            )
+            return result
+
+        def _run_ncr3():
+            from agents.NCR3.agent import NCR3Agent
+            _pipe("NCR3 — Competitive Position specialist review running")
+            result = NCR3Agent().run(proposal_text, nc1_context)
+            score  = result.get("score", 0.0)
+            st     = result.get("status", "error")
+            _pipe(
+                f"NCR3 complete — competitive position: {score:.1f}/10"
+                if st == "complete" else f"NCR3 unavailable: {result.get('error_message', '?')}",
+                "completed" if st == "complete" else "error",
+            )
+            return result
+
+        ncr1_raw, ncr2_raw, ncr3_raw = await asyncio.gather(
+            _in_thread(_run_ncr1),
+            _in_thread(_run_ncr2),
+            _in_thread(_run_ncr3),
+            return_exceptions=True,
+        )
+
+        specialist_results: dict = {}
+        for key, raw in [("ncr1", ncr1_raw), ("ncr2", ncr2_raw), ("ncr3", ncr3_raw)]:
+            if isinstance(raw, BaseException):
+                logger.warning("[CUSTOM] [%s] %s raised exception: %s", sid, key.upper(), raw)
+                specialist_results[key] = {
+                    "status":        "error",
+                    "dimension":     _DIM_MAP[key],
+                    "score":         0.0,
+                    "result":        None,
+                    "error_message": str(raw),
+                }
+            else:
+                specialist_results[key] = raw
+
+        if _is_cancelled(session_id, user_id):
+            logger.info("[CUSTOM] [%s] Cancelled after NCR.", sid)
+            return
+
+        _pipe("All specialist reviews complete — synthesising results", "completed")
+        logger.info("[CUSTOM] [%s] NCR done in +%s", sid, _elapsed())
 
         # ── NC4 Synthesis ─────────────────────────────────────────────────────
         _pipe("Launching NC4 — Synthesis & Report")
@@ -308,17 +417,21 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
 
         def _run_nc4():
             _emit_nc4(
-                "NC4 — computing weighted scores, priority actions, verdict and executive summary"
+                "NC4 — computing weighted scores, specialist dimensions, "
+                "priority actions, verdict and executive summary"
             )
             agent = NC4Agent()
             result = agent.run(
                 nc3_results=nc3_results,
                 nc2_output=nc2_output,
                 nc1_output=nc1_output,
+                specialist_results=specialist_results,
             )
+            specialist_available = result.get("specialist_available", False)
             _emit_nc4(
                 f"NC4 complete — verdict: {result.get('verdict', '?')}  "
-                f"score: {result.get('overall_score', 0):.1f}/10",
+                f"score: {result.get('overall_score', 0):.1f}/10"
+                + (" | specialist reviews included" if specialist_available else ""),
                 "completed",
             )
             return result
@@ -332,11 +445,13 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
         # ── Generate markdown reports ─────────────────────────────────────────
         nc4_markdown = _generate_nc4_markdown(nc4_output, nc2_output, nc3_results)
         nc3_markdown = _generate_nc3_markdown(nc3_results)
+        ncr_markdown = _generate_ncr_markdown(specialist_results)
 
         # ── Persist all outputs to Supabase Storage ───────────────────────────
         await asyncio.gather(
             _in_thread(partial(save_agent_output_to_storage, user_id, session_id, "nc3", nc3_results, nc3_markdown)),
             _in_thread(partial(save_agent_output_to_storage, user_id, session_id, "nc4", nc4_output, nc4_markdown)),
+            _in_thread(partial(save_agent_output_to_storage, user_id, session_id, "ncr", specialist_results, ncr_markdown)),
         )
 
         report_path = f"uploads/{user_id}/{session_id}/nc4/output.md"
@@ -492,11 +607,106 @@ def _generate_nc4_markdown(nc4: dict, nc2: dict, nc3_results: list) -> str:
         for k, v in sc.items():
             lines.append(f"| {k.replace('_', ' ').title()} | {v:.1f} / 10 |")
 
+    # Specialist dimension scores (NCR1/2/3)
+    spec_scores = nc4.get("specialist_scores", {})
+    if nc4.get("specialist_available") and spec_scores:
+        lines.append("\n## Specialist Review Scores (NCR1/2/3)\n")
+        lines.append("| Dimension | Score |")
+        lines.append("|-----------|-------|")
+        _dim_labels = {
+            "clarity_completeness": "Clarity & Completeness (NCR1)",
+            "commercial_strength":  "Commercial Strength (NCR2)",
+            "competitive_position": "Competitive Position (NCR3)",
+        }
+        for dim, label in _dim_labels.items():
+            val = spec_scores.get(dim)
+            lines.append(f"| {label} | {val:.1f} / 10 |" if val is not None else f"| {label} | n/a |")
+
+        spec_actions = nc4.get("specialist_priority_actions", {})
+        for tier, heading in [("must_fix", "🔴 Specialist Must Fix"), ("should_fix", "🟡 Specialist Should Fix")]:
+            items = spec_actions.get(tier, [])
+            if items:
+                lines.append(f"\n### {heading}\n")
+                for item in items[:5]:
+                    dim  = item.get("dimension", "")
+                    act  = item.get("action", "")
+                    fix  = item.get("suggested_fix", "")
+                    lines.append(f"- [{dim}] **{act}**")
+                    if fix:
+                        lines.append(f"  *Fix: {fix[:120]}*")
+
     warnings = nc4.get("consistency_warnings", [])
     if warnings:
         lines.append("\n## Consistency Warnings\n")
         for w in warnings:
             desc = w.get("description", str(w))
             lines.append(f"- {desc}")
+
+    return "\n".join(lines)
+
+
+def _generate_ncr_markdown(specialist_results: dict) -> str:
+    """Generate a markdown report for the NCR1/2/3 specialist review outputs."""
+    if not specialist_results:
+        return ""
+
+    lines = ["# NCR — Specialist Review Report (Clarity · Commercial · Competitive)\n"]
+    lines.append(
+        "These specialist dimensions are evaluated by NCR1 (Clarity & Completeness), "
+        "NCR2 (Commercial Strength), and NCR3 (Competitive Position) — "
+        "running alongside NC3 in parallel.\n"
+    )
+
+    _dim_labels = {
+        "clarity_completeness": ("NCR1", "Clarity & Completeness"),
+        "commercial_strength":  ("NCR2", "Commercial Strength"),
+        "competitive_position": ("NCR3", "Competitive Position"),
+    }
+
+    for key in ("ncr1", "ncr2", "ncr3"):
+        sr = specialist_results.get(key)
+        if not sr:
+            continue
+
+        dim   = sr.get("dimension", key)
+        tag, label = _dim_labels.get(dim, (key.upper(), dim.replace("_", " ").title()))
+        status = sr.get("status", "error")
+        score  = sr.get("score", 0.0)
+
+        lines.append(f"\n## {tag} — {label}")
+
+        if status == "error":
+            lines.append(f"\n**Status:** Error — {sr.get('error_message', 'unknown error')}\n")
+            continue
+
+        lines.append(f"\n**Score:** {score:.1f} / 10\n")
+
+        result = sr.get("result") or {}
+        scores = result.get("scores", {})
+
+        # Per-dimension sub-scores
+        if scores:
+            sub_keys = [k for k in scores if k not in ("weights", "overall") and not k.startswith("_") and isinstance(scores[k], (int, float))]
+            if sub_keys:
+                lines.append("### Sub-Scores\n")
+                lines.append("| Dimension | Score |")
+                lines.append("|-----------|-------|")
+                for k in sub_keys:
+                    lines.append(f"| {k.replace('_', ' ').title()} | {scores[k]:.1f} / 10 |")
+
+        # Key issues (top 3 per type, CRITICAL/MAJOR only)
+        issue_fields = {
+            "clarity_completeness": [("writing_issues", "Writing Issues"), ("scope_clarity_issues", "Scope Issues")],
+            "commercial_strength":  [("estimation_issues", "Estimation Issues"), ("pricing_issues", "Pricing Issues")],
+            "competitive_position": [("client_fit_issues", "Client Fit Issues"), ("risk_transparency_issues", "Risk Issues")],
+        }
+        for field, heading in issue_fields.get(dim, []):
+            issues = [i for i in result.get(field, []) if i.get("severity") in ("CRITICAL", "MAJOR")][:3]
+            if issues:
+                lines.append(f"\n### {heading} (Critical/Major)\n")
+                for issue in issues:
+                    sev = issue.get("severity", "")
+                    txt = issue.get("issue") or issue.get("why") or issue.get("finding") or ""
+                    lines.append(f"- **[{sev}]** {txt[:150]}")
 
     return "\n".join(lines)
