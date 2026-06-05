@@ -43,6 +43,8 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from bedrock_client import reset_token_accumulator, get_accumulated_tokens
+
 from .skills import (
     EvidenceLinker,
     GapNarrativeWriter,
@@ -113,6 +115,8 @@ class NC3Agent:
             len(self.category.get("items", [])),
         )
 
+        reset_token_accumulator()
+
         try:
             # --- Skill NC3.1: Item Evaluator — LLM call ---
             raw_findings = self.item_evaluator.run(
@@ -181,13 +185,15 @@ class NC3Agent:
                 items_passed, items_partial, items_failed,
             )
 
-            return result
+            token_usage = get_accumulated_tokens()
+            return result, token_usage
 
         except Exception as exc:
             logger.error(
                 "NC3Agent.run() FAILED for category='%s': %s",
                 category_name, exc, exc_info=True,
             )
+            token_usage = get_accumulated_tokens()
             return {
                 "category_id": category_id,
                 "category_name": category_name,
@@ -200,7 +206,7 @@ class NC3Agent:
                 "items_failed": 0,
                 "findings": [],
                 "error_message": str(exc),
-            }
+            }, token_usage
 
 
 def run_nc3_fanout(
@@ -250,6 +256,7 @@ def run_nc3_fanout(
     ]
 
     results: list[dict[str, Any] | None] = [None] * len(agents)
+    token_usages: list[dict | None] = [None] * len(agents)
 
     with ThreadPoolExecutor(max_workers=n_workers) as executor:
         future_to_index = {
@@ -261,7 +268,12 @@ def run_nc3_fanout(
             idx = future_to_index[future]
             category_name = categories[idx].get("name", f"Category {idx}")
             try:
-                results[idx] = future.result()
+                raw = future.result()
+                # NC3Agent.run() returns (result, token_usage) tuple
+                if isinstance(raw, tuple):
+                    results[idx], token_usages[idx] = raw
+                else:
+                    results[idx] = raw
                 logger.info(
                     "NC3 fan-out: category '%s' (idx=%d) completed. status=%s",
                     category_name, idx, results[idx]["status"],  # type: ignore[index]
@@ -309,4 +321,13 @@ def run_nc3_fanout(
         len(results), completed, errors,
     )
 
-    return results  # type: ignore[return-value]
+    # Aggregate token usage across all NC3 instances
+    total_token_usage = {
+        "input_tokens": sum((t or {}).get("input_tokens", 0) for t in token_usages),
+        "output_tokens": sum((t or {}).get("output_tokens", 0) for t in token_usages),
+        "total_tokens": sum((t or {}).get("total_tokens", 0) for t in token_usages),
+        "cache_creation_input_tokens": sum((t or {}).get("cache_creation_input_tokens", 0) for t in token_usages),
+        "cache_read_input_tokens": sum((t or {}).get("cache_read_input_tokens", 0) for t in token_usages),
+    }
+
+    return results, total_token_usage  # type: ignore[return-value]

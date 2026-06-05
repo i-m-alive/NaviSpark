@@ -31,7 +31,9 @@ from services.session_service import get_session, update_session
 from services.checklist_parser_service import extract_proposal_text, download_checklist_to_tempfile
 from storage import download_file_from_storage, save_agent_output_to_storage
 from services import event_emitter
+from services.token_service import save_token_usage
 from agents.cache_agent import run as _run_cache_agent
+from bedrock_client import reset_token_accumulator, get_accumulated_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,14 @@ async def run_preflight(session_id: str, user_id: str) -> None:
             cache_stats.get("cache_creation_input_tokens", 0),
             cache_stats.get("cache_read_input_tokens", 0),
             cache_stats.get("cache_active", False),
+        )
+        save_token_usage(
+            session_id, "cache_agent",
+            cache_stats.get("input_tokens", 0),
+            cache_stats.get("output_tokens", 0),
+            user_id=user_id,
+            cache_creation_input_tokens=cache_stats.get("cache_creation_input_tokens", 0),
+            cache_read_input_tokens=cache_stats.get("cache_read_input_tokens", 0),
         )
 
         # ── Download checklist to temp file ───────────────────────────────────
@@ -317,6 +327,14 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
             cache_stats.get("cache_read_input_tokens", 0),
             cache_stats.get("cache_active", False),
         )
+        save_token_usage(
+            session_id, "cache_agent",
+            cache_stats.get("input_tokens", 0),
+            cache_stats.get("output_tokens", 0),
+            user_id=user_id,
+            cache_creation_input_tokens=cache_stats.get("cache_creation_input_tokens", 0),
+            cache_read_input_tokens=cache_stats.get("cache_read_input_tokens", 0),
+        )
 
         # ── Cancellation checkpoint ───────────────────────────────────────────
         if _is_cancelled(session_id, user_id):
@@ -332,7 +350,8 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
 
         def _run_nc3():
             _emit_nc3(f"NC3 — evaluating {len(categories)} checklist categories")
-            results = run_nc3_fanout(nc2_output, proposal_text, nc1_context)
+            # run_nc3_fanout now returns (results, total_token_usage)
+            results, nc3_tu = run_nc3_fanout(nc2_output, proposal_text, nc1_context)
             done   = sum(1 for r in results if r.get("status") == "complete")
             errors = sum(1 for r in results if r.get("status") == "error")
             _emit_nc3(
@@ -340,18 +359,27 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                 + (f" ({errors} errors)" if errors else ""),
                 "completed",
             )
-            return results
+            return results, nc3_tu
 
         nc3_raw = await _in_thread(_run_nc3)
         if isinstance(nc3_raw, BaseException):
             raise ValueError(f"NC3 evaluation failed: {nc3_raw}") from nc3_raw
 
-        nc3_results: list = nc3_raw
+        nc3_results, nc3_token_usage = nc3_raw if isinstance(nc3_raw, tuple) else (nc3_raw, None)
         nc3_done   = sum(1 for r in nc3_results if r.get("status") == "complete")
         nc3_errors = sum(1 for r in nc3_results if r.get("status") == "error")
 
         logger.info("[CUSTOM] [%s] NC3 done in +%s — %d ok, %d errors",
                     sid, _elapsed(), nc3_done, nc3_errors)
+
+        if nc3_token_usage:
+            save_token_usage(
+                session_id, "nc3",
+                nc3_token_usage["input_tokens"], nc3_token_usage["output_tokens"],
+                user_id=user_id,
+                cache_creation_input_tokens=nc3_token_usage.get("cache_creation_input_tokens", 0),
+                cache_read_input_tokens=nc3_token_usage.get("cache_read_input_tokens", 0),
+            )
 
         # Guard: if every NC3 category errored the pipeline has nothing to show.
         # Fail fast rather than letting NC4 produce an empty "DO NOT SEND" result
@@ -384,8 +412,10 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
 
         def _run_ncr1():
             from agents.NCR1.agent import NCR1Agent
+            reset_token_accumulator()
             _pipe("NCR1 — Clarity & Completeness specialist review running")
             result = NCR1Agent().run(proposal_text, nc1_context)
+            tu     = get_accumulated_tokens()
             score  = result.get("score", 0.0)
             st     = result.get("status", "error")
             _pipe(
@@ -393,12 +423,14 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                 if st == "complete" else f"NCR1 unavailable: {result.get('error_message', '?')}",
                 "completed" if st == "complete" else "error",
             )
-            return result
+            return result, tu
 
         def _run_ncr2():
             from agents.NCR2.agent import NCR2Agent
+            reset_token_accumulator()
             _pipe("NCR2 — Commercial Strength specialist review running")
             result = NCR2Agent().run(proposal_text, nc1_context)
+            tu     = get_accumulated_tokens()
             score  = result.get("score", 0.0)
             st     = result.get("status", "error")
             _pipe(
@@ -406,12 +438,14 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                 if st == "complete" else f"NCR2 unavailable: {result.get('error_message', '?')}",
                 "completed" if st == "complete" else "error",
             )
-            return result
+            return result, tu
 
         def _run_ncr3():
             from agents.NCR3.agent import NCR3Agent
+            reset_token_accumulator()
             _pipe("NCR3 — Competitive Position specialist review running")
             result = NCR3Agent().run(proposal_text, nc1_context)
+            tu     = get_accumulated_tokens()
             score  = result.get("score", 0.0)
             st     = result.get("status", "error")
             _pipe(
@@ -419,7 +453,7 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                 if st == "complete" else f"NCR3 unavailable: {result.get('error_message', '?')}",
                 "completed" if st == "complete" else "error",
             )
-            return result
+            return result, tu
 
         ncr1_raw, ncr2_raw, ncr3_raw = await asyncio.gather(
             _in_thread(_run_ncr1),
@@ -429,6 +463,7 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
         )
 
         specialist_results: dict = {}
+        ncr_token_usages: dict = {}
         for key, raw in [("ncr1", ncr1_raw), ("ncr2", ncr2_raw), ("ncr3", ncr3_raw)]:
             if isinstance(raw, BaseException):
                 logger.warning("[CUSTOM] [%s] %s raised exception: %s", sid, key.upper(), raw)
@@ -439,8 +474,23 @@ async def run_custom_pipeline(session_id: str, user_id: str) -> None:
                     "result":        None,
                     "error_message": str(raw),
                 }
+            elif isinstance(raw, tuple):
+                result, tu = raw
+                specialist_results[key] = result
+                if tu:
+                    ncr_token_usages[key] = tu
             else:
                 specialist_results[key] = raw
+
+        # Save NCR token usage
+        for key, tu in ncr_token_usages.items():
+            save_token_usage(
+                session_id, key,
+                tu["input_tokens"], tu["output_tokens"],
+                user_id=user_id,
+                cache_creation_input_tokens=tu.get("cache_creation_input_tokens", 0),
+                cache_read_input_tokens=tu.get("cache_read_input_tokens", 0),
+            )
 
         if _is_cancelled(session_id, user_id):
             logger.info("[CUSTOM] [%s] Cancelled after NCR.", sid)
