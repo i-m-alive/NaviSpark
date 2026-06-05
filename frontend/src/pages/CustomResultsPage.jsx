@@ -455,31 +455,38 @@ function PipelineProgressScreen({ status, onStop, stopping, sessionId }) {
         </button>
       </div>
 
-      <ActivityFeed agentActivities={agentActivities} isConnected={isConnected} isDone={isDone} error={error} />
+      <ActivityFeed agentActivities={agentActivities} isConnected={isConnected} isDone={isDone} error={error} customMode />
 
-      {/* NC4 synthesis waiting panel */}
-      <div className={clsx(
-        'bg-gray-900 border rounded-xl p-4 transition-all duration-500',
-        status === 'pipeline_running' ? 'border-teal-800' : 'border-gray-800'
-      )}>
-        <div className="flex items-center gap-3">
-          <div className={clsx('p-2 rounded-lg', status === 'pipeline_running' ? 'bg-teal-950' : 'bg-gray-800')}>
-            {status === 'pipeline_running'
-              ? <Loader2 size={16} className="text-teal-400 animate-spin" />
-              : <CheckSquare size={16} className="text-gray-600" />}
+      {/* NC4 synthesis panel — accurate state based on whether NC4 has actually started */}
+      {(() => {
+        // NC4 emits events under the "nc4" channel. Only show it as actively running
+        // once real NC4 events arrive — before that it's still waiting for NCR1/2/3 + NC3.
+        const nc4Started = Boolean(agentActivities['nc4']?.length)
+        return (
+          <div className={clsx(
+            'bg-gray-900 border rounded-xl p-4 transition-all duration-500',
+            nc4Started ? 'border-teal-800' : 'border-gray-800'
+          )}>
+            <div className="flex items-center gap-3">
+              <div className={clsx('p-2 rounded-lg', nc4Started ? 'bg-teal-950' : 'bg-gray-800')}>
+                {nc4Started
+                  ? <Loader2 size={16} className="text-teal-400 animate-spin" />
+                  : <CheckSquare size={16} className="text-gray-600" />}
+              </div>
+              <div>
+                <p className={clsx('text-sm font-semibold', nc4Started ? 'text-teal-300' : 'text-gray-500')}>
+                  NC4 — Synthesis &amp; Report
+                </p>
+                <p className="text-xs text-gray-500">
+                  {nc4Started
+                    ? 'Aggregating category scores and generating final verdict…'
+                    : 'Waiting for specialist reviews to complete…'}
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className={clsx('text-sm font-semibold', status === 'pipeline_running' ? 'text-teal-300' : 'text-gray-600')}>
-              NC4 — Synthesis &amp; Report
-            </p>
-            <p className="text-xs text-gray-500">
-              {status === 'pipeline_running'
-                ? 'Aggregating category scores and generating final verdict…'
-                : 'Waiting for NC3 evaluations to complete…'}
-            </p>
-          </div>
-        </div>
-      </div>
+        )
+      })()}
 
       <p className="text-xs text-gray-600 text-center">
         Custom evaluation typically takes 60–120 seconds. Page updates automatically.
