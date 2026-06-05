@@ -48,6 +48,26 @@ def _is_banned(banned_until) -> bool:
     return banned_until > datetime.utcnow()
 
 
+def _fetch_all_user_emails(db) -> dict:
+    """
+    Batch-fetch all user emails from Supabase auth in a single API call.
+    Handles both list (older gotrue-py) and UserListResponse (newer gotrue-py).
+    Returns {user_id: email} map. Empty dict on any failure.
+    """
+    try:
+        raw = db.auth.admin.list_users(per_page=1000)
+        if isinstance(raw, list):
+            users = raw
+        elif hasattr(raw, "users"):
+            users = raw.users or []
+        else:
+            users = []
+        return {str(u.id): (getattr(u, "email", None) or "") for u in users}
+    except Exception as exc:
+        logger.warning("[ADMIN] list_users() failed — emails will show as Unknown: %s", exc)
+        return {}
+
+
 # ── Check endpoint (used by frontend to detect admin status) ──────────────────
 
 @router.get("/check")
@@ -162,7 +182,7 @@ async def list_users(authorization: Optional[str] = Header(None)):
             tok_by_user[uid]["output"] += t["output_tokens"]
             tok_by_user[uid]["total"]  += t["total_tokens"]
 
-    # ── Look up each user via get_user_by_id (reliable with service_role) ─────
+    # ── Batch-fetch user details in ONE call ──────────────────────────────────
     _EMPTY_AUTH = {
         "email": None, "name": None, "avatar_url": None,
         "created_at": None, "last_sign_in_at": None,
@@ -188,6 +208,20 @@ async def list_users(authorization: Optional[str] = Header(None)):
             "banned_until":    _to_iso(getattr(u, "banned_until", None)),
         }
 
+    # Build a full user-object map in one list_users() call
+    try:
+        raw_all = db.auth.admin.list_users(per_page=1000)
+        if isinstance(raw_all, list):
+            _all_users = raw_all
+        elif hasattr(raw_all, "users"):
+            _all_users = raw_all.users or []
+        else:
+            _all_users = []
+        auth_user_map = {str(u.id): u for u in _all_users}
+    except Exception as exc:
+        logger.warning("[ADMIN] list_users() failed: %s — falling back to per-user lookup", exc)
+        auth_user_map = {}
+
     users = []
     for uid in all_user_ids:
         sess = sess_by_user.get(uid, {"count": 0, "complete": 0, "latest": None})
@@ -202,19 +236,21 @@ async def list_users(authorization: Optional[str] = Header(None)):
             "total_output_tokens": tok["output"],
             "total_tokens":        tok["total"],
         }
-        try:
-            res = db.auth.admin.get_user_by_id(uid)
-            # gotrue-py wraps result in UserResponse(.user) in some versions, bare User in others
-            u = getattr(res, "user", None) or res
-            if hasattr(u, "email"):
-                info = _extract_auth_user(u)
-                logger.debug("[ADMIN] user %s → email=%s", uid[:8], info.get("email"))
-                base.update(info)
-            else:
-                logger.warning("[ADMIN] get_user_by_id(%s) returned unexpected type: %s", uid[:8], type(res))
-                base.update(_EMPTY_AUTH)
-        except Exception as exc:
-            logger.warning("[ADMIN] get_user_by_id(%s) failed: %s", uid[:8], exc)
+        u = auth_user_map.get(uid)
+        if u is None:
+            # Fall back to per-user lookup for any user not in the bulk list
+            try:
+                res = db.auth.admin.get_user_by_id(uid)
+                u = getattr(res, "user", None) or res
+                if not hasattr(u, "email"):
+                    u = None
+            except Exception:
+                u = None
+        if u and hasattr(u, "email"):
+            base.update(_extract_auth_user(u))
+            logger.debug("[ADMIN] user %s → email=%s", uid[:8], base.get("email"))
+        else:
+            logger.warning("[ADMIN] Could not resolve email for user %s", uid[:8])
             base.update(_EMPTY_AUTH)
         users.append(base)
 
@@ -364,25 +400,12 @@ async def list_all_sessions(
     sessions_res = query.execute()
     sessions = sessions_res.data or []
 
-    # Enrich sessions with user emails via per-user lookup
-    user_ids_needed = list({s.get("user_id") for s in sessions if s.get("user_id")})
-    user_email_map: dict = {}
-    user_name_map: dict  = {}
-    for uid in user_ids_needed:
-        try:
-            res = db.auth.admin.get_user_by_id(uid)
-            u   = getattr(res, "user", res)
-            if u and hasattr(u, "email"):
-                user_email_map[uid] = getattr(u, "email", None) or ""
-                meta = getattr(u, "user_metadata", None) or {}
-                user_name_map[uid]  = meta.get("full_name") or meta.get("name") or ""
-        except Exception:
-            pass
-
+    # Enrich sessions with user emails via batch lookup
+    email_map = _fetch_all_user_emails(db)
     for s in sessions:
         uid = s.get("user_id", "")
-        s["user_email"] = user_email_map.get(uid) or "Unknown"
-        s["user_name"]  = user_name_map.get(uid)
+        s["user_email"] = email_map.get(uid) or "Unknown"
+        s["user_name"]  = None
 
     return {"sessions": sessions, "count": len(sessions), "offset": offset, "limit": limit}
 
@@ -431,25 +454,14 @@ async def list_token_usage(
         for s in (s_res.data or []):
             sessions_map[s["id"]] = s
 
-    # Fetch user emails directly by user_id using auth admin API (per-user lookup)
-    user_email_map: dict = {}
-    user_name_map: dict  = {}
-    for uid in user_ids:
-        try:
-            res = db.auth.admin.get_user_by_id(uid)
-            u   = getattr(res, "user", res)
-            if u and hasattr(u, "email"):
-                user_email_map[uid] = getattr(u, "email", None) or ""
-                meta = getattr(u, "user_metadata", None) or {}
-                user_name_map[uid]  = meta.get("full_name") or meta.get("name") or ""
-        except Exception:
-            pass
+    # Fetch user emails via single batch call
+    user_email_map = _fetch_all_user_emails(db)
 
     for t in tokens:
         uid  = t.get("user_id", "")
         sess = sessions_map.get(t["session_id"], {})
         t["user_email"]       = user_email_map.get(uid) or "Unknown"
-        t["user_name"]        = user_name_map.get(uid, "")
+        t["user_name"]        = ""
         t["session_filename"] = sess.get("original_filename", "—")
 
     # Overall totals
@@ -485,11 +497,7 @@ async def get_activity(
         .execute()
     sessions = sessions_res.data or []
 
-    try:
-        raw_users = db.auth.admin.list_users(per_page=1000)
-        user_email_map = {str(u.id): u.email for u in (raw_users if isinstance(raw_users, list) else [])}
-    except Exception:
-        user_email_map = {}
+    user_email_map = _fetch_all_user_emails(db)
 
     def _action_label(status: str) -> str:
         labels = {

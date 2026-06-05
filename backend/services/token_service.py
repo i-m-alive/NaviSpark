@@ -17,10 +17,17 @@ def save_token_usage(
     input_tokens: int,
     output_tokens: int,
     user_id: str = None,
+    cache_creation_input_tokens: int = 0,
+    cache_read_input_tokens: int = 0,
 ) -> None:
     """
     Persists a single agent's token counts to the token_usage table.
     Non-fatal: logs a warning on failure so a DB hiccup never breaks the pipeline.
+
+    Cache columns require this SQL migration (run once in Supabase SQL Editor):
+        ALTER TABLE token_usage
+          ADD COLUMN IF NOT EXISTS cache_creation_input_tokens INTEGER DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS cache_read_input_tokens INTEGER DEFAULT 0;
     """
     try:
         db = get_supabase()
@@ -33,10 +40,18 @@ def save_token_usage(
         }
         if user_id:
             row["user_id"] = user_id
+        if cache_creation_input_tokens:
+            row["cache_creation_input_tokens"] = cache_creation_input_tokens
+        if cache_read_input_tokens:
+            row["cache_read_input_tokens"] = cache_read_input_tokens
         db.table("token_usage").insert(row).execute()
+        cache_info = ""
+        if cache_creation_input_tokens or cache_read_input_tokens:
+            cache_info = f"  cache_write: {cache_creation_input_tokens}  cache_read: {cache_read_input_tokens}"
         logger.info(
-            "[TOKENS] saved — session: %s  agent: %-8s  in: %6d  out: %6d  total: %7d",
-            session_id[:8], agent_name, input_tokens, output_tokens, input_tokens + output_tokens,
+            "[TOKENS] saved — session: %s  agent: %-10s  in: %6d  out: %6d  total: %7d%s",
+            session_id[:8], agent_name, input_tokens, output_tokens,
+            input_tokens + output_tokens, cache_info,
         )
     except Exception as exc:
         logger.warning("[TOKENS] Failed to save token usage (non-fatal): %s", exc)

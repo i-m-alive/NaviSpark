@@ -695,7 +695,7 @@ async def generate_modified_ppt(
     # ── Run Agent 5 ───────────────────────────────────────────────────────────
     event_emitter.ensure_session(session_id)
     try:
-        agent5_result = run_agent5_analysis(
+        _a5_raw = run_agent5_analysis(
             pptx_bytes=pptx_bytes,
             agent1_output=agent1_output,
             agent2_output=agent2_output,
@@ -710,6 +710,11 @@ async def generate_modified_ppt(
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Agent 5 analysis failed: {str(e)}")
+
+    agent5_result = _a5_raw[0] if isinstance(_a5_raw, tuple) else _a5_raw
+    _a5_tu = _a5_raw[1] if isinstance(_a5_raw, tuple) else None
+    if _a5_tu:
+        save_token_usage(session_id, "agent5", _a5_tu["input_tokens"], _a5_tu["output_tokens"], user_id=user_id)
 
     # ── Apply modifications to the PPTX ──────────────────────────────────────
     modifications = agent5_result.get("modifications", [])
@@ -873,7 +878,7 @@ async def get_modification_guide(
     if file_type == "pdf":
         from agents.agent5 import run_pdf as run_agent5_pdf
         try:
-            return run_agent5_pdf(
+            _pdf_raw = run_agent5_pdf(
                 pdf_bytes         = file_bytes,
                 file_type         = file_type,
                 agent1_output     = agent1_output,
@@ -889,13 +894,18 @@ async def get_modification_guide(
             raise
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Agent 5 PDF analysis failed: {str(e)}")
+        _pdf_result = _pdf_raw[0] if isinstance(_pdf_raw, tuple) else _pdf_raw
+        _pdf_tu     = _pdf_raw[1] if isinstance(_pdf_raw, tuple) else None
+        if _pdf_tu:
+            save_token_usage(session_id, "agent5", _pdf_tu["input_tokens"], _pdf_tu["output_tokens"], user_id=user_id)
+        return _pdf_result
 
     # ── PPTX path ─────────────────────────────────────────────────────────────
     slide_map    = extract_slide_map(file_bytes)
     slide_titles = {s["slide_index"]: s["slide_title"] for s in slide_map}
 
     try:
-        agent5_result = run_agent5_analysis(
+        _guide_raw = run_agent5_analysis(
             pptx_bytes        = file_bytes,
             agent1_output     = agent1_output,
             agent2_output     = agent2_output,
@@ -910,6 +920,11 @@ async def get_modification_guide(
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Agent 5 analysis failed: {str(e)}")
+
+    agent5_result = _guide_raw[0] if isinstance(_guide_raw, tuple) else _guide_raw
+    _guide_tu     = _guide_raw[1] if isinstance(_guide_raw, tuple) else None
+    if _guide_tu:
+        save_token_usage(session_id, "agent5", _guide_tu["input_tokens"], _guide_tu["output_tokens"], user_id=user_id)
 
     modifications = agent5_result.get("modifications", [])
     guide = []

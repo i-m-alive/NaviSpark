@@ -9,7 +9,7 @@ Makes ONE Bedrock text-only call (no document block — slide map is in the user
 """
 
 import json
-from bedrock_client import invoke_agent_text_only, invoke_agent_with_pdf
+from bedrock_client import invoke_agent_text_only, invoke_agent_with_pdf, reset_token_accumulator, get_accumulated_tokens
 from fastapi import HTTPException
 
 from agents.agent5.skills import (
@@ -342,6 +342,7 @@ def run(
     5. Returns cleaned modification dict ready for pptx_modifier.apply_modifications().
     """
     _e = emit if emit else (lambda a, s="running": None)
+    reset_token_accumulator()
 
     # Step 1: Extract slide content
     _e("PPTX received — extracting slide map")
@@ -384,7 +385,8 @@ def run(
     total = final.get("modification_summary", {}).get("total_modifications", "?")
     must = final.get("modification_summary", {}).get("must_fix_count", "?")
     _e(f"Modification plan ready — {total} changes ({must} must-fix)", "completed")
-    return final
+    token_usage = get_accumulated_tokens()
+    return final, token_usage
 
 
 # ── PDF mode ──────────────────────────────────────────────────────────────────
@@ -565,6 +567,7 @@ def run_pdf(
     Returns a normalized guide dict compatible with ModificationReportPanel.
     """
     _e = emit if emit else (lambda a, s="running": None)
+    reset_token_accumulator()
 
     _e("PDF received — preparing edit recommendations prompt")
     _e("Loading all agent findings (completeness, commercial, competitive, chief review)")
@@ -594,4 +597,5 @@ def run_pdf(
     total = result["summary"]["total"]
     must  = result["summary"]["must_fix"]
     _e(f"Edit guide ready — {total} recommendations ({must} must-fix)", "completed")
-    return result
+    token_usage = get_accumulated_tokens()
+    return result, token_usage

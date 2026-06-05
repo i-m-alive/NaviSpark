@@ -154,6 +154,14 @@ async def run_full_pipeline(session_id: str, user_id: str) -> None:
                 cache_stats.get("cache_read_input_tokens", 0),
                 cache_stats.get("cache_active", False),
             )
+            save_token_usage(
+                session_id, "cache_agent",
+                cache_stats.get("input_tokens", 0),
+                cache_stats.get("output_tokens", 0),
+                user_id=user_id,
+                cache_creation_input_tokens=cache_stats.get("cache_creation_input_tokens", 0),
+                cache_read_input_tokens=cache_stats.get("cache_read_input_tokens", 0),
+            )
         else:
             logger.info(
                 "[PIPELINE] [%s] [+%s] Cache Agent skipped — using pre-processed chunked context",
