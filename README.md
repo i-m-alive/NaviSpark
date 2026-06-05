@@ -1,6 +1,11 @@
 # NaviSpark — AI-Powered Proposal Review System
 
-NaviSpark is a full-stack application that uses a multi-agent AI pipeline (powered by AWS Bedrock Claude Sonnet 4) to automatically review business proposals. Users upload a PDF or PowerPoint deck; four specialist agents analyse it in parallel and in sequence, then produce scored findings, rewrite suggestions, and a final verdict — all surfaced in an interactive dashboard.
+NaviSpark is a full-stack application that uses two multi-agent AI pipelines (powered by AWS Bedrock Claude Sonnet 4) to automatically review business proposals. Upload a PDF, PPTX, or Word document and choose how to evaluate it:
+
+- **Standard Pipeline** — four specialist agents review your proposal against a built-in 57-item checklist covering completeness, commercial integrity, and competitive strength.
+- **Custom Checklist Pipeline** — upload your own checklist file (Excel, CSV, Word, or PDF) and seven agents parse your criteria, auto-detect weights, evaluate per category in parallel, and synthesise a verdict tailored entirely to your framework.
+
+Both pipelines benefit from Bedrock prompt caching (reducing re-analysis token cost by ~90 %), real-time WebSocket progress streaming, and per-agent token tracking — all surfaced in an interactive, six-view report dashboard.
 
 ---
 
@@ -14,7 +19,7 @@ NaviSpark is a full-stack application that uses a multi-agent AI pipeline (power
 - [Running Locally (Without Docker)](#running-locally-without-docker)
 - [Running Locally (With Docker Compose)](#running-locally-with-docker-compose)
 - [Project Structure](#project-structure)
-- [Agent Pipeline](#agent-pipeline)
+- [Agent Pipelines](#agent-pipelines)
 - [API Reference](#api-reference)
 - [Deployment (Azure Container Apps)](#deployment-azure-container-apps)
 
@@ -27,7 +32,7 @@ User Browser
      │
      ▼
 React + Vite Frontend (port 5173)
-     │  REST + polling
+     │  REST + WebSocket
      ▼
 FastAPI Backend (port 8000)
      │
@@ -35,13 +40,33 @@ FastAPI Backend (port 8000)
      │
      └── AWS Bedrock (Claude Sonnet 4)
               │
-              ├── Agent 1 — Writing & completeness quality
-              ├── Agent 2 — Compliance & alignment scoring
-              ├── Agent 3 — Checklist coverage analysis
-              └── Agent 4 — Cross-agent synthesis & final verdict
+              ├── ── STANDARD PIPELINE ──────────────────────────
+              │   ├── Cache Agent  — seeds Bedrock prompt cache
+              │   ├── Agent 1 (A1) — completeness & writing quality   ┐ parallel
+              │   ├── Agent 2 (A2) — commercial integrity & pricing   │
+              │   ├── Agent 3 (A3) — competitive strength & client fit ┘
+              │   └── Agent 4 (A4) — synthesis, weighting, final verdict (sequential)
+              │
+              └── ── CUSTOM CHECKLIST PIPELINE ──────────────────
+                  ├── Cache Agent  — seeds Bedrock prompt cache
+                  │
+                  │   PHASE 1 · PREFLIGHT (auto, after upload)
+                  ├── NC1 — document intelligence & context detection  ┐ parallel
+                  ├── NC2 — checklist parsing & evaluation framework   ┘
+                  │         ↓ user reviews & confirms detected context
+                  │   PHASE 2 · EVALUATION (user-triggered)
+                  ├── NC3 — per-category proposal evaluation (fan-out, up to 8 parallel instances)
+                  ├── NCR1 — clarity & completeness specialist         ┐ parallel
+                  ├── NCR2 — commercial strength specialist            │ with NC3
+                  ├── NCR3 — competitive position specialist           ┘
+                  └── NC4  — weighted aggregation, verdict, executive summary (sequential)
 ```
 
-Agents 1, 2, and 3 run in **parallel**. Agent 4 runs **sequentially** after all three complete, consuming their outputs to produce the final score, verdict, and priority action plan.
+**Key concurrency patterns:**
+- Standard: A1, A2, A3 run in parallel; A4 is sequential.
+- Custom Phase 1: NC1 + NC2 run in parallel.
+- Custom Phase 2: NC3 fans out (one instance per checklist category, ≤ 8 concurrent); NCR1–3 run in parallel alongside NC3; NC4 is sequential after all complete.
+- Both pipelines share a Cache Agent that seeds the Bedrock prompt cache before any analysis begins, cutting re-analysis token cost by ~90 %.
 
 ---
 
@@ -293,27 +318,42 @@ navispark/
 │   ├── auth.py                 # JWT validation via Supabase Auth
 │   ├── database.py             # Supabase client singleton
 │   ├── storage.py              # Supabase Storage helpers (upload / download / retry)
-│   ├── bedrock_client.py       # AWS Bedrock invocation (PDF & text modes)
+│   ├── bedrock_client.py       # AWS Bedrock invocation (PDF & text modes) + prompt caching
 │   ├── models.py               # Pydantic request/response models
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   │
 │   ├── agents/
-│   │   ├── agent1/             # Writing quality, section completeness, jargon
-│   │   ├── agent2/             # Compliance & alignment scoring
-│   │   ├── agent3/             # Checklist coverage analysis
-│   │   └── agent4/             # Cross-agent synthesis & final verdict
+│   │   ├── agent1/             # A1 — writing quality, section completeness, jargon
+│   │   ├── agent2/             # A2 — commercial integrity & pricing
+│   │   ├── agent3/             # A3 — competitive strength & client fit
+│   │   ├── agent4/             # A4 — cross-agent synthesis & final verdict
+│   │   ├── cache_agent/        # Seeds Bedrock prompt cache; records cache token metrics
+│   │   ├── NC1/                # Document intelligence (structure map, context detection)
+│   │   ├── NC2/                # Checklist parser (Excel/CSV/Word/PDF → evaluation framework)
+│   │   ├── NC3/                # Per-category proposal evaluator (fan-out pattern)
+│   │   ├── NC4/                # Custom pipeline synthesis, verdict engine, report
+│   │   ├── NCR1/               # Clarity & completeness specialist reviewer
+│   │   ├── NCR2/               # Commercial strength specialist reviewer
+│   │   └── NCR3/               # Competitive position specialist reviewer
 │   │
 │   ├── routes/
 │   │   ├── auth_routes.py      # POST /auth/register|login, GET /auth/me
 │   │   ├── session_routes.py   # POST /upload, GET|DELETE /sessions/{id}
 │   │   ├── agent_routes.py     # POST /sessions/{id}/run-analysis
-│   │   └── chat_routes.py      # POST /chat
+│   │   ├── custom_routes.py    # POST /custom-upload, /run-custom-analysis, /confirm-nc1-context
+│   │   ├── ws_routes.py        # WebSocket /ws/sessions/{id}/activity — real-time event feed
+│   │   ├── chat_routes.py      # POST /chat
+│   │   └── admin_routes.py     # Admin panel operations
 │   │
 │   └── services/
-│       ├── pipeline_service.py # Orchestrates the 4-agent pipeline
-│       ├── file_service.py     # MIME detection, PDF validation, PPTX → PDF
-│       └── session_service.py  # CRUD operations on review_sessions
+│       ├── pipeline_service.py         # Orchestrates the standard 4-agent pipeline
+│       ├── custom_pipeline_service.py  # Orchestrates the custom NC1–NC4 + NCR1–3 pipeline
+│       ├── checklist_parser_service.py # PDF/Excel/DOCX parsing utilities for NC2
+│       ├── token_service.py            # Per-agent token recording (input, output, cache)
+│       ├── event_emitter.py            # Session-scoped async event bus for WebSocket streaming
+│       ├── file_service.py             # MIME detection, PDF validation, PPTX → PDF (CloudConvert)
+│       └── session_service.py          # CRUD operations on review_sessions
 │
 └── frontend/
     ├── .env                    # Frontend environment variables (git-ignored)
@@ -336,11 +376,11 @@ navispark/
         │
         ├── pages/
         │   ├── DashboardPage.jsx   # Home — session list, KPIs, needs-attention
-        │   ├── UploadPage.jsx      # File upload + context fields
+        │   ├── UploadPage.jsx      # File upload + context fields (standard pipeline)
         │   ├── ResultsPage.jsx     # Full results visualisation + chat panel
         │   ├── LoginPage.jsx
         │   ├── RegisterPage.jsx
-        │   └── HowItWorksPage.jsx
+        │   └── HowItWorksPage.jsx  # Full interactive documentation of both pipelines
         │
         └── components/
             ├── results/            # Per-view result panels (Executive, Dashboard, etc.)
@@ -354,22 +394,21 @@ navispark/
 
 ---
 
-## Agent Pipeline
+## Agent Pipelines
+
+### Standard Pipeline
 
 | Agent | Role | Runs |
 |---|---|---|
-| **Agent 1** | Writing quality, section completeness, scope clarity, industry gaps, jargon flags, rewrite suggestions | Parallel |
-| **Agent 2** | Compliance scoring, alignment metrics, regulatory checks | Parallel |
-| **Agent 3** | Checklist coverage analysis against industry-specific criteria | Parallel |
-| **Agent 4** | Synthesises Agent 1–3 outputs; produces overall score (0–10), priority action plan, and final verdict | Sequential (after 1–3) |
+| **Cache Agent** | Seeds AWS Bedrock prompt cache with the full proposal document; records cache creation vs. cache read token metrics | Before A1–A4 |
+| **Agent 1 (A1)** | Writing quality, section completeness, scope clarity, jargon flags, rewrite suggestions | Parallel |
+| **Agent 2 (A2)** | Commercial integrity — pricing completeness, estimation rigour, phase coverage, arithmetic checks | Parallel |
+| **Agent 3 (A3)** | Competitive strength — client fit, differentiation, risk transparency, credibility, narrative | Parallel |
+| **Agent 4 (A4)** | Synthesises A1–A3 outputs; applies dynamic industry weights; produces overall score (0–10), priority action plan, and final verdict | Sequential (after A1–A3) |
 
-**Verdict values returned by Agent 4:**
-- `READY TO SEND`
-- `NEEDS MAJOR REVISION`
-- `DO NOT SEND`
+**Verdict values:** `READY TO SEND` · `REVISE BEFORE SENDING` · `NEEDS MAJOR REVISION`
 
-**Session status flow:**
-
+**Session status flow (Standard):**
 ```
 uploading → ready → pipeline_running → agents_complete → complete
                                                       ↘ pipeline_failed
@@ -377,7 +416,42 @@ uploading → ready → pipeline_running → agents_complete → complete
 
 ---
 
+### Custom Checklist Pipeline
+
+#### Phase 1 — Preflight (automatic after upload)
+
+| Agent | Role | Runs |
+|---|---|---|
+| **Cache Agent** | Seeds Bedrock prompt cache with proposal; records token metrics | Before NC1 + NC2 |
+| **NC1** | Document intelligence — maps proposal structure, auto-detects industry/type/priorities/metadata, quality pre-scan, confidence scoring | Parallel |
+| **NC2** | Checklist intelligence — parses uploaded checklist (Excel/CSV/Word/PDF), extracts categories, items, weights, and scoring type; writes dynamic LLM evaluation prompts enriched with NC1 context | Parallel |
+
+After Phase 1, the user reviews and can edit the auto-detected context before triggering Phase 2.
+
+#### Phase 2 — Evaluation (user-triggered)
+
+| Agent | Role | Runs |
+|---|---|---|
+| **NC3** | Per-category proposal evaluator — one instance per checklist category, all running concurrently (≤ 8 parallel); each produces PASS / PARTIAL / FAIL per item, evidence quotes, and gap narratives | Fan-out (parallel) |
+| **NCR1** | Clarity & Completeness specialist — deep-dives section audit, writing issues, scope clarity, high-risk assumptions; independent of the custom checklist | Parallel with NC3 |
+| **NCR2** | Commercial Strength specialist — estimation quality, pricing strategy, cost-benefit clarity | Parallel with NC3 |
+| **NCR3** | Competitive Position specialist — client fit, risk transparency, competitive differentiation | Parallel with NC3 |
+| **NC4** | Weighted score aggregation, cross-checklist consistency checks, priority action generation (must-fix / should-fix / next-time), strengths identification, verdict engine, dimension mapping for radar visualisation, executive summary | Sequential (after NC3 + NCR) |
+
+**Resilience:** NCR1–NCR3 failures are non-fatal (NC4 still produces a verdict). Per-category NC3 failures are non-fatal (other categories continue). NC1 or NC2 failure halts the pipeline.
+
+**Session status flow (Custom):**
+```
+uploading → ready (after NC1+NC2) → pipeline_running → complete
+                                                     ↘ pipeline_failed
+                                  ↘ cancelled
+```
+
+---
+
 ## API Reference
+
+### Auth
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -385,12 +459,34 @@ uploading → ready → pipeline_running → agents_complete → complete
 | `POST` | `/auth/login` | Log in, receive JWT |
 | `GET` | `/auth/me` | Get current user info |
 | `POST` | `/auth/logout` | Invalidate session |
-| `POST` | `/upload` | Upload a PDF or PPTX proposal |
+
+### Standard Pipeline
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/upload` | Upload a PDF, PPTX, or Word proposal |
 | `GET` | `/sessions` | List all sessions for the current user |
 | `GET` | `/sessions/{id}` | Get a single session with full agent outputs |
 | `DELETE` | `/sessions/{id}` | Delete a session and its stored files |
-| `POST` | `/sessions/{id}/run-analysis` | Trigger the 4-agent analysis pipeline |
-| `POST` | `/chat` | Send a message to chat about a session's results |
+| `POST` | `/sessions/{id}/run-analysis` | Trigger the standard 4-agent pipeline |
+| `POST` | `/chat` | Chat about a session's results |
+
+### Custom Checklist Pipeline
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/custom-upload` | Upload proposal + checklist file; auto-starts NC1 + NC2 preflight |
+| `GET` | `/sessions/{id}/preflight-status` | Poll NC1 + NC2 completion status and summaries |
+| `POST` | `/sessions/{id}/confirm-nc1-context` | Submit user-confirmed or edited NC1 context before Phase 2 |
+| `POST` | `/sessions/{id}/run-custom-analysis` | Trigger Phase 2 (NC3 fan-out + NCR1–3 + NC4) |
+| `POST` | `/sessions/{id}/cancel-custom-analysis` | Cancel an in-progress custom pipeline run |
+| `POST` | `/sessions/{id}/re-run-custom` | Re-run the pipeline (skips preflight if NC1/NC2 outputs exist) |
+
+### Real-time & Utility
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `WS` | `/ws/sessions/{id}/activity?token=<jwt>` | WebSocket — streams agent events in real time; supports late-connect replay |
 | `GET` | `/health` | Health check — returns `{"status": "ok"}` |
 
 All protected endpoints require an `Authorization: Bearer <jwt>` header. The JWT is issued on login and stored in the browser via Supabase Auth.
